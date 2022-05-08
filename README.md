@@ -16,4 +16,4 @@ bitmap-based indexes can be expensive to store, maintain and decompress [36]; tr
 predominant data structures in commercial database systems for these kinds of queries [31].
 ```
 
-PGM is a new devlopment in that solution space, however, you need a order-perserving hash unless your keys happen to be a built in type e.g float, uint64. See [PGM iussue 17](https://github.com/gvinciguerra/PGM-index/issues/17). I may circle back back to PGM. Because client character or byte array keys are not stored, PGM really allows the storage of all KV to be completely separate of the index. In a distributed KV store that might have practical benefits. I may circle back to this.
+PGM is a new devlopment in that solution space, however, you need a order-perserving hash unless your keys happen to be a built in type e.g float, uint64. See [PGM iussue 17](https://github.com/gvinciguerra/PGM-index/issues/17). PGM does not keep the key or values in the index. Therefore, storage is completely orthogonal to PGM. In a distributed KV store that might have practical benefits. I may circle back to this.
