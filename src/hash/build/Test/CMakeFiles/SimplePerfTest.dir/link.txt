@@ -1,0 +1,1 @@
+/usr/bin/c++  -pthread -g  -rdynamic CMakeFiles/SimplePerfTest.dir/main.cpp.o CMakeFiles/SimplePerfTest.dir/dlmalloc/malloc.c.o  -o SimplePerfTest  HAMT/libHAMT.a 

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libHAMT.a  CMakeFiles/HAMT.dir/HashTrie.cpp.o
+/usr/bin/ranlib libHAMT.a

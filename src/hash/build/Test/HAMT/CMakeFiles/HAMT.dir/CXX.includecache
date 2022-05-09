@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/HashTrie.h
+stdint.h
+-
+string.h
+-
+assert.h
+-
+wchar.h
+-
+exception
+-
+intrin.h
+-
+
+/root/Dev/tmp/HAMT/src/HashTrie.cpp
+stdint.h
+-
+HashTrie.h
+-
+stdlib.h
+-
+

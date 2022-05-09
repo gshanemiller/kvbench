@@ -17,3 +17,10 @@ predominant data structures in commercial database systems for these kinds of qu
 ```
 
 [Vinciguerra's PGM](https://github.com/gvinciguerra/PGM-index) is a new devlopment in that solution space, however, you need a order-perserving hash unless your keys happen to be a built in type e.g float, uint64. See [PGM iussue 17](https://github.com/gvinciguerra/PGM-index/issues/17). PGM does not keep the key or values in the index. Therefore, storage is completely orthogonal to PGM. In a distributed KV store that might have practical benefits. I may circle back to this.
+
+# Discarded
+
+Unlike PGM and Google code which are well organized and expertly engineered repos that actually build, most code sets are a rats-nest of build errors and bad dependencies.
+
+* https://gitlab.com/habatakitai/ctriepp supposedly quite good, but does not build. replete with errors
+* https://github.com/malbrain/HatTrie.git does not build
