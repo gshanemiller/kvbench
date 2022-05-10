@@ -1,2 +1,0 @@
-/root/Dev/tmp/hat-trie/build/CMakeFiles/rebuild_cache.dir
-/root/Dev/tmp/hat-trie/build/CMakeFiles/edit_cache.dir

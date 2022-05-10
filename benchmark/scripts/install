@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# This script is indempotent. You should be able to run it
+# multiple times and get to the same end state
+
+#
+# Where GIT repos will be cloned and built
+#
+export H=${HOME}/Dev
+mkdir -p ${H}
+
+#
+# Install prereqs
+#
+apt update
+apt install --yes make numactl libnuma-dev git htop libgtest-dev g++ gcc gcc-doc cmake cmake-extras unzip zip gdb gdb-doc pkgconf* libhugetlbfs-bin libhugetlbfs-dev
+
+#
+# Clone repo
+# 
+rm -rf ${H}/kvbench
+cd ${H}
+git clone https://github.com/rodgarrison/kvbench.git
+
+#
+# Build kvbench
+#
+cd $H/kvbench
+rm -rf build
+mkdir build
+cd build
+cmake ..
+make -j 8
+
+echo
+echo Built tasks are located here: ${PWD}

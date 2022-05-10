@@ -1,0 +1,22 @@
+#/bin/bash
+
+# needs root/sudo
+
+if [[ "$1" == "" ]]
+then
+  echo "usage: $0 <N>"
+  echo "  where N>0 to create N 1Gb hugepages"
+  exit 1
+fi
+
+echo $1 > /sys/devices/system/node/node0/hugepages/hugepages-1048576kB/nr_hugepages
+rc=$?
+
+if [[ "$rc" == "0" ]]
+then
+  echo "success"
+else
+  echo "failed"
+fi
+
+exit $?

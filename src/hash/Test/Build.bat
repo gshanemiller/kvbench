@@ -1,1 +1,0 @@
-msbuild.exe IdealHash.vcxproj /t:Rebuild /p:Configuration=Release;platform=x64
