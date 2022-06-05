@@ -25,8 +25,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-diagnostics-color")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-static-in-inline")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")           # thanks mimalloc for advertising (https://gcc.gnu.org/wiki/Visibility)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-pessimizing-move")
 
 #
 # Set C project wide compilation options. These are less restrictive
@@ -42,6 +44,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-diagnostics-color")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNDEBUG")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mavx")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-static-in-inline")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
 

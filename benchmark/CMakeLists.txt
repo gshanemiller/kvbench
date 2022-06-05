@@ -15,7 +15,7 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_slice.cpp
   ./src/benchmark_stats.cpp
   ./src/benchmark_textscan.cpp
-  ./src/benchmark_jart.cpp
+  ./src/benchmark_hot.cpp
   ./src/intel_skylake_pmu.cpp
 
   ./thirdparty/xxhash/xxhash.c
@@ -28,19 +28,17 @@ set(BENCHMARK_SOURCES
   ./thirdparty/folly/lang/SafeAssert.cpp
   ./thirdparty/folly/container/f14.cpp                                                                                             
   ./thirdparty/folly/container/detail/F14Table.cpp
-
-  ./thirdparty/art/src/art.cpp
 )
 
-# find_library(HUGELIB
-#   NAMES hugetlbfs
-#   PATHS /usr/lib/x86_64-linux-gnu
-#   REQUIRED
-# )
+find_library(HUGELIB
+  NAMES hugetlbfs
+  PATHS /usr/lib/x86_64-linux-gnu
+  REQUIRED
+)
 
 set(BENCHMARK_TARGET benchmark.tsk)
 add_executable(${BENCHMARK_TARGET} ${BENCHMARK_SOURCES})
-# target_compile_options(${BENCHMARK_TARGET} PUBLIC -g)
+target_compile_options(${BENCHMARK_TARGET} PUBLIC -g)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cuckoo)
@@ -49,8 +47,8 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/t1ha)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cityhash)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/folly)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/folly/container)
-target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/art/src)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hot/src)
 # target_link_options(${BENCHMARK_TARGET} PUBLIC -pg)
-# target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB} pthread)
+target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB} pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)

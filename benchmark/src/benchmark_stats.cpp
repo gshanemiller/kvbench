@@ -58,6 +58,8 @@ void Benchmark::Stats::summarize(const Intel::SkyLake::PMU& pmu, unsigned i) con
   double perIterP3 = static_cast<double>(d_progmCntr3[i])/static_cast<double>(d_itertions[i]);
   double bnchRatio = perIterP2/perIterF0;
   double bnchWaste = perIterP3/perIterF0;
+  double perIter   = d_elapsedNs[i]/static_cast<double>(d_itertions[i]);
+  double opsSec    = static_cast<double>(1000000000)/perIter;
 
   printf("    {\n");
   printf("      \"description\": \"%s\",\n", d_description[i].c_str()); 
@@ -73,7 +75,8 @@ void Benchmark::Stats::summarize(const Intel::SkyLake::PMU& pmu, unsigned i) con
   printf("        \"%s\": %lu,\n", pmu.progMnemonic()[3].c_str(), d_progmCntr3[i]);
   printf("      },\n");
   printf("      scaledPerIteration: {\n");
-  printf("        \"elapsedTimeNs\": %lf,\n", d_elapsedNs[i]/static_cast<double>(d_itertions[i]));
+  printf("        \"elapsedTimeNs\": %lf,\n", perIter);
+  printf("        \"opsPerSecond\" : %lf,\n", opsSec);
   printf("        \"%s\": %lf,\n", pmu.fixedMnemonic()[0].c_str(), perIterF0);
   printf("        \"%s\": %lf,\n", pmu.fixedMnemonic()[1].c_str(), perIterF1);
   printf("        \"%s\": %lf,\n", pmu.fixedMnemonic()[2].c_str(), perIterF2);
@@ -83,7 +86,7 @@ void Benchmark::Stats::summarize(const Intel::SkyLake::PMU& pmu, unsigned i) con
   printf("        \"%s\": %lf,\n", pmu.progMnemonic()[3].c_str(), perIterP3);
   printf("        \"IPC\": %lf,\n", perIterF0/perIterF2);
   printf("        \"branchRatio\": %lf\n", bnchRatio);
-  printf("        \"branchWaste\": %lf\n", bnchWaste);
+  printf("        \"branchWasteRatio\": %lf\n", bnchWaste);
   printf("      },\n");
   printf("    }\n");
 }
@@ -98,7 +101,7 @@ void Benchmark::Stats::legend(const Intel::SkyLake::PMU& pmu) const {
   printf("    \"%s\": \"%s\",\n", pmu.progMnemonic()[3].c_str(), pmu.progDescription()[3].c_str());
   printf("    \"IPC\": \"%s/%s\",\n", pmu.fixedMnemonic()[0].c_str(), pmu.fixedMnemonic()[2].c_str());
   printf("    \"branchRatio\": \"%s/%s\",\n", pmu.progMnemonic()[2].c_str(), pmu.fixedMnemonic()[0].c_str());
-  printf("    \"branchWaste\": \"%s/%s\",\n", pmu.progMnemonic()[3].c_str(), pmu.fixedMnemonic()[0].c_str());
+  printf("    \"branchWasteRatio\": \"%s/%s\",\n", pmu.progMnemonic()[3].c_str(), pmu.fixedMnemonic()[0].c_str());
 }
 
 void Benchmark::Stats::print(const Intel::SkyLake::PMU& pmu) const {

@@ -13,7 +13,7 @@ mkdir -p ${H}
 # Install prereqs
 #
 apt update
-apt install --yes make numactl libnuma-dev git htop libgtest-dev g++ gcc gcc-doc cmake cmake-extras unzip zip gdb gdb-doc pkgconf* libhugetlbfs-bin libhugetlbfs-dev
+apt install --yes make numactl libnuma-dev git htop libgtest-dev g++ gcc gcc-doc cmake cmake-extras unzip zip gdb gdb-doc pkgconf* libhugetlbfs-bin libhugetlbfs-dev libboost-dev
 
 #
 # Clone repo

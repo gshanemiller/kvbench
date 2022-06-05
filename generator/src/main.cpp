@@ -17,6 +17,7 @@ struct Config {
   Config()
   : d_mode(UNDEFINED)
   , d_verbosity(0)
+  , d_cstringTerminator(false)
   {
   }
 
@@ -24,6 +25,7 @@ struct Config {
   std::string     d_inFilename;
   std::string     d_outFilename;
   unsigned int    d_verbosity;
+  bool            d_cstringTerminator;
 };
 
 Config config;
@@ -41,13 +43,16 @@ void usageAndExit() {
   printf("\n");
   printf("       -o <outputFilename>      mandatory: output file which contains output as per <mode>\n");
   printf("\n");
+  printf("       -t                       optional : add 0 terminator to string on write\n");
+  printf("                                           valid 'convert-text' for uses where 0 terminator required\n");
+  printf("\n");
   printf("       -v                       optional : increase verbosity of output\n");
   exit(2);
 }
 
 void parseCommandLine(int argc, char **argv) {                                                                          
   int opt;
-  const char *switches = "m:i:o:v";
+  const char *switches = "m:i:o:tv";
 
   while ((opt = getopt(argc, argv, switches)) != -1) {
     switch (opt) {
@@ -78,6 +83,12 @@ void parseCommandLine(int argc, char **argv) {
           } else {
             usageAndExit();
           }
+        }
+        break;
+
+      case 't':
+        {
+          config.d_cstringTerminator = true;
         }
         break;
 
@@ -122,16 +133,28 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
       }
     }
 
-    // found word - deal with it
-    unsigned int sz = ptr-start;
+    // found word: write to output
+    const char terminator(0);
+    const unsigned int sz = ptr-start;
+    unsigned int outputSize(sz);
+
     if (sz) {
-      if (write(fid, &sz, sizeof(sz))==-1) {
+      if (config.d_cstringTerminator) {
+        ++outputSize;
+      }
+      if (write(fid, &outputSize, sizeof(outputSize))==-1) {
         printf("write error: %s (errno=%d)\n", strerror(errno), errno);
         return -1;
       }
       if (write(fid, start, sz)==-1) {
         printf("write error: %s (errno=%d)\n", strerror(errno), errno);
         return -1;
+      }
+      if (config.d_cstringTerminator) {
+        if (write(fid, &terminator, sizeof(terminator))==-1) {
+          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+          return -1;
+        }
       }
       ++words;
       if (config.d_verbosity) {
@@ -140,7 +163,7 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
           putchar(*(start+i));
         }
         printf("'\n");
-      } else {
+      } else if (words%10000==0) {
         printf("wrote %09u words\r", words);
       }
     }

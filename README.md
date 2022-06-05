@@ -10,8 +10,8 @@ The benchmark code does not sort or organize the file loaded. So, for example, i
 sorted order, provide a file with data presorted. For random order, provide a file with data in random order.
 
 The data structures will point to data in memory loaded in (2) unless the data structure can't support that. For
-example, hashmaps often can point back to (2) both for keys, values whereas most trees and all trie structures must
-make a copy of the key because key ordering is structurally dependent on it.
+example, hashmaps often can point back to (2) both for keys, values whereas trie structures must make a copy of the
+key because key ordering is structurally dependent on it.
 
 # Features
 * This respository is self contained and self building. There are no dependencies and no GIT sub-modules. This comes at
@@ -24,15 +24,18 @@ I've tried to clearly advertise where the original code came from so its authors
 
 * Hashing algorithms supported: **cuckoo** hash map, **Facebook's F14** hash map
 
-* Trie algos supported (coming):
+* Trie algos supported: **HOT** Height Optimized Trie. Per HOT paper it beats ART (Adaptive Radix Tree)
 
-* Tree algos supported (coming):
+* Tree algos supported: **None**: binary search trees, btrees regularly underpeform tries
+
+* Learned Indexes: **None** at present. Too many papers work with integral key types e.g. uint64. But if keys are real
+world, one needs a map from the string to an integral type. How best to do this is an open question
 
 * Supports two memory allocators: default STL allocator, and Microsoft's MIM allocator each with one or two variations
 
 * Intel PMU metrics (programmable!) provided with each benchmark
 
-* SIMD support: (coming: some algos have SIMD equivalents)
+* SIMD support: some algos have SIMD equivalents or enablements
 
 * Generator to make KV pairs, and to convert or help convert data you might have laying around ready for benchmarking
 
@@ -128,38 +131,54 @@ are readily available. The `generator.tsk` program in this repository has a conv
 `bin-text` suitable for benchmarking. See the next section for a worked example.
 
 # Worked Example
-* `curl -o data.gz https://people.eng.unimelb.edu.au/sgog/data/proteins.txt.gz`
-* `gunzip data.gz`
+Obtain a test file:
 
-Now convert `data` into `data.bin`:
+* `curl -o dict.txt https://www.gutenberg.org/cache/epub/29765/pg29765.txt`
 
-* `./generator.tsk -m convert-text -i data -o data.bin`
+Convert `dict.txt` into `dict.bin`:
+
+* `./generator.tsk -m convert-text -i dict.txt -o dict.bin`
 
 You'll see output like this:
 
 ```
-$ ./generator.tsk -m convert-text -i ./data -o ./data.bin
-reading './data' ...
+$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin
+reading './dict.txt' ...
 000000000 bytes left
-writing './data.bin' ...
-wrote 000143244 words
+writing './dict.bin' ...
+wrote 004545921 words
 ```
 
-The conversion finds all 143,244 words in `data` writing into `data.bin`. Append `-v` to command line to see each word
-found on stdout. A word is just the ASCII text sitting between whitespaces.
+As of this writing we'll need a zero terminator on the end of strings for the HOT trie code. Add `-t`:
 
-Finally, benchmark a cuckoo hashmap where keys are hashed according to the `xxhash` algorithm variant `XX3_64Bits`
-pinned to HW core 5. After inserting and then finding all keys:
+```
+$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.trie -t`
+```
+
+The conversion finds all 4545921 words in `dict.txt` writing into `dict.bin`. Append `-v` to command line to see each
+word found on stdout. A word is just the ASCII text sitting between whitespaces. There's only ~500,000 unique words in
+this file with average key length of `28956348/4545921` about 6 chars or less. `28956348` is the filesize of `dict.txt`
+including whitespaces.
+
+We'll now benachmark this file using three algorithms:
+
+* Cuckoo hash map
+* Facebook's F14 hash map
+* HOT Trie
+
+The first benchmark will be explained at length. The other two will be summarized.
+
+## Cuckoo Hashmap on dict.bin
 
 ```
 # Run code pinned to CPU core 5
-$ taskset -c 5 ./benchmark.tsk -f ./data.bin -F bin-text -d cuckoo -h xxhash:XX3_64bits
-loading './data.bin'
+$ taskset -c 5 ./benchmark.tsk -f ./dict.bin -F bin-text -d cuckoo -h xxhash:XX3_64bits
+loading './dict.bin'
 000000000 bytes left
 config: {
-  filename     : "./data.bin"
-  fileSizeBytes: 59532794,
-  format       : "text"
+  filename     : "./dict.bin"
+  fileSizeBytes: 41307637,
+  format       : "bin-text"
   dataStructure: "cuckoo"
   hashAlgorithm: "xxhash:XX3_64bits"
   allocator    : "vanilla malloc or std::allocator"
@@ -169,134 +188,226 @@ config: {
   recordRuns   : 1,
   verbosity    : 0
 }
-stats: {
-  result = [
+"stats": {
+  "legend" = {
+    "F0": "retired instructions",
+    "F1": "no-halt cpu cycles",
+    "F2": "reference no-halt cpu cycles",
+    "P0": "LLC references",
+    "P1": "LLC misses",
+    "P2": "retired branch instructions",
+    "P3": "retired branch instructions not taken",
+    "IPC": "F0/F2",
+    "branchRatio": "P2/F0",
+    "branchWasteRatio": "P3/F0",
+  },
+  "result" = [
     {
-      description: "benchmark-overhead run 9",
-      total: {
-        iterations: 143244,
-        elapsedTimeNs: 54684.000000,
-        pmuFixedCounter0RetiredInstructions: 1002847,
-        pmuFixedCounter2ReferenceNoHaltCycles: 183464,
-        pmuProgCounter0LLCHits: 0,
-        pmuProgCounter1LLCMisses: 0,
-        pmuProgCounter2RetiredBranchInstructions: 143259,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 4,
+      "description": "benchmark-overhead run 9",
+      "total": {
+        "iterations": 4545921,
+        "elapsedTimeNs": 1723206.000000,
+        "F0": 31821564,
+        "F1": 8376825,
+        "F2": 5825834,
+        "P0": 0,
+        "P1": 0,
+        "P2": 4545934,
+        "P3": 3,
       },
-      perIteration: {
-        elapsedTimeNs: 0.381754,
-        IPC: 5.466179,
-        pmuFixedCounter0RetiredInstructions: 7.000970,
-        pmuFixedCounter2ReferenceNoHaltCycles: 1.280780,
-        pmuProgCounter0LLCHits: 0.000000,
-        pmuProgCounter1LLCMisses: 0.000000,
-        pmuProgCounter2RetiredBranchInstructions: 1.000105,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 0.000028,
+      scaledPerIteration: {
+        "elapsedTimeNs": 0.379066,
+        "opsPerSecond" : 2638060104.247548,
+        "F0": 7.000026,
+        "F1": 1.842712,
+        "F2": 1.281552,
+        "P0": 0.000000,
+        "P1": 0.000000,
+        "P2": 1.000003,
+        "P3": 0.000001,
+        "IPC": 5.462147,
+        "branchRatio": 0.142857
+        "branchWasteRatio": 0.000000
+      },
+    }
+  ]
+}
+config: {
+  filename     : "./dict.bin"
+  fileSizeBytes: 41307637,
+  format       : "bin-text"
+  dataStructure: "cuckoo"
+  hashAlgorithm: "xxhash:XX3_64bits"
+  allocator    : "vanilla malloc or std::allocator"
+  needsHashAlgo: true,
+  customAlloc  : false,
+  runs         : 10,
+  recordRuns   : 1,
+  verbosity    : 0
+}
+"stats": {
+  "legend" = {
+    "F0": "retired instructions",
+    "F1": "no-halt cpu cycles",
+    "F2": "reference no-halt cpu cycles",
+    "P0": "LLC references",
+    "P1": "LLC misses",
+    "P2": "retired branch instructions",
+    "P3": "retired branch instructions not taken",
+    "IPC": "F0/F2",
+    "branchRatio": "P2/F0",
+    "branchWasteRatio": "P3/F0",
+  },
+  "result" = [
+    {
+      "description": "insert run 9",
+      "total": {
+        "iterations": 4545921,
+        "elapsedTimeNs": 342085712.000000,
+        "F0": 1485166525,
+        "F1": 1701077861,
+        "F2": 1162221010,
+        "P0": 111786864,
+        "P1": 21959335,
+        "P2": 239749053,
+        "P3": 96207229,
+      },
+      scaledPerIteration: {
+        "elapsedTimeNs": 75.251134,
+        "opsPerSecond" : 13288836.220087,
+        "F0": 326.703109,
+        "F1": 374.198729,
+        "F2": 255.662386,
+        "P0": 24.590587,
+        "P1": 4.830558,
+        "P2": 52.739380,
+        "P3": 21.163419,
+        "IPC": 1.277869,
+        "branchRatio": 0.161429
+        "branchWasteRatio": 0.064779
       },
     }
     {
-      description: "insert run 9",
-      total: {
-        iterations: 143244,
-        elapsedTimeNs: 17903651.000000,
-        pmuFixedCounter0RetiredInstructions: 109777028,
-        pmuFixedCounter2ReferenceNoHaltCycles: 60366472,
-        pmuProgCounter0LLCHits: 6264491,
-        pmuProgCounter1LLCMisses: 2169128,
-        pmuProgCounter2RetiredBranchInstructions: 15763683,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 5898513,
+      "description": "find run 9",
+      "total": {
+        "iterations": 4545921,
+        "elapsedTimeNs": 274040580.000000,
+        "F0": 1043742704,
+        "F1": 1364296170,
+        "F2": 932093538,
+        "P0": 79255216,
+        "P1": 16788133,
+        "P2": 170012816,
+        "P3": 78892110,
       },
-      perIteration: {
-        elapsedTimeNs: 124.987092,
-        IPC: 1.818510,
-        pmuFixedCounter0RetiredInstructions: 766.363883,
-        pmuFixedCounter2ReferenceNoHaltCycles: 421.424088,
-        pmuProgCounter0LLCHits: 43.733008,
-        pmuProgCounter1LLCMisses: 15.142889,
-        pmuProgCounter2RetiredBranchInstructions: 110.047772,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 41.178081,
-      },
-    }
-    {
-      description: "find run 9",
-      total: {
-        iterations: 143244,
-        elapsedTimeNs: 15626897.000000,
-        pmuFixedCounter0RetiredInstructions: 92132763,
-        pmuFixedCounter2ReferenceNoHaltCycles: 52630312,
-        pmuProgCounter0LLCHits: 5593570,
-        pmuProgCounter1LLCMisses: 2297909,
-        pmuProgCounter2RetiredBranchInstructions: 11879637,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 5240076,
-      },
-      perIteration: {
-        elapsedTimeNs: 109.092856,
-        IPC: 1.750565,
-        pmuFixedCounter0RetiredInstructions: 643.187589,
-        pmuFixedCounter2ReferenceNoHaltCycles: 367.417218,
-        pmuProgCounter0LLCHits: 39.049245,
-        pmuProgCounter1LLCMisses: 16.041921,
-        pmuProgCounter2RetiredBranchInstructions: 82.932877,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 36.581469,
+      scaledPerIteration: {
+        "elapsedTimeNs": 60.282741,
+        "opsPerSecond" : 16588495.762197,
+        "F0": 229.599833,
+        "F1": 300.114360,
+        "F2": 205.039537,
+        "P0": 17.434358,
+        "P1": 3.693010,
+        "P2": 37.398982,
+        "P3": 17.354483,
+        "IPC": 1.119783,
+        "branchRatio": 0.162888
+        "branchWasteRatio": 0.075586
       },
     }
   ]
 }
 ```
 
-The converted file has 59532794 bytes (versus 59103058 in the original raw file) with 143244 words and therefore 143244
-keys. This file is **found** so we have no control over word statistics in it. It's unknown if the keys are all unique,
-but from context most keys probably are. Run the conversion tool with `-v` to dump each key to stdout. With a little
-Python you can figure out whatever you need. We can still deduce the average key length to be about 412 bytes
-by `59103058/143244`.
+The top most of the output shows the config:
 
-The default config is to run each benchmark 10 times only recording the last `recordRuns=1` runs. You can adjust these
-numbers on the benchmark command line. The default config also runs with the builtin, standard memory allocator. Note
-that C code, if that's what the third-party used, may run `malloc/free`.
+```
+config: {                                                                                                               
+  filename     : "./dict.bin"                                                                                           
+  fileSizeBytes: 41307637,                                                                                              
+  format       : "bin-text"                                                                                             
+  dataStructure: "cuckoo"                                                                                               
+  hashAlgorithm: "xxhash:XX3_64bits"                                                                                    
+  allocator    : "vanilla malloc or std::allocator"                                                                     
+  needsHashAlgo: true,                                                                                                  
+  customAlloc  : false,                                                                                                 
+  runs         : 10,                                                                                                    
+  recordRuns   : 1,                                                                                                     
+  verbosity    : 0                                                                                                      
+}
+```
+
+The converted file has 41307637 bytes (versus 28956348 in the original raw file) with 4545921 words as we know from the
+generator command earlier. The default config is to run each benchmark 10 times only recording the last `recordRuns=1`
+runs. You can adjust these numbers on the benchmark command line. The default config also runs with the builtin,
+standard memory allocator.
+
+A legend section is then given where each PMU counter is given a mnemonic name e.g. `P0` with a description. The code
+documents seven counters (F0-F2, and P0-P3) with a couple of derived values:
+
+```
+  "legend" = {                                                                                                          
+    "F0": "retired instructions",                                                                                       
+    "F1": "no-halt cpu cycles",                                                                                         
+    "F2": "reference no-halt cpu cycles",                                                                               
+    "P0": "LLC references",                                                                                             
+    "P1": "LLC misses",                                                                                                 
+    "P2": "retired branch instructions",                                                                                
+    "P3": "retired branch instructions not taken",                                                                      
+    "IPC": "F0/F2",                                                                                                     
+    "branchRatio": "P2/F0",                                                                                             
+    "branchWasteRatio": "P3/F0",                                                                                        
+  },
+```
 
 Three results sets are reported two ways. The first pair is `benchmark-overhead`. The same benchmark code that's run
-on the cuckoo hashmap is first run over an empty-loop scanning the words in `data.bin` loaded into huge-page memory.
-It includes setup and tear-down. Since `data.bin` contains 143244 words the benchmark records 143244 iterations. This
+on the cuckoo hashmap is first run over an empty-loop scanning the words in `dict.bin` loaded into huge-page memory.
+It includes setup and tear-down. Since `dict.bin` contains 4545921 words the benchmark records 4545921 iterations. This
 empty loop is run 10 times and only the last run is recorded. The first block shows the total number of operations,
 total elapased time, and PMU counter values at test end. These numbers are snap-shotted once before and after the test:
 
 ```
-    {
-      description: "benchmark-overhead run 9",
-      total: {
-        iterations: 143244,
-        elapsedTimeNs: 54684.000000,
-        pmuFixedCounter0RetiredInstructions: 1002847,
-        pmuFixedCounter2ReferenceNoHaltCycles: 183464,
-        pmuProgCounter0LLCHits: 0,
-        pmuProgCounter1LLCMisses: 0,
-        pmuProgCounter2RetiredBranchInstructions: 143259,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 4,
-      },
+  "result" = [                                                                                                          
+    {                                                                                                                   
+      "description": "benchmark-overhead run 9",                                                                        
+      "total": {                                                                                                        
+        "iterations": 4545921,                                                                                          
+        "elapsedTimeNs": 1723206.000000,                                                                                
+        "F0": 31821564,                                                                                                 
+        "F1": 8376825,                                                                                                  
+        "F2": 5825834,                                                                                                  
+        "P0": 0,                                                                                                        
+        "P1": 0,                                                                                                        
+        "P2": 4545934,                                                                                                  
+        "P3": 3,                                                                                                        
+      }, 
 ```
 
-The second block records the same data except that it's scaled down by `143244` since that was the number of words
+The second block records the same data except that it's scaled down by `4545921` since that was the number of words
 scanned. This gives you a slightly more useful resource consumption rate:
 
 ```
-      perIteration: {
-        elapsedTimeNs: 0.381754,
-        IPC: 5.466179,
-        pmuFixedCounter0RetiredInstructions: 7.000970,
-        pmuFixedCounter2ReferenceNoHaltCycles: 1.280780,
-        pmuProgCounter0LLCHits: 0.000000,
-        pmuProgCounter1LLCMisses: 0.000000,
-        pmuProgCounter2RetiredBranchInstructions: 1.000105,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 0.000028,
-      },
-    }
+      scaledPerIteration: {                                                                                             
+        "elapsedTimeNs": 0.379066,                                                                                      
+        "opsPerSecond" : 2638060104.247548,                                                                             
+        "F0": 7.000026,                                                                                                 
+        "F1": 1.842712,                                                                                                 
+        "F2": 1.281552,                                                                                                 
+        "P0": 0.000000,                                                                                                 
+        "P1": 0.000000,                                                                                                 
+        "P2": 1.000003,                                                                                                 
+        "P3": 0.000001,                                                                                                 
+        "IPC": 5.462147,                                                                                                
+        "branchRatio": 0.142857                                                                                         
+        "branchWasteRatio": 0.000000                                                                                    
+      }, 
 ```
 
 The point of this data is to argue the benchmark setup time and memory scanner overhead is not a significant
 contributor to the real benchmarks which appear next. This loop is quick on average ~0.5ns/word. It incurs no LLC cache
-misses. LLC cache miss means the CPU had to wait for memory to be fetched from RAM into the last level CPU cache
-(typically level 3 or L3) stalling it. The further required data is from a CPU register falling back to L1, then L2,
-then L3, or worst case RAM [you incur an additional latency factor](https://pmem.io/blog/2019/12/300-nanoseconds-1-of-2/)
+misses. That is P0, P1 record 0.0. LLC cache miss means the CPU had to wait for memory to be fetched from RAM into the
+last level CPU cache (typically level 3 or L3) stalling it. The further removed required data is from a CPU register
+falling back to L1, then L2, then L3, or worst case RAM [you incur an additional latency factor](https://pmem.io/blog/2019/12/300-nanoseconds-1-of-2/)
 (approximately) of 10. That's why Intel considers LLC hit/misses to be architecturally signifcant.
 
 IPC (instructions retired per retired cycle) is well above 1.0. Modern CPUs are super scalar, and ideally, can complete
@@ -304,52 +415,74 @@ multiple instructions per cycle if it can keep its pipeline busy. This loop does
 
 This broadly makes sense. The word scanner works over memory in a non-random increasing only order so the CPU can
 prefetch data before it needs it. The scanner does not walk each byte looking for word boudaries. It's pre-computed
-in `data.bin`. The current word variable holding the next assignment stays CPU local-hot.
+in `dict.bin`. The current word variable holding the next assignment stays CPU local-hot.
 
-Consider next the cuckoo insertion stats:
+The next two sections record the time it took the Cuckoo hashmap to insert all 4545921 words giving total, elapsed
+values and scaled values:
 
 ```
-    {
-      description: "insert run 9",
-      total: {
-        iterations: 143244,
-        elapsedTimeNs: 17903651.000000,
-        pmuFixedCounter0RetiredInstructions: 109777028,
-        pmuFixedCounter2ReferenceNoHaltCycles: 60366472,
-        pmuProgCounter0LLCHits: 6264491,
-        pmuProgCounter1LLCMisses: 2169128,
-        pmuProgCounter2RetiredBranchInstructions: 15763683,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 5898513,
-      },
-      perIteration: {
-        elapsedTimeNs: 124.987092,
-        IPC: 1.818510,
-        pmuFixedCounter0RetiredInstructions: 766.363883,
-        pmuFixedCounter2ReferenceNoHaltCycles: 421.424088,
-        pmuProgCounter0LLCHits: 43.733008,
-        pmuProgCounter1LLCMisses: 15.142889,
-        pmuProgCounter2RetiredBranchInstructions: 110.047772,
-        pmuProgCounter3RetiredBranchInstructionsTaken: 41.178081,
-      },
+    {                                                                                                                   
+      "description": "insert run 9",                                                                                    
+      "total": {                                                                                                        
+        "iterations": 4545921,                                                                                          
+        "elapsedTimeNs": 342085712.000000,                                                                              
+        "F0": 1485166525,                                                                                               
+        "F1": 1701077861,                                                                                               
+        "F2": 1162221010,                                                                                               
+        "P0": 111786864,                                                                                                
+        "P1": 21959335,                                                                                                 
+        "P2": 239749053,                                                                                                
+        "P3": 96207229,                                                                                                 
+      },                                                                                                                
+      scaledPerIteration: {                                                                                             
+        "elapsedTimeNs": 75.251134,                                                                                     
+        "opsPerSecond" : 13288836.220087,                                                                               
+        "F0": 326.703109,                                                                                               
+        "F1": 374.198729,                                                                                               
+        "F2": 255.662386,                                                                                               
+        "P0": 24.590587,                                                                                                
+        "P1": 4.830558,                                                                                                 
+        "P2": 52.739380,                                                                                                
+        "P3": 21.163419,                                                                                                
+        "IPC": 1.277869,                                                                                                
+        "branchRatio": 0.161429                                                                                         
+        "branchWasteRatio": 0.064779                                                                                    
+      },                                                                                                                
     }
 ```
 
-An insert requires ~125ns/op with 44 LLC cache hits and ~15 LLC cache misses also per insert. These are not small
-numbers. Broadly speaking there are two factors. First, hashing fundamentally means random I/O since keys are pseudo
-randomly assigned different buckets. The CPU has no way to predict which bucket so that it cannot prefectch memory to
-avoid stalls. Second, the hashing algorithm will interplay with a hashmap's overflow logic adding or reorganizing 
+An insert requires ~75ns/op with 25 LLC cache hits and ~5 LLC cache misses per insert. This tranlates to about 13,288,836
+inserts per second. Broadly speaking there are two factors. First, hashing fundamentally means random I/O since keys are
+pseudo randomly assigned different buckets. The CPU has no way to predict which bucket so that it cannot prefectch memory
+to avoid stalls. Second, the hashing algorithm will interplay with a hashmap's overflow logic adding or reorganizing
 buckets which leads to more random memory accesses.
 
-IPC is only 1.8. 
+IPC is only 1.2. About 16% of all instructions are branch related, of which ~6.5% of the total ~327 instructions per
+insert (e.g. about 21 instructions) were evaluated and never used.
 
-Insertion requires about 766 instructions per iteration of which 14% (`110.047772/766.363883`) are branching related.
-Of the ~110 branching instructions only ~41 are used. The rest were evaluated and discarded. In other words the
-difference of 68.86969 instructions or 9% of the original ~766 is waste.
-
-The find operations are pretty much the same clocking in somewhat faster at 109ns/insert. In many KV data structures,
+The find operations are pretty much the same clocking in somewhat faster at 60ns/find. In many KV data structures,
 the first 70% of an insert is find. The data reflects this.
 
+## Facebook's F14 Hashmap
 
+```
+$ taskset -c 5 ./benchmark.tsk -f ./dict.bin -F bin-text -d f14 -h xxhash:XX3_64bits
+```
+
+This algorithm is at least 2x better. Inserts are 27ns/op and finds are 26ns/op. LLC cache hits are 9 with 2 misses per
+operation insert. Find has slightly better numbers here.
+
+## HOT Trie
+
+A trie is fundamentally different from a hashmap. It makes copies of the keys then orders them. Consequently it does lot
+more work. You must run this on a bin file with terminators. Refer to the previous section running generator with `-t`
+option:
+
+```
+$ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d hot
+```
+
+Inserts run at 237ns/op with finds 83ns/op. Interestingly, HOT has almost no LLC misses. 
 
 # Typical and Notable Benchmark Commandlines
 Start here for typical benchmark invocations:
