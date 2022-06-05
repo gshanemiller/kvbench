@@ -7,6 +7,7 @@
 #include <benchmark_cuckoo.h>
 #include <benchmark_misc.h>
 #include <benchmark_f14.h>
+#include <benchmark_hot.h>
 
 Benchmark::Config config;
 
@@ -21,8 +22,9 @@ void usageAndExit() {
   printf("                                'bin-slice-kv': <filename> contains blob KV pairs in binary format\n");
   printf("\n");
   printf("       -d <data-structure>      mandatory: data structure to benchmark for which code included in this repository\n");
-  printf("                                'cuckoo'     : hashmap https://github.com/efficient/libcuckoo\n");
-  printf("                                'f14'        : hashmap https://github.com/facebook/folly\n");
+  printf("                                'cuckoo'     : hashmap  https://github.com/efficient/libcuckoo\n");
+  printf("                                'f14'        : hashmap  https://github.com/facebook/folly\n");
+  printf("                                'hot'        : HOT trie https://github.com/speedskater/hot\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
   printf("                                'xxhash:XX3_64bits': xxhash    variant 'XXH3_64bits()' https://github.com/Cyan4973/xxHash.git\n");
@@ -139,6 +141,8 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("f14", optarg)) {
             config.d_dataStructure = optarg;
             config.d_needHashAlgo = true;
+          } else if (!strcmp("hot", optarg)) {
+            config.d_dataStructure = optarg;
           } else {
             usageAndExit();
           }
@@ -218,6 +222,10 @@ int main(int argc, char **argv) {
     test.report();
   } else if (config.d_dataStructure=="f14") {
     Benchmark::FacebookF14 test(config, file);
+    test.start();
+    test.report();
+  } else if (config.d_dataStructure=="hot") {
+    Benchmark::HOT test(config, file);
     test.start();
     test.report();
   }
