@@ -41,7 +41,7 @@ template<typename ValueType>
 struct SliceExtractor {
   typedef ValueType KeyType;
   inline KeyType operator()(ValueType const &value) const {
-    return value;
+    return (ValueType)(value->data());
   }
 };
 
@@ -157,6 +157,13 @@ int Benchmark::HOT::start() {
         HOTTrie hotTrie;
         hot_test_text_insert(i, hotTrie, d_stats, d_file);
         hot_test_text_find(i, hotTrie, d_stats, d_file);
+        std::cout << "height:" << hotTrie.getHeight() << std::endl;
+        std::pair<size_t, std::map<std::string, double>> stats = hotTrie.getStatistics();
+        auto iter = stats.second.begin();
+        auto eiter = stats.second.end();
+        for(; iter!=eiter; ++iter) {
+          std::cout << iter->first << " " << iter->second << std::endl;
+        }
       }
     }
   }
