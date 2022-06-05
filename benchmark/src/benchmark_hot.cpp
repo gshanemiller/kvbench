@@ -18,44 +18,30 @@
 // +--------------------------------------------+----------------------------------------------------------------------------+
 // | Typedef                                    | Comment                                                                    |
 // +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTXXhash_SliceBool_XX3_64BITS     | HOT hash map Key=Slice<char>, Value=bool on std::allocator         |
-// |                                            | using xxhash variant XX3_64BITS                                            |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTXXhash_MIM_SliceBool_XX3_64BITS | HOT hash map Key=Slice<char>, Value=bool on Microsoft MIM allocator|
-// |                                            | using xxhash variant XX3_64BITS                                            |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTT1ha_SliceBool                  | HOT hash map Key=Slice<char>, Value=bool on std::allocator         |
-// |                                            | using hash t1ha variant t1ha()                                             |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTT1ha_MIM_SliceBool              | HOT hash map Key=Slice<char>, Value=bool on Microsoft MIM allocator|
-// |                                            | using hash t1ha variant t1ha()                                             |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTCity_SliceBool_CityHash64       | HOT hash map Key=Slice<char>, Value=bool on std::allocator         |
-// |                                            | using hash city variant CityHash64()                                       |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTCity_MIM_SliceBool_CityHash64   | HOT hash map Key=Slice<char>, Value=bool on Microsoft MIM allocator|
-// |                                            | using hash city variant CityHash64()                                       |
+// | HOTTrie                                    | trie key=Slice<char> std::allocator                                        |
 // +--------------------------------------------+----------------------------------------------------------------------------+
 
+/*
 template<typename ValueType>
 struct SliceExtractor {
   typedef ValueType KeyType;
   inline KeyType operator()(ValueType const &value) const {
-    return (ValueType)(value->data());
+    return value;
   }
 };
 
 namespace idx {
 namespace contenthelpers {
 
-template<> inline size_t getKeyLength<const Benchmark::Slice<char> *>(const Benchmark::Slice<char> * const & key) {
-  return std::min<size_t>(key->size(), MAX_STRING_KEY_LENGTH);
+template<> inline size_t getKeyLength<const Word *>(const Word* const & key) {
+  return std::min<size_t>(key->d_size, MAX_STRING_KEY_LENGTH);
 }
 
 } // contenthelpers
 } // idx
+*/
 
-typedef hot::singlethreaded::HOTSingleThreaded<const Benchmark::Slice<char>*, SliceExtractor> HOTTrie;
+typedef hot::singlethreaded::HOTSingleThreaded<const char*, idx::contenthelpers::IdentityKeyExtractor> HOTTrie;
 
 template<typename T>
 static int hot_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
@@ -73,7 +59,7 @@ static int hot_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
 
   // Benchmark running: do insert
   while (0==scanner.next(word)) {
-    map.insert(&word);
+    map.insert(word.data());
   }
 
   // Benchmark done: take stats
@@ -112,7 +98,7 @@ static int hot_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
 
   // Benchmark running: do find
   while (0==scanner.next(word)) {
-    auto iter = map.find(&word);
+    auto iter = map.find(word.data());
     Intel::DoNotOptimize(iter);
   }
 
@@ -157,13 +143,6 @@ int Benchmark::HOT::start() {
         HOTTrie hotTrie;
         hot_test_text_insert(i, hotTrie, d_stats, d_file);
         hot_test_text_find(i, hotTrie, d_stats, d_file);
-        std::cout << "height:" << hotTrie.getHeight() << std::endl;
-        std::pair<size_t, std::map<std::string, double>> stats = hotTrie.getStatistics();
-        auto iter = stats.second.begin();
-        auto eiter = stats.second.end();
-        for(; iter!=eiter; ++iter) {
-          std::cout << iter->first << " " << iter->second << std::endl;
-        }
       }
     }
   }

@@ -30,15 +30,15 @@ set(BENCHMARK_SOURCES
   ./thirdparty/folly/container/detail/F14Table.cpp
 )
 
-# find_library(HUGELIB
-#   NAMES hugetlbfs
-#   PATHS /usr/lib/x86_64-linux-gnu
-#   REQUIRED
-# )
+find_library(HUGELIB
+  NAMES hugetlbfs
+  PATHS /usr/lib/x86_64-linux-gnu
+  REQUIRED
+)
 
 set(BENCHMARK_TARGET benchmark.tsk)
 add_executable(${BENCHMARK_TARGET} ${BENCHMARK_SOURCES})
-# target_compile_options(${BENCHMARK_TARGET} PUBLIC -g)
+target_compile_options(${BENCHMARK_TARGET} PUBLIC -g)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cuckoo)
