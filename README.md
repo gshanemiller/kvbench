@@ -343,7 +343,7 @@ runs. You can adjust these numbers on the benchmark command line. The default co
 standard memory allocator.
 
 A legend section is then given where each PMU counter is given a mnemonic name e.g. `P0` with a description. The code
-provides a seven counters (F0-F2, and P0-P3) with a couple of derived values:
+documents seven counters (F0-F2, and P0-P3) with a couple of derived values:
 
 ```
   "legend" = {                                                                                                          
@@ -469,8 +469,8 @@ the first 70% of an insert is find. The data reflects this.
 $ taskset -c 5 ./benchmark.tsk -f ./dict.bin -F bin-text -d f14 -h xxhash:XX3_64bits
 ```
 
-This algorithm is 2x better. Inserts are 27ns/op and finds are 26ns/op. LLC cache hits are 9 with 2 misses per operation
-insert. Find has slightly better numbers here.
+This algorithm is at least 2x better. Inserts are 27ns/op and finds are 26ns/op. LLC cache hits are 9 with 2 misses per
+operation insert. Find has slightly better numbers here.
 
 ## HOT Trie
 
