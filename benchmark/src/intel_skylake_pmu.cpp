@@ -24,7 +24,7 @@ void Intel::SkyLake::PMU::print(const char *label) {
   printf("%s: Intel::SkyLake CPU HW core: %d\n", label, core());
 
   for (unsigned i = 0; i<fixedCountersSupported(); ++i) {
-    printf("%-3s [%-40s]: value: %012lu, overflowed: %s\n",
+    printf("%-3s [%-40s]: value: %012llu, overflowed: %s\n",
       d_fixedMnemonic[i].c_str(),
       d_fixedDescription[i].c_str(),
       fixed[i],
@@ -32,7 +32,7 @@ void Intel::SkyLake::PMU::print(const char *label) {
   }
 
   for (unsigned i = 0; i<d_cnt; ++i) {
-    printf("%-3s [%-40s]: value: %012lu, overflowed: %s\n",
+    printf("%-3s [%-40s]: value: %012llu, overflowed: %s\n",
       d_progMnemonic[i].c_str(),
       d_progDescription[i].c_str(),
       prog[i],

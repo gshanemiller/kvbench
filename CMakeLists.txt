@@ -49,4 +49,4 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-static-in-inline")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
 
 add_subdirectory(benchmark)
-add_subdirectory(generator)
+# add_subdirectory(generator)
