@@ -16,11 +16,15 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_stats.cpp
   ./src/benchmark_textscan.cpp
   ./src/benchmark_hot.cpp
+  ./src/benchmark_art.cpp
+
   ./src/intel_skylake_pmu.cpp
 
   ./thirdparty/xxhash/xxhash.c
 
   ./thirdparty/t1ha/t1ha.c
+
+  ./thirdparty/art/art.c
 
   ./thirdparty/cityhash/city.cc
 
@@ -41,6 +45,7 @@ add_executable(${BENCHMARK_TARGET} ${BENCHMARK_SOURCES})
 target_compile_options(${BENCHMARK_TARGET} PUBLIC -g)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/art)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cuckoo)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/xxhash)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/t1ha)

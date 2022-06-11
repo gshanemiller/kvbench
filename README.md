@@ -24,7 +24,7 @@ I've tried to clearly advertise where the original code came from so its authors
 
 * Hashing algorithms supported: **cuckoo** hash map, **Facebook's F14** hash map
 
-* Trie algos supported: **HOT** Height Optimized Trie. Per HOT paper it beats ART (Adaptive Radix Tree)
+* Trie algos supported: **HOT** Height Optimized Trie, **ART** Adaptive Radix Tree
 
 * Tree algos supported: **None**: binary search trees, btrees regularly underpeform tries
 
@@ -483,6 +483,16 @@ $ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d hot
 ```
 
 Inserts run at 237ns/op with finds 83ns/op. Interestingly, HOT has almost no LLC misses. 
+
+## ART Trie
+HOT was supposed to auto-perform ART. But this benchmark says otherwise:
+
+```
+$ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d art
+```
+
+Inserts run at 84ns/op with finds 72ns/op with worse LLC numbers. (Note: theoretically HOT should require less memory;
+I will reevaluate this when I add memory stats to all these tests)
 
 # Typical and Notable Benchmark Commandlines
 Start here for typical benchmark invocations:
