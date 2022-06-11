@@ -24,12 +24,14 @@ I've tried to clearly advertise where the original code came from so its authors
 
 * Hashing algorithms supported: **cuckoo** hash map, **Facebook's F14** hash map
 
-* Trie algos supported: **HOT** Height Optimized Trie, **ART** Adaptive Radix Tree
+* Trie algos supported: **HOT** Height Optimized Trie, **ART** Adaptive Radix Tree. I tried and discarded
+[Cuckoo-Trie](https://github.com/cuckoo-trie/cuckoo-trie-code) since its own benchmark seem to underperform ART
 
 * Tree algos supported: **None**: binary search trees, btrees regularly underpeform tries
 
-* Learned Indexes: **None** at present. Too many papers work with integral key types e.g. uint64. But if keys are real
-world, one needs a map from the string to an integral type. How best to do this is an open question
+* Learned Indexes: **None** at present. Too many academic papers work with integral key types e.g. uint64. But if keys
+are real world, one needs an order preserving map from the string to an integral type. How best to do this is an open
+question
 
 * Supports two memory allocators: default STL allocator, and Microsoft's MIM allocator each with one or two variations
 
@@ -507,7 +509,7 @@ Inserts run at 84ns/op with finds 72ns/op with worse LLC numbers.
 * Collected Works Shakespeare: N=961949, insert: 22ns/op, find: 16ns/op
 * UUIDs: N=1000000, insert: 135ns/op, find: 58ns/op
 
-**Cuckoo Hashmapi Std Allocator*:
+**Cuckoo Hashmap Std Allocator**:
 * English Dictionary: N=4545922, insert: 79ns/op, find: 71ns/op
 * Proteins: N=143245, insert: 111ns/op, find: 118ns/op
 * Collected Works Shakespeare: N=961949, insert: 40ns/op, find: 41ns/op
