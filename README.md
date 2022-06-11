@@ -485,23 +485,20 @@ $ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d hot
 Inserts run at 237ns/op with finds 83ns/op. Interestingly, HOT has almost no LLC misses. 
 
 ## ART Trie
-HOT was supposed to auto-perform ART. But this benchmark says otherwise:
+ART has worse performance according to the HOT paper. This benchmark says otherwise:
 
 ```
 $ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d art
 ```
 
 Inserts run at 84ns/op with finds 72ns/op with worse LLC numbers. (Note: theoretically HOT should require less memory;
-I will reevaluate this when I add memory stats to all these tests)
-
-# Typical and Notable Benchmark Commandlines
-Start here for typical benchmark invocations:
-(TBD)
+I will reevaluate this when I add memory stats to all these tests). Note HOT contains code to prefetch data. ART does
+not. If these numbers don't come with a problem or strings attached, it's 2-3x only slow than Facebook's hash with an
+ordered key set.
 
 # Benchmark Highlights
-(In progress)
-In this section, I summarize notable findings giving their benchmark invocation line placing stats into context.
-These results represent the best performance of all algorithm permutations to date.
+1. Facebook's F14 hash is excellent (27ns per insert or find)
+2. ART (trie) bears second look to double check numbers (70-80ns per insert or find)
 
 # Guidance on Running and Testing
 * Prefer building on bare metal. How/if virtual CPUs weigh into Intel PMU data and how virtual environments effect
