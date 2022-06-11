@@ -120,15 +120,19 @@ If you cannot transform a KV file already into your possession into the supporte
 task in this repository to make one. (NOTE: this task is not yet written but is coming). This will also give you
 control over the size and distribution of key/values.
 
-[In the alternative this web site](https://people.eng.unimelb.edu.au/sgog/data/) has a variety of text files you can
-obtain with `curl` or `wget`. [The Guttenberg Org](https://www.gutenberg.org/) also has good files:
+[This web site](https://people.eng.unimelb.edu.au/sgog/data/) has a variety of text files you can obtain with `curl`
+or `wget`. Not all files are text but [proteins.txt.gz](https://people.eng.unimelb.edu.au/sgog/data/proteins.txt.gz) is.
+[The Guttenberg Org](https://www.gutenberg.org/) also has good files:
 
 * [Shakespeare's Collected Works](https://www.gutenberg.org/cache/epub/100/pg100.txt)
 * [English Dictionary](https://www.gutenberg.org/cache/epub/29765/pg29765.txt)
 
-Vanilla text files are the simplest way to get a decent look at a test configuration. Text files are easy to make and
-are readily available. The `generator.tsk` program in this repository has a conversion tool to transform them into
-`bin-text` suitable for benchmarking. See the next section for a worked example.
+There's also a helper script in this repository `generator/scripts/genuuid` that'll make UUIDs for testing.
+
+Vanilla text files are the simplest way to get a decent look at a test configuration. In this benchmark key processing
+not value storage is the main work. Text files are easy to make and are readily available. The `generator.tsk` program
+in this repository has a conversion tool to transform them into `bin-text` suitable for benchmarking. See the next
+section for a worked example.
 
 # Worked Example
 Obtain a test file:
@@ -160,11 +164,12 @@ word found on stdout. A word is just the ASCII text sitting between whitespaces.
 this file with average key length of `28956348/4545921` about 6 chars or less. `28956348` is the filesize of `dict.txt`
 including whitespaces.
 
-We'll now benachmark this file using three algorithms:
+We'll now benachmark this file using four algorithms:
 
 * Cuckoo hash map
 * Facebook's F14 hash map
 * HOT Trie
+* ART Trie
 
 The first benchmark will be explained at length. The other two will be summarized.
 
@@ -491,14 +496,34 @@ ART has worse performance according to the HOT paper. This benchmark says otherw
 $ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d art
 ```
 
-Inserts run at 84ns/op with finds 72ns/op with worse LLC numbers. (Note: theoretically HOT should require less memory;
-I will reevaluate this when I add memory stats to all these tests). Note HOT contains code to prefetch data. ART does
-not. If these numbers don't come with a problem or strings attached, it's 2-3x only slow than Facebook's hash with an
-ordered key set.
+Inserts run at 84ns/op with finds 72ns/op with worse LLC numbers. 
 
-# Benchmark Highlights
-1. Facebook's F14 hash is excellent (27ns per insert or find)
-2. ART (trie) bears second look to double check numbers (70-80ns per insert or find)
+# Benchmark Summary
+(Memory data points are not yet generated or tracked.) The script `generator/scripts/mkdata` produces file sets here:
+
+**Facebook F14 Hashmap Std Allocator**:
+* English Dictionary: N=4545922, insert: 35ns/op, find: 24ns/op
+* Proteins: N=143245, insert: 148ns/op, find: 79ns/op
+* Collected Works Shakespeare: N=961949, insert: 22ns/op, find: 16ns/op
+* UUIDs: N=1000000, insert: 135ns/op, find: 58ns/op
+
+**Cuckoo Hashmapi Std Allocator*:
+* English Dictionary: N=4545922, insert: 79ns/op, find: 71ns/op
+* Proteins: N=143245, insert: 111ns/op, find: 118ns/op
+* Collected Works Shakespeare: N=961949, insert: 40ns/op, find: 41ns/op
+* UUIDs: N=1000000, insert: 267ns/op, find: 111ns/op
+
+**ART (Trie) Calloc/free**:
+* English Dictionary: N=4545922, insert: 101ns/op, find: 87ns/op
+* Proteins: N=143245, insert: 96ns/op, find: 70ns/op
+* Collected Works Shakespeare: N=961949, insert: 70ns/op, find: 60ns/op
+* UUIDs: N=1000000, insert: 208ns/op, find: 164ns/op
+
+**HOT (Trie) Provides mempool manager**:
+* English Dictionary: N=4545922, insert: 195ns/op, find: 84ns/op
+* Proteins: N=143245, insert: 175ns/op, find: 97ns/op
+* Collected Works Shakespeare: N=961949, insert: 176ns/op, find: 67ns/op
+* UUIDs: N=1000000, insert: 207ns/op, find: 86ns/op
 
 # Guidance on Running and Testing
 * Prefer building on bare metal. How/if virtual CPUs weigh into Intel PMU data and how virtual environments effect

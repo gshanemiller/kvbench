@@ -58,7 +58,7 @@ static int hot_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
   pmu.start();
 
   // Benchmark running: do insert
-  while (0==scanner.next(word)) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     map.insert(word.data());
   }
 
@@ -97,7 +97,7 @@ static int hot_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
   pmu.start();
 
   // Benchmark running: do find
-  while (0==scanner.next(word)) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     auto iter = map.find(word.data());
     Intel::DoNotOptimize(iter);
   }

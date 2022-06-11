@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# A script to grab and/or make files for benchmarking. URLs are valid as of June 10, 2022
+
+TEXT_URLS="https://www.gutenberg.org/cache/epub/100/pg100.txt https://www.gutenberg.org/cache/epub/29765/pg29765.txt"
+GZ_URLS="https://people.eng.unimelb.edu.au/sgog/data/proteins.txt.gz"
+
+for f in $TEXT_URLS
+do
+  echo downloading $f ...
+  local_file=`basename $f`
+  curl -s $f -o $local_file
+  ./generator.tsk -m convert-text -i $local_file -o ${local_file}.bin
+  ./generator.tsk -m convert-text -i $local_file -o ${local_file}.cstr.bin -t
+  echo
+done
+
+for f in $GZ_URLS
+do
+  echo downloading $f ...
+  local_file=`basename $f`
+  curl -s $f -o $local_file
+  gunzip $local_file
+  local_file=${local_file%%.gz}
+  ./generator.tsk -m convert-text -i $local_file -o ${local_file}.bin
+  ./generator.tsk -m convert-text -i $local_file -o ${local_file}.cstr.bin -t
+  echo
+done
+
+echo making 1000000 random uuids ...
+local_file="uuids.txt"
+D=`dirname $0`
+${D}/genuuid > $local_file
+./generator.tsk -m convert-text -i $local_file -o ${local_file}.bin
+./generator.tsk -m convert-text -i $local_file -o ${local_file}.cstr.bin -t
+
+echo
+echo Produced the following files. 'cstr' have trailing 0 terminator:
+ls -ald *bin

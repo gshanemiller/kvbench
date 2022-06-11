@@ -10,6 +10,8 @@
 #include <benchmark_hot.h>
 #include <benchmark_art.h>
 
+#include <benchmark_textscan.h>
+
 Benchmark::Config config;
 
 void usageAndExit() {
@@ -37,70 +39,8 @@ void usageAndExit() {
   printf("                                'mimalloc': Microsoft's allocator https://github.com/microsoft/mimalloc\n");
   printf("                                            Per MS' doc it beats STL, jemalloc, tcmalloc, Hoard, and others\n");
   printf("                                            See https://github.com/microsoft/mimalloc#benchmark-results-on-a-16-core-amd-5950x-zen3\n");
-  printf("\n\n");
-  printf("File Formats:\n");
-  printf("---------------------------------------\n");
-  printf("'bin-text-kv' format:\n");
-  printf("  Each KV pair must contain printable ASCII only C-strings without a zero terminator. Each KV pair is encoded\n");
-  printf("  into a <file> with the following format. Integer sizes are x86 little endian 4-bytes each:\n");
   printf("\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | File Offset  | Field# | Field Type   | Purpose                                       | KV Pair Index |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | 0            | 0      | unsigned int | Number of KV entries T in file                | (NA)          |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | 4            | 0      | unsigned int | Size in bytes of key                          | 0             |\n");
-  printf("    | 8            | 1      | unsigned int | Size in bytes of value                        | 0             |\n");
-  printf("    | 12           | 2      | char[]       | Key without zero terminator                   | 0             |\n");
-  printf("    | 12 + field 0 | 3      | char[]       | Value without zero terminatorr                | 0             |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | N            | 0      | unsigned int | Size in bytes of key                          | 1             |\n");
-  printf("    | N+4          | 1      | unsigned int | Size in bytes of value                        | 1             |\n");
-  printf("    | N+8          | 2      | char[]       | Key without zero terminator                   | 1             |\n");
-  printf("    | N+8+field 0  | 3      | char[]       | Value without zero terminator                 | 1             |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | ...          | ...    | ...          | ...                                           | 2             |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("                                           .\n");
-  printf("                                           .\n");
-  printf("                                           .\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | ...          | ...    | ...          | ...                                           | T-1           |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("  KV index 1 starts at file offset N immediately following the end of KV index 0, that is, at file offset\n");
-  printf("  12 + KV index 0 field 1 + KV index 0 field 2.\n");
-  printf("\n");
-  printf("'bin-slice-kv' format:\n");
-  printf("---------------------------------------\n");
-  printf("  Exactly as per 'bin-text-kv' except that key, values are arbitrary byte sequences. Conceptually 'char[]'\n");
-  printf("  in 'bin-text-kv' are 'unsigned char[]' in 'bin-slice-kv'.\n");
-  printf("\n");
-  printf("'bin-text' format:\n");
-  printf("---------------------------------------\n");
-  printf("  Format is identifical to 'bin-text-kv' except there's no value:\n");
-  printf("\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | File Offset  | Field# | Field Type   | Purpose                                       | Word Index    |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | 0            | 0      | unsigned int | Number of word entries T in file              | (NA)          |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | 4            | 0      | unsigned int | Size in bytes of word                         | 0             |\n");
-  printf("    | 12           | 1      | char[]       | Word without zero terminator                  | 0             |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | N            | 0      | unsigned int | Size in bytes of word                         | 1             |\n");
-  printf("    | N+4          | 1      | char[]       | Word without zero terminator                  | 1             |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | ...          | ...    | ...          | ...                                           | 2             |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("                                           .\n");
-  printf("                                           .\n");
-  printf("                                           .\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("    | ...          | ...    | ...          | ...                                           | T-1           |\n");
-  printf("    +--------------+--------+--------------+-----------------------------------------------+---------------+\n");
-  printf("  Word index 1 starts at file offset N immediately following the end of word index 0, that is, at file offset\n");
-  printf("  12 + word index 0 field 1.\n");
-  printf("\n");
+  printf("File format descriptions provided in 'README.md' at https://github.com/rodgarrison/kvbench\n");
   exit(2);
 }
 

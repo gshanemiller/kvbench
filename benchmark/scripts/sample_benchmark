@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# to be run after first executing 'generator/scripts/mkdata' running this script same directory
+
+CORE="5"
+HASH="city::cityhash64"
+TASK="./benchmark.tsk"
+
+# shakespeare collected works
+FILE="pg100.txt.bin"
+FILE1="pg100.txt.cstr.bin"
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d cuckoo -h ${HASH} 1>cuckoo.shakespeare.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d f14    -h ${HASH} 1>f14.shakespeare.log
+taskset -c ${CORE} $TASK -f ${FILE1} -F bin-text -d hot               1>hot.shakespeare.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d art               1>art.shakespeare.log
+
+# English dict
+FILE="pg29765.txt.bin"
+FILE1="pg29765.txt.cstr.bin"
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d cuckoo -h ${HASH} 1>cuckoo.dict.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d f14    -h ${HASH} 1>f14.dict.log
+taskset -c ${CORE} $TASK -f ${FILE1} -F bin-text -d hot               1>hot.dict.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d art               1>art.dict.log
+
+# Protein file (w/ longer keys)
+FILE="proteins.txt.bin"
+FILE1="proteins.txt.cstr.bin"
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d cuckoo -h ${HASH} 1>cuckoo.proteins.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d f14    -h ${HASH} 1>f14.proteins.log
+taskset -c ${CORE} $TASK -f ${FILE1} -F bin-text -d hot               1>hot.proteins.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d art               1>art.proteins.log
+
+# UUIDs (w/ 36-byte exactly keys)
+FILE="uuids.txt.bin"
+FILE1="uuids.txt.cstr.bin"
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d cuckoo -h ${HASH} 1>cuckoo.uuids.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d f14    -h ${HASH} 1>f14.uuids.log
+taskset -c ${CORE} $TASK -f ${FILE1} -F bin-text -d hot               1>hot.uuids.log
+taskset -c ${CORE} $TASK -f ${FILE}  -F bin-text -d art               1>art.uuids.log

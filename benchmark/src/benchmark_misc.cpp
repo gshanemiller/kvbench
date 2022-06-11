@@ -19,7 +19,7 @@ void misc_test_scanner(unsigned int runNumber, Benchmark::Stats& stats, const Be
 
   // Benchmark running: do insert
   int rc;
-  while ((rc=scanner.next(word))==0) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     Intel::DoNotOptimize(rc);
   }
 

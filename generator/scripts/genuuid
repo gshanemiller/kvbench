@@ -1,0 +1,29 @@
+#!/usr/bin/python3
+
+import sys
+import uuid
+
+TYPE="uuid4"
+COUNT=1000000
+
+if len(sys.argv)!=1 and len(sys.argv)!=3:
+  print("usage: genuuid <number-of-keys> <type>")
+  print
+  print("       where type one of 'uuid1|uuid4'")
+  printf("            see https://docs.python.org/3/library/uuid.html")
+  sys.exit(2)
+elif len(sys.argv)==3:
+  COUNT=int(sys.argv[1])
+  TYPE=sys.argv[2]
+
+if TYPE=="uuid1":
+  for x in range(COUNT):
+    print("{0}".format(uuid.uuid1()))
+elif TYPE=="uuid4":
+  for x in range(COUNT):
+    print("{0}".format(uuid.uuid4()))
+else:
+  printf("uuid type unknown")
+  sys.exit(1)
+
+sys.exit(0)

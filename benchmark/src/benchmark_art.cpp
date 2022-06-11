@@ -24,7 +24,7 @@ static int art_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
   pmu.start();
   
   // Benchmark running: do insert
-  while (0==scanner.next(word)) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     art_insert(&map, (unsigned char*)word.data(), word.size()-1, (void*)word.data()); 
   }
 
@@ -56,6 +56,8 @@ static int art_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
 
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
+  unsigned int errors(0);
+
   timespec startTime;
   timespec endTime;
   pmu.reset();
@@ -63,9 +65,11 @@ static int art_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
   pmu.start();
 
   // Benchmark running: do find
-  while (0==scanner.next(word)) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     auto val = art_search(&map, (unsigned char*)word.data(), word.size()-1);
-    Intel::DoNotOptimize(val);
+    if (val==0) {
+      ++errors;
+    }
   }
 
   u_int64_t f0 = pmu.fixedCounterValue(0);
@@ -79,6 +83,10 @@ static int art_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
 
   timespec_get(&endTime, TIME_UTC);
 
+  if (errors) {
+    printf("searchErrors: %u\n", errors);
+  }
+
   // Benchmark done: take stats
   if (stats.config().d_runs-runNumber<=stats.config().d_recordRuns) {
     char label[128];
@@ -86,6 +94,13 @@ static int art_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
     stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
   }
   return 0;
+}
+
+extern "C" {
+int art_test_text_iter(void *data, const unsigned char *key, unsigned int key_len, void *value) {
+  printf("key: %p, key_len: %u, key: '%s', value: %p\n", key, key_len, (const char*)(key), value);
+  return 0;
+}
 }
 
 int Benchmark::ART::start() {
@@ -110,6 +125,7 @@ int Benchmark::ART::start() {
         art_tree_init(&artTrie);
         art_test_text_insert(i, artTrie, d_stats, d_file);
         art_test_text_find(i, artTrie, d_stats, d_file);
+        // art_iter(&artTrie, art_test_text_iter, 0);
         art_tree_destroy(&artTrie);
       }
     }

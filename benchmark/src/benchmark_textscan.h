@@ -22,7 +22,7 @@ class TextScan {
   char *          d_ptr;        // current memory position in memory array
   char *          d_end;        // end of memory array
   unsigned int    d_available;  // word count in loaded file
-  unsigned int    d_index;      // current work in [0, d_available)
+  unsigned int    d_index;      // current word in [0, d_available)
 
 public:
   // CREATORS
@@ -47,9 +47,9 @@ public:
     // Return number of words available in file loaded in memory
 
   // MANIPULATORS
-  int next(Slice<char>& value);
-    // Return 0 and set 'value' to reference the next word in file provided at construction time, or return non-zero
-    // on EOF. The behavior is defined provided '!eof()'.
+  void next(Slice<char>& value);
+    // Assign to 'value' the next word in file provided at construction time
+    // The behavior is defined provided '!eof()'.
 
   void reset();
     // Reset internal state to point to the beginning of file.
@@ -70,7 +70,7 @@ TextScan::TextScan(const LoadFile& file)
 // ACCESSORS
 inline
 bool TextScan::eof() const {
-  return (d_index==d_available);
+  return (d_index>d_available);
 }
 
 inline
@@ -85,7 +85,7 @@ unsigned int TextScan::available() const {
 
 // MANIPULATORS
 inline
-int TextScan::next(Slice<char>& word) {
+void TextScan::next(Slice<char>& word) {
   assert(!eof());
 
   ++d_index;
@@ -94,8 +94,6 @@ int TextScan::next(Slice<char>& word) {
   word.reset(*i, d_ptr+sizeof(WordSizeType));
 
   d_ptr += sizeof(WordSizeType)+(*i);
-
-  return eof();
 }
 
 inline
