@@ -1,0 +1,1 @@
+add_subdirectory(benchmark_htrie_bitstring)

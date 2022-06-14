@@ -50,6 +50,13 @@ public:
   bool end() const;
     // Return true if the end of the bit stream has been reached
 
+  htrie_index longestCommonPrefix(const BitIterator &rhs);
+    // Return 0xFFFFFFFF if this and rhs do not share a prefix else return a
+    // non-negative integer 'i' such that the ith bit is the first bit in which
+    // this and rhs differ. For example 'this=10011..., rhs=10100...' then
+    // i=2 whereas ''this=00011..., rhs=10100...' i=0. Note that comparison 
+    // starts from the current bitIndex. 
+
   // MANIPULATORS
   void begin();
     // Reset state to bit 0 of the stream

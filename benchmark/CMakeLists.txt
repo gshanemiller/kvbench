@@ -55,3 +55,5 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 # target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)
+
+add_subdirectory(unit_tests)

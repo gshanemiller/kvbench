@@ -85,8 +85,8 @@ Slice<T>::Slice(const std::string &data)
 : d_size(data.length())
 , d_data(reinterpret_cast<const T *>(data.c_str()))
 {
-  assert(sz>0);
-  assert(data);
+  assert(d_size>0);
+  assert(d_data);
 }
 
 // ACCESSORS
