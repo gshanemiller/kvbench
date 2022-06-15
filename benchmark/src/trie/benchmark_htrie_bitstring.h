@@ -249,16 +249,35 @@ public:
     // end-of-byte in which 'i' occurs. Behavior is defined provided 'i%8!=0'
     // equivalent to 'i&7!=0', and 'i<size()'. Bit 'i' is placed into
     // bit-position-0 in result, 'i+1' into bit-position 1 in result, and so on.
-    // Note this is 'nextWord' start case in the special case all bits from i
-    // onwards in i's byte are required
+    // This is 'nextWord' start sub-case when all bits from i onwards in i's
+    // byte are required
+
+  htrie_word bytePrefix(htrie_index i, htrie_len bitLen, htrie_size shift);
+    // Return all bits b in '[i,i+bitLen)' left shifted by 'shift'. Behavior is
+    // defined provided all of the following are true:
+    //   * 'i%8==0' equivalent to 'i&7==0'
+    //   * 'bitLen>0',
+    //   * 'i' and 'i+bitLen' are <= size()
+    //   * byte holding bit 'i, i+bitLen' both in byte e.g. 'bitLen' in [0,7] 
+    //   * shift<=63-7: so prefix of <=7 bits cannot shift off end of result 
+    // Bit 'i' is set into bit-position-0 plus shift in result, 'i+1' into bit
+    // position 1+shift in result, and so on. Note that 'shift' is required 
+    // because prefix bits are often bitwise-OR with a previous result. The
+    // shift ensures bits are concatenated correctly
 
   htrie_word substring(htrie_index i, htrie_len bitLen);
     // Return all bits b in '[i,i+bitLen)'. Behavior is defined provided
     // 'i%8!=0' equivalent to 'i&7!=0', 'bitLen>0', 'i+bitLen' is in the
-    // same byte as is 'i', plus 'i<size() && (i+l)<=size()'. Bit 'i' is placed
-    // into bit-position-0 in result, 'i+1' into bit-position 1 in result, and
-    // so on. Note this is 'nextWord' start case in the special case bits
-    // '[i,i+bitLen)' are in the same byte
+    // same byte as is 'i', plus 'i<size() && (i+bitLen)<=size()'. Bit 'i' is
+    // placed into bit-position-0 in result, 'i+1' into bit-position 1 in result,
+    // and so on. This is 'nextWord' sub-case when bits '[i,i+bitLen)' are in
+    // the same byte and 'i+bitLen<8' so 'byteSuffix' does not apply.
+
+  htrie_word nextWord(htrie_index i, htrie_len bitLen);
+    // Return all bits b in '[i,i+bitLen)'. Behavior is defined provided
+    // 'i<size() && i+bitLen<size()' plus 'bitLen<=64'. Bit 'i' is placed into
+    // bit-position-0 in result, 'i+1' into bit-position 1 in result,                                       
+    // and so on. This routine defers to helpers in certain cases.
 
   // ASPECTS
 public:
@@ -414,6 +433,70 @@ htrie_word BitString<N>::substring(htrie_index i, htrie_len bitLen) {
   const htrie_byte hiMask = ~(0xff<<endBit);
 
   return (byte&loMask&hiMask)>>shft;
+}
+
+template<htrie_size N>
+HTRIE_ALWAYS_INLINE
+htrie_word BitString<N>::bytePrefix(htrie_index i, htrie_len bitLen, htrie_size shift) {
+  assert((i&7)==0);
+  assert(bitLen>0);
+  assert(bitLen<=7);
+  assert(i<d_size);
+  assert((i+bitLen)<=d_size);
+  assert((i>>3)==((i+bitLen)>>3));
+  assert(shift<(63-7));
+  //                  +-------+     +-----------+       +-----+
+  //                 /  byte   \   / bits needed \     / shift |
+  return htrie_word(d_data[i>>3] & (~(0xff<<bitLen))) << shift;
+}
+
+template<htrie_size N>
+inline
+htrie_word BitString<N>::nextWord(htrie_index i, htrie_len bitLen) {
+  assert(i<d_size);
+  assert(bitLen>0);
+  assert((i+bitLen)<=d_size);
+
+  htrie_word ret(0);
+
+  // Are we NOT starting on a byte-boundary aka "start" sub-case
+  if (i&7) {
+    if (bitLen>=7) {
+      // advance to byte boundary
+      ret = byteSuffix(i);
+
+      // This is the number of bits 'byteSuffix' handled to move up one byte
+      const htrie_index delta = (8-(i&7));
+      assert(delta>=0 && delta<8);
+
+      // Ensure i+delta still in valid memory
+      assert((i+delta)<=size());
+      // We're now on a byte boundary at next byte. Check that:
+      assert(((i+delta)&7)==0);
+      // Ensure advanced to next byte
+      assert(((i+delta)>>3)==((i>>3)+1));
+
+      // Update bitLen
+      bitLen -= delta;
+
+      // If there's only <8 more bits left tack those on now and return.
+      // The shift term ensures these remaining bits are placed after whatever
+      // is already is in ret so they're contiguous in ret
+      if (bitLen && bitLen<8) {
+        return ret | bytePrefix(i+delta, bitLen, 8-(i&7));
+      } else if (bitLen==0) {
+        // No more bits to process: we're done
+        return ret;
+      }
+      // Fall into block case aka 'middle' subcase
+    } else {
+      return substring(i, bitLen);
+    }
+  }
+
+  assert(bitLen>0);
+
+  return 0;
 }
 
 // ASPECTS
