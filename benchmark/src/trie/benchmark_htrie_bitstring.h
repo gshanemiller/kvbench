@@ -20,6 +20,12 @@
 namespace Benchmark {
 namespace HTrie     {
 
+struct BitStringStats {
+  static unsigned int d_byteSuffixCalls;
+  static unsigned int d_bytePrefixCalls;
+  static unsigned int d_substringCalls;
+};
+
 // BitString has the same intent of std::vector<bool> except BitString has
 // fixed memory capacity with a smaller API. Storage is set at compile time
 // through a template parameter N (unit bytes). BitString capacity is then 
@@ -195,6 +201,11 @@ public:
     // behavior is defined provided template parameter N equals sizeof(data).
     // 'size()==capacity()' on return
 
+  explicit BitString(htrie_sword data);
+    // Construct a BitString containing a copy of specified 'data'. The
+    // behavior is defined provided template parameter N equals sizeof(data).
+    // 'size()==capacity()' on return
+
   BitString(const BitString& other);
     // Create BitString object from specified 'other'. Upon return return
     // content, capacity, and lengths are equal.
@@ -342,6 +353,15 @@ BitString<N>::BitString(htrie_byte data) {
 
 template<htrie_size N>
 inline
+BitString<N>::BitString(htrie_sword data) {
+  static_assert(N==sizeof(data));
+  d_data[0] = data & 0xff;
+  d_data[1] = (data & 0xff00)>>8;
+  d_size = 16;
+}
+
+template<htrie_size N>
+inline
 BitString<N>::BitString(const BitString& other)
 : d_size(other.d_size)
 {
@@ -413,6 +433,11 @@ HTRIE_ALWAYS_INLINE
 htrie_word BitString<N>::byteSuffix(htrie_index i) {
   assert(i&7);
   assert(i<d_size);
+
+#ifndef NDEBUG
+  ++BitStringStats::d_byteSuffixCalls;
+#endif
+
   return (d_data[i>>3]&254)>>(i&7);
 }
 
@@ -423,6 +448,11 @@ htrie_word BitString<N>::substring(htrie_index i, htrie_len bitLen) {
   assert(bitLen>0);
   assert(i<d_size);
   assert((i+bitLen)<=d_size);
+
+#ifndef NDEBUG
+  ++BitStringStats::d_substringCalls;
+#endif
+
   // We get 'bitLen' bits e.g. if bitLen=3 get i,i+1,i+2
   assert((i>>3)==((i+bitLen-1)>>3));
 
@@ -443,8 +473,14 @@ htrie_word BitString<N>::bytePrefix(htrie_index i, htrie_len bitLen, htrie_size 
   assert(bitLen<=7);
   assert(i<d_size);
   assert((i+bitLen)<=d_size);
-  assert((i>>3)==((i+bitLen)>>3));
+  // We get 'bitLen' bits e.g. if bitLen=3 get i,i+1,i+2
+  assert((i>>3)==((i+bitLen-1)>>3));
   assert(shift<(63-7));
+
+#ifndef NDEBUG
+  ++BitStringStats::d_bytePrefixCalls;
+#endif
+
   //                  +-------+     +-----------+       +-----+
   //                 /  byte   \   / bits needed \     / shift |
   return htrie_word(d_data[i>>3] & (~(0xff<<bitLen))) << shift;
@@ -492,6 +528,8 @@ htrie_word BitString<N>::nextWord(htrie_index i, htrie_len bitLen) {
     } else {
       return substring(i, bitLen);
     }
+  } else if (bitLen<8) {
+    return bytePrefix(i, bitLen, 0);
   }
 
   assert(bitLen>0);

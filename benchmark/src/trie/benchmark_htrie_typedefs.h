@@ -13,6 +13,7 @@ typedef unsigned int htrie_index;
 typedef unsigned char htrie_byte;
 typedef unsigned short htrie_len;
 typedef unsigned long htrie_word;
+typedef unsigned short htrie_sword;
 
 // STATIC ASSERTS                                                                                                     
 static_assert(sizeof(htrie_byte)==1);
@@ -20,6 +21,7 @@ static_assert(sizeof(htrie_len)==2);
 static_assert(sizeof(htrie_size)==4);
 static_assert(sizeof(htrie_index)==4);
 static_assert(sizeof(htrie_word)==8);
+static_assert(sizeof(htrie_sword)==2);
 
 } // namespace HTrie
 } // namespace Benchmark
