@@ -26,146 +26,6 @@ struct BitStringStats {
   static unsigned int d_substringCalls;
 };
 
-// BitString has the same intent of std::vector<bool> except BitString has
-// fixed memory capacity with a smaller API. Storage is set at compile time
-// through a template parameter N (unit bytes). BitString capacity is then 
-// 8N bits and 'size()' ranges from 0 (empty) to 'capacity()' (full). Typical
-// BitString construction examples:
-//
-// (*) BitString<10> bs0;                 // empty, capacity 80bits
-// (*) BitString<20> bs1 = {false, true}; // 160 bit capacity with 2 bits {0,1}
-//
-// Read/write operations:
-//
-// (*) bool bit = bs1[1];                 // read and return bit 1
-// (*) bs1.append(false);                 // append to end-of-string 'false/0'
-//
-// Aspects:
-//
-// (*) bs1.print(std::cout);              // pretty print string
-// (*) BitIterator iter = bs1.iterator(); // read-only iterator on 'bs1'
-//
-// Trie Helpers:
-//
-// Patricia, HOT tries store some or all of its data as bit strings. A crucial
-// requirement is to find bit differences or similarities between two strings.
-// BitString has two helpers (descriptions elided):
-//
-// (*) btrie_word  nextWord(htrie_index i, htrie_len bitLen);
-//      // Extract and return the 'bitLen' bits starting at bit index i.
-//
-// (*) btrie_index longestCommonPrefix(const BitString& rhs, bool *eos)
-//      // Set 'eos=false' and return the index of the first bit difference 
-//      // between this object and 'rhs' or set 'eos=true' if there are no
-//      // differences
-//
-// Conceptually, the longest common prefix between two strings are all the bits
-// i in '[0, n)' in which lhs[i]==rhs[i] for the largest value of n so that
-// lhs[n]!=rhs[n]. Example: lhs="ababc", rhs="abazz" -> "aba" so n=3.
-//
-// Finding this prefix is based on 'nextWord' which extracts the next 'bitLen'
-// bits from a BitString. lhs/rhs words can be efficiently compared to find 'n'
-// and hence the prefix. By repeatedly calling nextWord the longest prefix can
-// be found. The basic challenges of nextWord are two:
-//
-// (*) Storage is byte based but indexing is bit based
-// (*) Reading more bits than requested
-//
-// nextWord breaks the problem into three parts: start, middle, and end. Start
-// reads the next few bits 'f' so that i+f is on a byte boundary. The middle is
-// processing blocks of 8-bits. The end deals with any remaining bits that are
-// left. Depending on 'i, bitLen' specified in the nextWord call, the algorithm
-// could leave the call in the start, middle, or end part of the code.
-//
-// Since the middle part is vanilla array manipulation, consider part one. The
-// start index may be on a byte boundary or not. To efficiently check which
-// case '(i&7)' will be true when 'i' is not a multiple of of 8. Assume i is
-// not on a byte boundary. 'd_data[i>>3]' will contain all the bits we want plus
-// others we do not want. To get first few the bits requested, we must mask off
-// the other bits not requested then shift what remains into bit-position-0 of
-// the the result. If this is done correctly, the first 'f' bits will appear in
-// the result starting at bit position 0. 'i+f' will fall on a byte boundary.
-//
-// The number of bits f we need in 'd_data[i>>3]' is equal to 'i%8==i&7'. This
-// must be true since f is the remainder after dividing i by 8 whence '(i+f)%8'
-// is zero by definition of mod-8. The starting position 'p' of those 'f' bits
-// in 'd_data[i>>3]' is 8-f. Example on 80bit string with i=59:
-//
-// (*) 59&7!=0 so i not on an 8-byte boundary
-// (*) 59%8==(59&7)=3 and 8-3 = 5. Therefore we need 5 bits at pos 59-63:
-//
-//                          First 8 bits of result
-//                +-----+-----+-----+-----+-----+-----+-----+-----+
-//                |  0  |  1  |  2  |  3  |  4  |  5  |  6  |  7  |
-//                +-----+-----+-----+-----+-----+-----+-----+-----+
-//                  /------------------------\
-//                   \   bit 59              +--bit-63--------+
-//                    \____________                           |
-//                                 \      We want these bitsa V
-// Byte 0          Byte 7           >/---------------------------\
-// +-----+        +-----+-----+-----+-----+-----+-----+-----+-----+
-// |  0  |   ...  | 56  | 57  | 58  | 59  | 60  | 61  | 62  | 63  |
-// +-----+        +-----+-----+-----+-----+-----+-----+-----+-----+
-//                 bit position-0                            pos-7
-//
-// The mask we need to capture bits is 00011111b = 248. By observing that if
-// we initialize a mask value to 0xff (so all 1 bits) then left-shift it by
-// 3 bits (i&7) it'll roll on 3 zeros in the lower 3 bits leaving everything
-// else 1. This is the mask we want. From here it's down hill.
-//
-// Example:
-// ------------------------------
-// Suppose 'd_data[i>>3]==255' in byte 7. Extracting bits 59-63 into the result
-// starting at bit-position-0 through bit 4 will give 31 because 11111b is 31:
-// 
-// 1. indx = 59                 = 59
-// 2. byte = d_data[indx>>3]    = 255
-// 3. shft = (59&7)             = 3
-// 4. mask = (0xff<<sfht)       = 248         // enables all bit 59 onwards
-// 5. byte&mask                 = 248 
-// 6. (byte&mask)>>shft         = 31
-//
-// The only problem with this algorithm is that it may read beyond the end-of-
-// string. If the bit-string is 62-bits long so bits [0,61] are defined this
-// algorithm will include bits 62,63 in result position 3,4. Bits 62,63
-// could contain junk data, and so could the result. In the alternative the
-// end-of-string might be well past bit position 63 however the caller really
-// did not want all the bits in the end of the byte. Caller may only want bits
-// through 61 based on the 'i=59, bitLen=3' specified in the call to nextWord.
-// Note, this algorithm cannot and does not read invalid memory. BitString
-// allocates backing memory in byte sized chunks, and the byte in step (2)
-// above is a valid byte in the backing memory. Also note that if the algorithm
-// does not read beyond the end-of-string, there is no need to memset the
-// backing memory to 0 in constructors since reads can only see validly written
-// bits.
-//
-// The number of bits the algorithm copies into result in this example so far
-// is '8-(59^7)=5'. So if '5>bitLen' the result will have to be remasked. The
-// number of bits to be masked on in result is just 'bitLen' bits. The actual
-// implementation fixes the mask with roll-on-zero hac fixing the mask. The
-// final algorithm follows:
-// while hiMask turns off bits **after** i+bitLen-1:
-//
-// 1. indx    = 59                 = 59
-// 2. bitLen  = 3                  = 3   // get bits 59,60,61
-// 3. byte    = d_data[indx>>3]    = 255
-// 4. shft    = (59&7)             = 3   // bit 59 starts at bit 3 in byte 
-// 5. endBit  = (59&7)+3           = 6   // bit 62 starts at bit 6 in byte
-// 6. lowMask =  (0xff<<sfht)      = 248 // mask for all bits i to end-of-byte
-// 7. hiMask  = ~(0xff<<endBit)    = 63  // mask for all bits >= endBit
-// 8. byte & lowMask & hiMask      = 56  // bits 59,60,61 isolated
-// 9. (byte&lowMask&hiMask)>>shft  = 7   // final answer
-//
-//            -bit 7   -bit 0
-//           /        /
-// byte   :  1111 1111            255
-// lowMask:  1111 1000            248
-// hiMask :  0011 1111            63
-// -------------------------------------- AND
-//           0011 1000            56
-// -------------------------------------- right shift 3
-//                 111            7
-
 template<htrie_size N>
 class BitString {
   // DATA
@@ -258,37 +118,45 @@ public:
   htrie_word byteSuffix(htrie_index i);
     // Return bits from specified 'i' plus all the subsequent bits until the
     // end-of-byte in which 'i' occurs. Behavior is defined provided 'i%8!=0'
-    // equivalent to 'i&7!=0', and 'i<size()'. Bit 'i' is placed into
-    // bit-position-0 in result, 'i+1' into bit-position 1 in result, and so on.
-    // This is 'nextWord' start sub-case when all bits from i onwards in i's
-    // byte are required
+    // and 'i<size()'. Bit 'i' is placed into bit-position-0 in result, 'i+1'
+    // into bit-position 1 in result, and so on
 
-  htrie_word bytePrefix(htrie_index i, htrie_len bitLen, htrie_size shift);
-    // Return all bits b in '[i,i+bitLen)' left shifted by 'shift'. Behavior is
-    // defined provided all of the following are true:
-    //   * 'i%8==0' equivalent to 'i&7==0'
-    //   * 'bitLen>0',
-    //   * 'i' and 'i+bitLen' are <= size()
-    //   * byte holding bit 'i, i+bitLen' both in byte e.g. 'bitLen' in [0,7] 
-    //   * shift<=63-7: so prefix of <=7 bits cannot shift off end of result 
-    // Bit 'i' is set into bit-position-0 plus shift in result, 'i+1' into bit
-    // position 1+shift in result, and so on. Note that 'shift' is required 
-    // because prefix bits are often bitwise-OR with a previous result. The
-    // shift ensures bits are concatenated correctly
+  htrie_word bytePrefix(htrie_index start, htrie_index end, htrie_size n);
+    // Return prefix bits in a byte from bit 'start' on a byte boundary through
+    // 'end' inclusive in the same byte. The behavior is defined provided:
+    //   * 'start%8==0'
+    //   * 'start<=end'
+    //   * 'start<size()'
+    //   * 'end<size()'
+    //   * 'end-start<7'
+    //   * 'start, end in same byte of backing data'
+    //   * 'n<=63-7 so shift does not truncate the return value
+    // Bit 'start' is placed into bit-position-0 plus n in result, 'start+1'
+    // into bit-position 1+n in result, and so on. Note that range notation
+    // this means returns all bits b in '[start, end]' left shifted n. Note
+    // that 'end' cannot refer to bit position 7 (value 128) since the prefix
+    // would simplify to the entire byte. Another routine handles that case.
 
-  htrie_word substring(htrie_index i, htrie_len bitLen);
-    // Return all bits b in '[i,i+bitLen)'. Behavior is defined provided
-    // 'i%8!=0' equivalent to 'i&7!=0', 'bitLen>0', 'i+bitLen' is in the
-    // same byte as is 'i', plus 'i<size() && (i+bitLen)<=size()'. Bit 'i' is
-    // placed into bit-position-0 in result, 'i+1' into bit-position 1 in result,
-    // and so on. This is 'nextWord' sub-case when bits '[i,i+bitLen)' are in
-    // the same byte and 'i+bitLen<8' so 'byteSuffix' does not apply.
+  htrie_word substring(htrie_index start, htrie_index end);
+    // Return all bits b in '[start, end]' in one byte where 'start, end' does
+    // not start on bit-position-0 or end on bit-position-7. Behavior is defined
+    // provided:
+    //   * 'start%8!=0'
+    //   * 'start<=end'
+    //   * 'start<size()'
+    //   * 'end<size()'
+    //   * 'start, end in same byte of backing data'
+    //   * 'end-start<6'
+    // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
+    // position 1 in result, and so on
 
-  htrie_word nextWord(htrie_index i, htrie_len bitLen);
-    // Return all bits b in '[i,i+bitLen)'. Behavior is defined provided
-    // 'i<size() && i+bitLen<size()' plus 'bitLen<=64'. Bit 'i' is placed into
-    // bit-position-0 in result, 'i+1' into bit-position 1 in result,                                       
-    // and so on. This routine defers to helpers in certain cases.
+  htrie_word nextWord(htrie_index start, htrie_index end);
+    // Return all bits b in '[start,end]'. Behavior is defined provided:
+    //   * start<size()
+    //   * start<=end
+    //   * end<size()
+    // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
+    // position 1 in result, and so on
 
   // ASPECTS
 public:
@@ -443,22 +311,41 @@ htrie_word BitString<N>::byteSuffix(htrie_index i) {
 
 template<htrie_size N>
 HTRIE_ALWAYS_INLINE
-htrie_word BitString<N>::substring(htrie_index i, htrie_len bitLen) {
-  assert(i&7);
-  assert(bitLen>0);
-  assert(i<d_size);
-  assert((i+bitLen)<=d_size);
+htrie_word BitString<N>::bytePrefix(htrie_index start, htrie_index end, htrie_size n) {
+  assert((start&7)==0);
+  assert(start<=end);
+  assert(start<d_size);
+  assert(end<d_size);
+  assert(end-start<7);
+  assert((start>>3)==(end>>3));
+  assert(n<(63-7));
+
+#ifndef NDEBUG
+  ++BitStringStats::d_bytePrefixCalls;
+#endif
+
+  //                   +-------+          +----------------+         +-----+
+  //                  /  byte   \        /    bits needed   \       / shift |
+  return (htrie_word(d_data[start>>3]) & (~(0xff<<(end-start+1)))) <<    n;
+}
+
+template<htrie_size N>
+HTRIE_ALWAYS_INLINE
+htrie_word BitString<N>::substring(htrie_index start, htrie_index end) {
+  assert((start&7)!=0);
+  assert(start<=end);
+  assert(start<d_size);
+  assert(end<d_size);
+  assert((start>>3)==(end>>3));
+  assert(end-start<6);
 
 #ifndef NDEBUG
   ++BitStringStats::d_substringCalls;
 #endif
 
-  // We get 'bitLen' bits e.g. if bitLen=3 get i,i+1,i+2
-  assert((i>>3)==((i+bitLen-1)>>3));
-
-  const htrie_byte shft   =  (i&7);
-  const htrie_byte endBit =  (shft+bitLen);
-  const htrie_byte byte   =  d_data[i>>3];
+  const htrie_byte shft   =  (start&7);
+  const htrie_byte endBit =  (end&7);
+  const htrie_byte byte   =  d_data[start>>3];
   const htrie_byte loMask =  (0xff<<shft);
   const htrie_byte hiMask = ~(0xff<<endBit);
 
@@ -466,73 +353,47 @@ htrie_word BitString<N>::substring(htrie_index i, htrie_len bitLen) {
 }
 
 template<htrie_size N>
-HTRIE_ALWAYS_INLINE
-htrie_word BitString<N>::bytePrefix(htrie_index i, htrie_len bitLen, htrie_size shift) {
-  assert((i&7)==0);
-  assert(bitLen>0);
-  assert(bitLen<=7);
-  assert(i<d_size);
-  assert((i+bitLen)<=d_size);
-  // We get 'bitLen' bits e.g. if bitLen=3 get i,i+1,i+2
-  assert((i>>3)==((i+bitLen-1)>>3));
-  assert(shift<(63-7));
-
-#ifndef NDEBUG
-  ++BitStringStats::d_bytePrefixCalls;
-#endif
-
-  //                  +-------+     +-----------+       +-----+
-  //                 /  byte   \   / bits needed \     / shift |
-  return htrie_word(d_data[i>>3] & (~(0xff<<bitLen))) << shift;
-}
-
-template<htrie_size N>
 inline
-htrie_word BitString<N>::nextWord(htrie_index i, htrie_len bitLen) {
-  assert(i<d_size);
-  assert(bitLen>0);
-  assert((i+bitLen)<=d_size);
+htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
+  assert(start<d_size);
+  assert(end<d_size);
+  assert(start<=end);
 
   htrie_word ret(0);
+ 
+  const htrie_index endByte(end>>3);
+  const htrie_index startByte(start>>3);
 
-  // Are we NOT starting on a byte-boundary aka "start" sub-case
-  if (i&7) {
-    if (bitLen>=7) {
+  if (start&7) {
+    if (endByte!=startByte) {
       // advance to byte boundary
-      ret = byteSuffix(i);
+      ret = byteSuffix(start);
 
       // This is the number of bits 'byteSuffix' handled to move up one byte
-      const htrie_index delta = (8-(i&7));
-      assert(delta>=0 && delta<8);
+      const htrie_index delta = (8-(start&7));
+      assert(delta>0 && delta<=8);
 
-      // Ensure i+delta still in valid memory
-      assert((i+delta)<=size());
+      // Ensure start+delta still in valid memory
+      assert((start+delta)<d_size);
       // We're now on a byte boundary at next byte. Check that:
-      assert(((i+delta)&7)==0);
+      assert(((start+delta)&7)==0);
       // Ensure advanced to next byte
-      assert(((i+delta)>>3)==((i>>3)+1));
+      assert(((start+delta)>>3)==((start>>3)+1));
 
-      // Update bitLen
-      bitLen -= delta;
-
-      // If there's only <8 more bits left tack those on now and return.
+      // If there's less than 8 bits left tack those on now and return.
       // The shift term ensures these remaining bits are placed after whatever
       // is already is in ret so they're contiguous in ret
-      if (bitLen && bitLen<8) {
-        return ret | bytePrefix(i+delta, bitLen, 8-(i&7));
-      } else if (bitLen==0) {
-        // No more bits to process: we're done
-        return ret;
+      if (end-start-delta<6) {
+        return ret | bytePrefix(start+delta, end, 8-(start&7));
       }
-      // Fall into block case aka 'middle' subcase
+      // Fall into block case aka 'middle' subcase after fixing start
+      start += delta;
     } else {
-      return substring(i, bitLen);
+      return substring(start, end);
     }
-  } else if (bitLen<8) {
-    return bytePrefix(i, bitLen, 0);
+  } else if (endByte==startByte) {
+    return bytePrefix(start, end);
   }
-
-  assert(bitLen>0);
 
   return 0;
 }
