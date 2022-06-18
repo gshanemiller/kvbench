@@ -122,7 +122,7 @@ TEST(bitstring, substring) {
             tmp |= ((1<<(t))&byte); // copy bit 't' into tmp
           }
         }
-        const Benchmark::HTrie::htrie_word expected(tmp);
+        const Benchmark::HTrie::htrie_word expected(tmp >> start);
         // Inspect result
         if (actual!=expected || !testBitStringCallCounters(0, 0, 1)) {
           printf("ERROR: line %d: bs.substring(%u, %u) on %u failed\n", __LINE__, start, end, b);

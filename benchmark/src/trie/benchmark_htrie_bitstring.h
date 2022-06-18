@@ -344,10 +344,10 @@ htrie_word BitString<N>::substring(htrie_index start, htrie_index end) {
 #endif
 
   const htrie_byte shft   =  (start&7);
-  const htrie_byte endBit =  (end&7);
+  const htrie_byte endBit =  (end-start+shft+1);
   const htrie_byte byte   =  d_data[start>>3];
-  const htrie_byte loMask =  (0xff<<shft);
-  const htrie_byte hiMask = ~(0xff<<endBit);
+  const htrie_byte hiMask =  (0xff<<shft);
+  const htrie_byte loMask = ~(0xff<<endBit);
 
   return (byte&loMask&hiMask)>>shft;
 }
