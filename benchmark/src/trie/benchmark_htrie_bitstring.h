@@ -343,11 +343,11 @@ htrie_word BitString<N>::substring(htrie_index start, htrie_index end) {
   ++BitStringStats::d_substringCalls;
 #endif
 
-  const htrie_byte shft   =  (start&7);
-  const htrie_byte endBit =  (end-start+shft+1);
+  const htrie_byte shft   =  start&7;
+  const htrie_byte endBit =  (end&7)+1;
   const htrie_byte byte   =  d_data[start>>3];
-  const htrie_byte hiMask =  (0xff<<shft);
-  const htrie_byte loMask = ~(0xff<<endBit);
+  const htrie_byte hiMask = ~(0xff<<endBit);
+  const htrie_byte loMask =  0xff<<shft;
 
   return (byte&loMask&hiMask)>>shft;
 }
@@ -380,10 +380,8 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       // Ensure advanced to next byte
       assert(((start+delta)>>3)==((start>>3)+1));
 
-      // If there's less than 8 bits left tack those on now and return.
-      // The shift term ensures these remaining bits are placed after whatever
-      // is already is in ret so they're contiguous in ret
-      if (end-start-delta<6) {
+      // If there's not a full byte left tack on prefix and return now
+      if (end-start-delta<=6) {
         return ret | bytePrefix(start+delta, end, 8-(start&7));
       }
       // Fall into block case aka 'middle' subcase after fixing start
@@ -392,7 +390,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       return substring(start, end);
     }
   } else if (endByte==startByte) {
-    return bytePrefix(start, end);
+    return bytePrefix(start, end, 0);
   }
 
   return 0;

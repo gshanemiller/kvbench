@@ -10,6 +10,9 @@ set(TEST_SOURCES
 
 add_executable(${UNIT_TEST_TASK} ${TEST_SOURCES})
 
+target_compile_options(${UNIT_TEST_TASK} PUBLIC -g)
+target_compile_options(${UNIT_TEST_TASK} PUBLIC -O0)
+
 target_include_directories(${UNIT_TEST_TASK} PUBLIC ../../src)
 target_include_directories(${UNIT_TEST_TASK} PUBLIC /usr/local/include)
 
