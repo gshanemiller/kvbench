@@ -24,6 +24,9 @@ struct BitStringStats {
   static unsigned int d_byteSuffixCalls;
   static unsigned int d_bytePrefixCalls;
   static unsigned int d_substringCalls;
+  static unsigned int d_3byteEndCalls;
+  static unsigned int d_2byteEndCalls;
+  static unsigned int d_1byteEndCalls;
 };
 
 template<htrie_size N>
@@ -151,10 +154,11 @@ public:
     // position 1 in result, and so on
 
   htrie_word nextWord(htrie_index start, htrie_index end);
-    // Return all bits b in '[start,end]'. Behavior is defined provided:
+    // Return at most 64 bits '[start,end]'. Behavior is defined provided:
     //   * start<size()
     //   * start<=end
     //   * end<size()
+    //   * end-start+1<=64
     // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
     // position 1 in result, and so on
 
@@ -358,8 +362,10 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
   assert(start<d_size);
   assert(end<d_size);
   assert(start<=end);
+  assert(end-start+1<=64);
 
   htrie_word ret(0);
+  htrie_word shift(0);
  
   const htrie_index endByte(end>>3);
   const htrie_index startByte(start>>3);
@@ -385,6 +391,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
         return ret | bytePrefix(start+delta, end, 8-(start&7));
       }
       // Fall into block case aka 'middle' subcase after fixing start
+      shift = 8-(start&7);
       start += delta;
     } else {
       return substring(start, end);
@@ -393,7 +400,38 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
     return bytePrefix(start, end, 0);
   }
 
-  return 0;
+  if ((index&7)==0)
+
+  // ensure we're on a byte-boundary
+  assert((start&7)==0);
+  // ensure we have no more than 3-bytes
+  assert(((end>>3)-(start>>3)+1)<=3);
+
+  // Number of bits left to deal with
+  const htrie_index left = end-start+1;
+
+  // there's always at least one byte to deal with
+  ret |= (htrie_word(d_data[start>>3])) << shift;
+#ifndef NDEBUG
+    ++BitStringStats::d_1byteEndCalls;
+#endif
+
+  if ((left&24)==24) {
+    // last 2 bytes
+    ret |= (htrie_word(d_data[(start+8)>>3])) << (shift+8);
+    ret |= bytePrefix(start+16, end, shift+16);
+#ifndef NDEBUG
+    ++BitStringStats::d_3byteEndCalls;
+#endif
+  } else if (left&16) {
+    // last byte
+    ret |= bytePrefix(start+8, end, shift+8);
+#ifndef NDEBUG
+    ++BitStringStats::d_2byteEndCalls;
+#endif
+  }
+
+  return ret;
 }
 
 // ASPECTS

@@ -3,6 +3,9 @@
 unsigned int Benchmark::HTrie::BitStringStats::d_byteSuffixCalls = 0;                                                              
 unsigned int Benchmark::HTrie::BitStringStats::d_bytePrefixCalls = 0;                                                              
 unsigned int Benchmark::HTrie::BitStringStats::d_substringCalls = 0; 
+unsigned int Benchmark::HTrie::BitStringStats::d_3byteEndCalls = 0;
+unsigned int Benchmark::HTrie::BitStringStats::d_2byteEndCalls = 0;
+unsigned int Benchmark::HTrie::BitStringStats::d_1byteEndCalls = 0;
 
 template<Benchmark::HTrie::htrie_size N>                                                                                                  
 inline 
