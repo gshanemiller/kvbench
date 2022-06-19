@@ -366,9 +366,17 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
 
   htrie_word ret(0);
   htrie_word shift(0);
- 
-  const htrie_index endByte(end>>3);
-  const htrie_index startByte(start>>3);
+
+  union {
+    htrie_word  word;
+    htrie_uint  uint[2];
+    htrie_sword sword[4];
+    htrie_byte  byte[8];
+  };
+  word = 0;
+
+  htrie_index endByte(end>>3);
+  htrie_index startByte(start>>3);
 
   if (start&7) {
     if (endByte!=startByte) {
@@ -376,23 +384,23 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       ret = byteSuffix(start);
 
       // This is the number of bits 'byteSuffix' handled to move up one byte
-      const htrie_index delta = (8-(start&7));
-      assert(delta>0 && delta<=8);
+      shift = (8-(start&7));
+      assert(shift>0 && shift<=8);
 
-      // Ensure start+delta still in valid memory
-      assert((start+delta)<d_size);
+      // Ensure start+shift still in valid memory
+      assert((start+shift)<d_size);
       // We're now on a byte boundary at next byte. Check that:
-      assert(((start+delta)&7)==0);
+      assert(((start+shift)&7)==0);
       // Ensure advanced to next byte
-      assert(((start+delta)>>3)==((start>>3)+1));
+      assert(((start+shift)>>3)==((start>>3)+1));
 
       // If there's not a full byte left tack on prefix and return now
-      if (end-start-delta<=6) {
-        return ret | bytePrefix(start+delta, end, 8-(start&7));
+      if (end-start-shift<=6) {
+        return ret | bytePrefix(start+shift, end, 8-(start&7));
       }
+
       // Fall into block case aka 'middle' subcase after fixing start
-      shift = 8-(start&7);
-      start += delta;
+      start += shift;
     } else {
       return substring(start, end);
     }
@@ -400,35 +408,93 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
     return bytePrefix(start, end, 0);
   }
 
-  if ((index&7)==0)
-
-  // ensure we're on a byte-boundary
+  // Must be on a byte boundary
   assert((start&7)==0);
-  // ensure we have no more than 3-bytes
-  assert(((end>>3)-(start>>3)+1)<=3);
 
   // Number of bits left to deal with
   const htrie_index left = end-start+1;
+  assert(left>0);
 
-  // there's always at least one byte to deal with
-  ret |= (htrie_word(d_data[start>>3])) << shift;
-#ifndef NDEBUG
-    ++BitStringStats::d_1byteEndCalls;
-#endif
+  if ((left&7)==0) {
+    assert((left>=8)&&(left<=64));
 
-  if ((left&24)==24) {
-    // last 2 bytes
-    ret |= (htrie_word(d_data[(start+8)>>3])) << (shift+8);
-    ret |= bytePrefix(start+16, end, shift+16);
-#ifndef NDEBUG
-    ++BitStringStats::d_3byteEndCalls;
-#endif
-  } else if (left&16) {
-    // last byte
-    ret |= bytePrefix(start+8, end, shift+8);
-#ifndef NDEBUG
-    ++BitStringStats::d_2byteEndCalls;
-#endif
+    if (left==64) {
+      assert(ret==0);
+      assert(shift==0);
+      assert((start>>3)==startByte);
+      return *(reinterpret_cast<htrie_word*>(d_data+startByte));
+    }
+
+    // Update startByte
+    startByte = start>>3;
+
+    if (left==56) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      byte[4] = d_data[startByte+4];
+      byte[5] = d_data[startByte+5];
+      byte[6] = d_data[startByte+6];
+      ret |= (word<<shift);
+    } else if (left==48) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      byte[4] = d_data[startByte+4];
+      byte[5] = d_data[startByte+5];
+      ret |= (word<<shift);
+    } else if (left==40) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      byte[4] = d_data[startByte+4];
+      ret |= (word<<shift);
+    } else if (left==32) {
+      ret |= htrie_word(*reinterpret_cast<htrie_uint*>(d_data+startByte)) << shift;
+    } else if (left==24) {
+      sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      byte[3] = d_data[startByte+3];
+      ret |= (word<<shift);
+    } else if (left==16) {
+      ret |= htrie_word(*reinterpret_cast<htrie_sword*>(d_data+startByte)) << shift;
+    } else { // left==8
+      ret |= htrie_word(d_data[startByte]) << shift;
+    }
+  } else {
+    assert((left>8)&&(left<64));
+    assert(left&7);
+
+    // Update startByte
+    startByte = start>>3;
+
+    if (left>56) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
+      byte[6] = d_data[startByte+6];
+      byte[7] = bytePrefix(start+56, end, 0);
+      ret |= (word<<shift);
+    } else if (left>48) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
+      byte[6] = bytePrefix(start+48, end, 0);
+      ret |= (word<<shift);
+    } else if (left>40) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      byte[4] = d_data[startByte+4];
+      byte[5] = bytePrefix(start+40, end, 0);
+      ret |= (word<<shift);
+    } else if (left>32) {
+      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      byte[4] = bytePrefix(start+32, end, 0);
+      ret |= (word<<shift);
+    } else if (left>24) {
+      sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      byte[2] = d_data[startByte+3];
+      byte[3] = bytePrefix(start+24, end, 0);
+      ret |= (word<<shift);
+    } else if (left>16) {
+      sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      byte[2] = bytePrefix(start+16, end, 0);
+      ret |= (word<<shift);
+    } else { // left>8
+      byte[0] = d_data[startByte];
+      byte[1] = bytePrefix(start+8, end, 0);
+      ret |= (word<<shift);
+    }
   }
 
   return ret;

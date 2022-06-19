@@ -7,30 +7,18 @@ static void resetBitStringCallCounters() {
   Benchmark::HTrie::BitStringStats::d_byteSuffixCalls = 0;
   Benchmark::HTrie::BitStringStats::d_bytePrefixCalls = 0;
   Benchmark::HTrie::BitStringStats::d_substringCalls = 0;
-  Benchmark::HTrie::BitStringStats::d_3byteEndCalls = 0;                                                          
-  Benchmark::HTrie::BitStringStats::d_2byteEndCalls = 0;                                                          
-  Benchmark::HTrie::BitStringStats::d_1byteEndCalls = 0;
 }
 
 static bool testBitStringCallCounters(unsigned int expectedByteSuffixCalls,
-    unsigned int expectedBytePrefixCalls, unsigned int expectedSubstringCalls,
-    unsigned int expected3ByteEndCalls, unsigned int expected2ByteEndCalls,
-    unsigned int expected1ByteEndCalls) {
+    unsigned int expectedBytePrefixCalls, unsigned int expectedSubstringCalls) {
 
   EXPECT_EQ(expectedByteSuffixCalls, Benchmark::HTrie::BitStringStats::d_byteSuffixCalls);
   EXPECT_EQ(expectedBytePrefixCalls, Benchmark::HTrie::BitStringStats::d_bytePrefixCalls);
   EXPECT_EQ(expectedSubstringCalls, Benchmark::HTrie::BitStringStats::d_substringCalls);
 
-  EXPECT_EQ(expected3ByteEndCalls, Benchmark::HTrie::BitStringStats::d_3byteEndCalls);
-  EXPECT_EQ(expected2ByteEndCalls, Benchmark::HTrie::BitStringStats::d_2byteEndCalls);
-  EXPECT_EQ(expected1ByteEndCalls, Benchmark::HTrie::BitStringStats::d_1byteEndCalls);
-
   return (expectedByteSuffixCalls==Benchmark::HTrie::BitStringStats::d_byteSuffixCalls &&
       expectedBytePrefixCalls==Benchmark::HTrie::BitStringStats::d_bytePrefixCalls &&
-      expectedSubstringCalls==Benchmark::HTrie::BitStringStats::d_substringCalls &&
-      expected3ByteEndCalls==Benchmark::HTrie::BitStringStats::d_3byteEndCalls &&
-      expected2ByteEndCalls==Benchmark::HTrie::BitStringStats::d_2byteEndCalls &&
-      expected1ByteEndCalls==Benchmark::HTrie::BitStringStats::d_1byteEndCalls);
+      expectedSubstringCalls==Benchmark::HTrie::BitStringStats::d_substringCalls);
 }
 
 // Determine if 'byteSuffix' is able to extract all bits from specified bit i
@@ -46,7 +34,7 @@ TEST(bitstring, byteSuffix) {
       const Benchmark::HTrie::htrie_word actual = bs.byteSuffix(i);
       const Benchmark::HTrie::htrie_word expected = (b&254)>>i;
       // Inspect result
-      if (actual!=expected || !testBitStringCallCounters(1, 0, 0, 0, 0, 0)) {
+      if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
         printf("ERROR: line %d: bs.byteSuffix(%u) on %u failed\n", __LINE__, i, b);
         EXPECT_EQ(actual, expected);
       } else if (verbose) {
@@ -82,7 +70,7 @@ TEST(bitstring, bytePrefix) {
         EXPECT_EQ(unsigned(0), mask&128);
         const Benchmark::HTrie::htrie_word expected = (byte & mask) << shift;
         // Inspect result
-        if (actual!=expected || !testBitStringCallCounters(0, 1, 0, 0, 0, 0)) {
+        if (actual!=expected || !testBitStringCallCounters(0, 1, 0)) {
           printf("ERROR: line %d: bs.bytePrefix(%u, %u, %u) on %u failed\n", __LINE__, 0, end, shift, b);
           EXPECT_EQ(actual, expected);
         } else if (verbose) {
@@ -117,7 +105,7 @@ TEST(bitstring, substring) {
         }
         const Benchmark::HTrie::htrie_word expected(tmp >> start);
         // Inspect result
-        if (actual!=expected || !testBitStringCallCounters(0, 0, 1, 0, 0, 0)) {
+        if (actual!=expected || !testBitStringCallCounters(0, 0, 1)) {
           printf("ERROR: line %d: bs.substring(%u, %u) on %u failed\n", __LINE__, start, end, b);
           EXPECT_EQ(actual, expected);
         } else if (verbose) {
@@ -146,7 +134,7 @@ TEST(bitstring, nextWord_bytePrefix) {
       EXPECT_EQ(unsigned(0), mask&128);
       const Benchmark::HTrie::htrie_word expected = (byte & mask);
       // Inspect result
-      if (actual!=expected || !testBitStringCallCounters(0, 1, 0, 0, 0, 0)) {
+      if (actual!=expected || !testBitStringCallCounters(0, 1, 0)) {
         printf("ERROR: line %d: bs.nextWord_bytePrefix(%u, %u) on %u failed\n", __LINE__, 0, end, b);
         EXPECT_EQ(actual, expected);
       } else if (verbose) {
@@ -176,7 +164,7 @@ TEST(bitstring, nextWord_substring) {
         }
         const Benchmark::HTrie::htrie_word expected(tmp >> start);
         // Inspect result
-        if (actual!=expected || !testBitStringCallCounters(0, 0, 1, 0, 0, 0)) {
+        if (actual!=expected || !testBitStringCallCounters(0, 0, 1)) {
           printf("ERROR: line %d: bs.nextWord_substring(%u, %u) on %u failed\n", __LINE__, start, end, b);
           EXPECT_EQ(actual, expected);
         } else if (verbose) {
@@ -216,7 +204,7 @@ TEST(bitstring, nextWord_2bytesubstring) {
         }
         const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
         // Inspect result
-        if (actual!=expected || !testBitStringCallCounters(1, 1, 0, 0, 0, 0)) {
+        if (actual!=expected || !testBitStringCallCounters(1, 1, 0)) {
           printf("ERROR: line %d: bs.nextWord_2bytesubstring(%u, %u) on %u failed\n", __LINE__, start, end, b);
           EXPECT_EQ(actual, expected);
         } else if (verbose) {
@@ -250,7 +238,7 @@ TEST(bitstring, nextWord_nbb_2byteend) {
       const Benchmark::HTrie::htrie_word hiMask = 255;
       const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
       // Inspect result
-      if (actual!=expected || !testBitStringCallCounters(1, 0, 0, 0, 0, 1)) {
+      if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
         printf("ERROR: line %d: bs.nextWord_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
         EXPECT_EQ(actual, expected);
       } else if (verbose) {
@@ -259,15 +247,6 @@ TEST(bitstring, nextWord_nbb_2byteend) {
       }
     }
   }
-}
-
-
-TEST(bitstring, nextWord_debug) {
-  const Benchmark::HTrie::htrie_sword sword = (Benchmark::HTrie::htrie_sword)(256);
-  const Benchmark::HTrie::htrie_index start = 0;
-  const Benchmark::HTrie::htrie_index end = 15;
-  Benchmark::HTrie::BitString<2> bs(sword);
-  const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
 }
 
 // Determine if 'nextWord' is able to bits over two bytes such that the start
@@ -292,7 +271,7 @@ TEST(bitstring, nextWord_bb_2byteend) {
     const Benchmark::HTrie::htrie_word hiMask = 255;
     const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
     // Inspect result
-    if (actual!=expected || !testBitStringCallCounters(0, 0, 0, 0, 0, 1)) {
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
       EXPECT_EQ(actual, expected);
     } else if (verbose) {
