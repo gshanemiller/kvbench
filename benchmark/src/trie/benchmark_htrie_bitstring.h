@@ -29,6 +29,16 @@ struct BitStringStats {
   static unsigned int d_1byteEndCalls;
 };
 
+union ByteMoveHelper {                                                                                                               
+  htrie_word  word;                                                                                                   
+  htrie_uint  uint[2];                                                                                                
+  htrie_sword sword[4];                                                                                               
+  htrie_byte  byte[8];                                                                                                
+};
+
+extern htrie_word (*benchmark_htrie_byteMove[9])(const htrie_byte *);
+extern htrie_word (*benchmark_htrie_byteMovePrefix[8])(const htrie_byte *, htrie_byte endBit);
+
 template<htrie_size N>
 class BitString {
   // DATA
@@ -165,6 +175,16 @@ public:
     //   * end-start+1<=64
     // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
     // position 1 in result, and so on
+
+  htrie_word optNextWord(htrie_index start, htrie_index end);
+    // Return at most 64 bits '[start,end]'. Behavior is defined provided:
+    //   * start<size()
+    //   * start<=end
+    //   * end<size()
+    //   * end-start+1<=64
+    // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
+    // position 1 in result, and so on. Note, this method attempts to be an
+    // optimized version of 'nextWord'
 
   // ASPECTS
 public:
@@ -518,6 +538,69 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
   }
 
   return ret;
+}
+
+template<htrie_size N>
+HTRIE_ALWAYS_INLINE
+htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
+  assert(start<d_size);
+  assert(end<d_size);
+  assert(start<=end);
+  assert(end-start+1<=64);
+
+  htrie_index startByte(start>>3);
+  const htrie_index endByte(end>>3);
+
+  if (endByte==startByte) {
+    const htrie_byte shift  =  start&7;
+    const htrie_byte endBit =  (end&7)+1;
+    const htrie_byte hiMask = ~(0xff<<endBit);
+    const htrie_byte loMask =  0xff<<shift;
+    return (d_data[startByte]&loMask&hiMask)>>shift;
+  }
+
+  const bool startOnByte = (start&7)==0;
+  const bool moveBytes   = ((end-start+1)&7)==0;
+
+  if (startOnByte) {
+      if (moveBytes) {
+        return benchmark_htrie_byteMove[moveBytes>>3](d_data+startByte);
+      } else {
+        return benchmark_htrie_byteMovePrefix[((end-start)>>3)&7](d_data+startByte, end&7);
+      }
+  }
+
+  // Slurp up bits in suffix of first byte
+  htrie_word ret = byteSuffix(start);
+
+  // This is the number of bits 'byteSuffix' handled to move up one byte
+  htrie_word shift = (8-(start&7));
+  assert(shift>0 && shift<=8);
+
+  // Ensure start+shift still in valid memory
+  assert((start+shift)<d_size);
+  // We're now on a byte boundary at next byte. Check that:
+  assert(((start+shift)&7)==0);
+  // Ensure advanced to next byte
+  assert(((start+shift)>>3)==((start>>3)+1));
+
+  // If there's not a full byte left tack on prefix and return now
+  if (end-start-shift<=6) {
+    return ret | bytePrefix(start+shift, end, 8-(start&7));
+  }
+
+  // Must be on a byte boundary here
+  assert((start&7)==0);
+
+  // Number of bytes left to deal with
+  const htrie_index left = end-start+1;
+  assert(left>0);
+
+  if ((left&7)==0) {
+    return ret | (benchmark_htrie_byteMove[left>>3](d_data+(start>>3)) << shift);
+  } else {
+    return ret | (benchmark_htrie_byteMovePrefix[((left-1)>>3)&7](d_data+(start>>3), end&7) << shift);
+  }
 }
 
 // ASPECTS
