@@ -176,6 +176,32 @@ TEST(bitstring, nextWord_substring) {
   }
 }
 
+// Determine if 'nextWord' is able to extract bits over 1 byte such that the
+// start bit is on a byte boundary (bb)
+//
+// To test make a 1-byte bitstring populated with all possible 0xff values
+// then every substring over 1-bytes is extracted and tested for correctness.
+TEST(bitstring, nextWord_bb_1byteend) {
+  for (unsigned b=0; b<256; ++b) {
+    resetBitStringCallCounters();
+    const Benchmark::HTrie::htrie_byte byte = (Benchmark::HTrie::htrie_byte)(b);
+    Benchmark::HTrie::BitString<1> bs(byte);
+    const Benchmark::HTrie::htrie_index start = 0;
+    const Benchmark::HTrie::htrie_index end = 7;
+    // Get bits in [start, end]
+    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_word expected = Benchmark::HTrie::htrie_word(b);
+    // Inspect result
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
+      printf("ERROR: line %d: bs.nextWord_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
+      EXPECT_EQ(actual, expected);
+    } else if (verbose) {
+      printf("OK   : line %d: bs.nextWord_2byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
+        __LINE__, start, end, b, actual, expected);
+      }
+  }
+}
+
 // Determine if 'nextWord' is able to extract a byte suffix, prefix combo.
 // In this case we start on a non-byte-boundary and end before bit-7 in the
 // very next byte. This is like substring but over 2-bytes not within 1-byte
@@ -239,18 +265,18 @@ TEST(bitstring, nextWord_nbb_2byteend) {
       const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
       // Inspect result
       if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
-        printf("ERROR: line %d: bs.nextWord_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
+        printf("ERROR: line %d: bs.nextWord_nbb_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
         EXPECT_EQ(actual, expected);
       } else if (verbose) {
-        printf("OK   : line %d: bs.nextWord_2byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
+        printf("OK   : line %d: bs.nextWord_nbb_2byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
           __LINE__, start, end, b, actual, expected);
       }
     }
   }
 }
 
-// Determine if 'nextWord' is able to bits over two bytes such that the start
-// bit is on a byte boundary (bb) and end-bit is on a byte boundary
+// Determine if 'nextWord' is able to extract bits over two bytes such that the
+// start bit is on a byte boundary (bb)
 //
 // To test make a 2-byte bitstring populated with all possible 0xffff values
 // then every substring over 2-bytes is extracted and tested for correctness.
@@ -272,11 +298,165 @@ TEST(bitstring, nextWord_bb_2byteend) {
     const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
-      printf("ERROR: line %d: bs.nextWord_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
+      printf("ERROR: line %d: bs.nextWord_bb_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
       EXPECT_EQ(actual, expected);
     } else if (verbose) {
-      printf("OK   : line %d: bs.nextWord_2byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
+      printf("OK   : line %d: bs.nextWord_bb_2byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
         __LINE__, start, end, b, actual, expected);
       }
   }
 }
+
+// Determine if 'nextWord' is able to extract bits over three bytes such that the
+// start bit is on a byte boundary (bb)
+//
+// To test make a 3-byte bitstring populated with all possible 0xfff values
+// then every substring over 2-bytes is extracted and tested for correctness.
+TEST(bitstring, nextWord_bb_3byteend) {
+  for (unsigned b=0; b<=0xfff; ++b) {
+    Benchmark::HTrie::BitString<3> bs;
+    for (unsigned i=0; i<24; ++i) {
+      bs.append(b&(1<<i));
+    }
+    const Benchmark::HTrie::htrie_index start = 0;
+    const Benchmark::HTrie::htrie_index end = 23;
+    resetBitStringCallCounters();
+    // Get bits in [start, end]
+    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_word expected = Benchmark::HTrie::htrie_word(b);
+    // Inspect result
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
+      printf("ERROR: line %d: bs.nextWord_bb_3byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
+      EXPECT_EQ(actual, expected);
+    } else if (verbose) {
+      printf("OK   : line %d: bs.nextWord_bb_3byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
+        __LINE__, start, end, b, actual, expected);
+    }
+  }
+}
+
+// Determine if 'nextWord' is able to extract bits over three bytes such that the
+// start bit is on a non byte boundary (nbb)
+//
+// To test make a 3-byte bitstring populated with all possible 0xfff values
+// then every substring over 3-bytes is extracted and tested for correctness.
+TEST(bitstring, nextWord_nbb_3byteend) {
+  for (unsigned b=0; b<=0xfff; ++b) {
+    Benchmark::HTrie::BitString<3> bs;
+    for (unsigned i=0; i<24; ++i) {
+      bs.append(b&(1<<i));
+    }
+    const Benchmark::HTrie::htrie_index end = 23;
+    for (unsigned start=1; start<7; ++start) {
+      resetBitStringCallCounters();
+      // Get bits in [start, end]
+      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+      const Benchmark::HTrie::htrie_word expected = Benchmark::HTrie::htrie_word(b>>start);
+      // Inspect result
+      if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
+        printf("ERROR: line %d: bs.nextWord_nbb_3byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
+        EXPECT_EQ(actual, expected);
+      } else if (verbose) {
+        printf("OK   : line %d: bs.nextWord_nbb_3byteend(%u, %u) on %u: actual: %lu, expected: %lu\n",
+          __LINE__, start, end, b, actual, expected);
+      }
+    }
+  }
+}
+
+// Determine if 'nextWord' is able to extract bits over four bytes such that the
+// start bit is on a byte boundary (bb)
+//
+// To test make an 4-byte bitstring populated with a selected subset of all
+// possible values then a substring over 8-bytes is extracted and tested for
+// correctness.
+TEST(bitstring, nextWord_bb_4byteend) {
+  // Test all values for byte 0
+  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+    resetBitStringCallCounters();
+    const Benchmark::HTrie::htrie_word expected(b);
+    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)b);
+    Benchmark::HTrie::BitString<4> bs(val);
+    const Benchmark::HTrie::htrie_index start = 0;
+    const Benchmark::HTrie::htrie_index end = 31;
+    // Get bits in [start, end]
+    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    // Inspect result
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
+      printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
+      EXPECT_EQ(actual, expected);
+    } else if (verbose) {
+      printf("OK   : line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu: actual: %lu, expected: %lu\n",
+        __LINE__, start, end, b, actual, expected);
+    }
+  }
+
+  // Test all values for byte1
+  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+    resetBitStringCallCounters();
+    const Benchmark::HTrie::htrie_word expected(b<<8);
+    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)(b<<8));
+    Benchmark::HTrie::BitString<4> bs(val);
+    const Benchmark::HTrie::htrie_index start = 0;
+    const Benchmark::HTrie::htrie_index end = 31;
+    // Get bits in [start, end]
+    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    // Inspect result
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
+      printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
+      EXPECT_EQ(actual, expected);
+    } else if (verbose) {
+      printf("OK   : line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu: actual: %lu, expected: %lu\n",
+        __LINE__, start, end, b, actual, expected);
+    }
+  }
+
+  // Test all values for byte2
+  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+    resetBitStringCallCounters();
+    const Benchmark::HTrie::htrie_word expected(b<<16);
+    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)(b<<16));
+    Benchmark::HTrie::BitString<4> bs(val);
+    const Benchmark::HTrie::htrie_index start = 0;
+    const Benchmark::HTrie::htrie_index end = 31;
+    // Get bits in [start, end]
+    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    // Inspect result
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
+      printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
+      EXPECT_EQ(actual, expected);
+    } else if (verbose) {
+      printf("OK   : line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu: actual: %lu, expected: %lu\n",
+        __LINE__, start, end, b, actual, expected);
+    }
+  }
+
+  // Test all values for byte3
+  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+    resetBitStringCallCounters();
+    const Benchmark::HTrie::htrie_word expected(b<<24);
+    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)(b<<24));
+    Benchmark::HTrie::BitString<4> bs(val);
+    const Benchmark::HTrie::htrie_index start = 0;
+    const Benchmark::HTrie::htrie_index end = 31;
+    // Get bits in [start, end]
+    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    // Inspect result
+    if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
+      printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
+      EXPECT_EQ(actual, expected);
+    } else if (verbose) {
+      printf("OK   : line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu: actual: %lu, expected: %lu\n",
+        __LINE__, start, end, b, actual, expected);
+    }
+  }
+
+}
+
+// extract 1 byte starting on a byte boundary *
+// extract 2 byte starting on a byte boundary * 
+// extract 3 byte starting on a byte boundary *
+// extract 4 byte starting on a byte boundary *
+
+// extract 3 bytes starting on a nbb end not on bit7
+// extract 3 bytes starting on a nbb end on bit 7

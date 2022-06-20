@@ -41,7 +41,7 @@ class BitString {
 public:
   // CREATORS
   BitString();
-    // Construct an empty BitString with a cpacity of N bytes or 8N bits
+    // Construct an empty BitString with a capacity of N bytes or 8N bits
 
   BitString(const std::initializer_list<bool>& data);
     // Construct an empty BitString then append each bit from specified
@@ -58,6 +58,10 @@ public:
     // Construct a BitString containing a copy of specified 'data'. The
     // behavior is defined provided template parameter N equals sizeof(data).
     // 'size()==capacity()' on return
+
+  explicit BitString(htrie_uint data);
+    // Construct a BitString containing a copy of specified 'data'. The
+    // behavior is defined provided template parameter N equals sizeof(data).
 
   explicit BitString(htrie_byte data);
     // Construct a BitString containing a copy of specified 'data'. The
@@ -182,6 +186,7 @@ inline
 BitString<N>::BitString()
 : d_size(0)
 {
+  memset(d_data, 0, N);
 }
 
 template<htrie_size N>
@@ -189,6 +194,7 @@ inline
 BitString<N>::BitString(const std::initializer_list<bool>& data)
 : d_size(0)
 {
+  memset(d_data, 0, N);
   for (auto iter = data.begin(); iter!=data.end(); ++iter) {
     append(*iter);
   }
@@ -200,6 +206,7 @@ BitString<N>::BitString(const char *data)
 : d_size(0)
 {
   assert(data);
+  memset(d_data, 0, N);
   for (htrie_index i=0; data[i]; ++i) {
     if (size()<capacity()) {
       append(data[i]!='0');
@@ -213,6 +220,14 @@ BitString<N>::BitString(htrie_word data) {
   static_assert(N==sizeof(htrie_word));
   memcpy(d_data, &data, sizeof(htrie_word));
   d_size = 64;
+}
+
+template<htrie_size N>
+inline
+BitString<N>::BitString(htrie_uint data) {
+  static_assert(N==sizeof(htrie_uint));
+  memcpy(d_data, &data, sizeof(htrie_uint));
+  d_size = 32;
 }
 
 template<htrie_size N>
@@ -372,8 +387,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
     htrie_uint  uint[2];
     htrie_sword sword[4];
     htrie_byte  byte[8];
-  };
-  word = 0;
+  } retHelper;
 
   htrie_index endByte(end>>3);
   htrie_index startByte(start>>3);
@@ -404,7 +418,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
     } else {
       return substring(start, end);
     }
-  } else if (endByte==startByte) {
+  } else if (endByte==startByte && (end&7)!=7) {
     return bytePrefix(start, end, 0);
   }
 
@@ -427,28 +441,30 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
 
     // Update startByte
     startByte = start>>3;
+    // Init helper
+    retHelper.word = 0;
 
     if (left==56) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      byte[4] = d_data[startByte+4];
-      byte[5] = d_data[startByte+5];
-      byte[6] = d_data[startByte+6];
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.byte[4] = d_data[startByte+4];
+      retHelper.byte[5] = d_data[startByte+5];
+      retHelper.byte[6] = d_data[startByte+6];
+      ret |= (retHelper.word<<shift);
     } else if (left==48) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      byte[4] = d_data[startByte+4];
-      byte[5] = d_data[startByte+5];
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.byte[4] = d_data[startByte+4];
+      retHelper.byte[5] = d_data[startByte+5];
+      ret |= (retHelper.word<<shift);
     } else if (left==40) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      byte[4] = d_data[startByte+4];
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.byte[4] = d_data[startByte+4];
+      ret |= (retHelper.word<<shift);
     } else if (left==32) {
       ret |= htrie_word(*reinterpret_cast<htrie_uint*>(d_data+startByte)) << shift;
     } else if (left==24) {
-      sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
-      byte[3] = d_data[startByte+3];
-      ret |= (word<<shift);
+      retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      retHelper.byte[3] = d_data[startByte+3];
+      ret |= (retHelper.word<<shift);
     } else if (left==16) {
       ret |= htrie_word(*reinterpret_cast<htrie_sword*>(d_data+startByte)) << shift;
     } else { // left==8
@@ -460,40 +476,42 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
 
     // Update startByte
     startByte = start>>3;
+    // Init helper
+    retHelper.word = 0;
 
     if (left>56) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
-      byte[6] = d_data[startByte+6];
-      byte[7] = bytePrefix(start+56, end, 0);
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
+      retHelper.byte[6] = d_data[startByte+6];
+      retHelper.byte[7] = bytePrefix(start+56, end, 0);
+      ret |= (retHelper.word<<shift);
     } else if (left>48) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
-      byte[6] = bytePrefix(start+48, end, 0);
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
+      retHelper.byte[6] = bytePrefix(start+48, end, 0);
+      ret |= (retHelper.word<<shift);
     } else if (left>40) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      byte[4] = d_data[startByte+4];
-      byte[5] = bytePrefix(start+40, end, 0);
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.byte[4] = d_data[startByte+4];
+      retHelper.byte[5] = bytePrefix(start+40, end, 0);
+      ret |= (retHelper.word<<shift);
     } else if (left>32) {
-      uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      byte[4] = bytePrefix(start+32, end, 0);
-      ret |= (word<<shift);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.byte[4] = bytePrefix(start+32, end, 0);
+      ret |= (retHelper.word<<shift);
     } else if (left>24) {
-      sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
-      byte[2] = d_data[startByte+3];
-      byte[3] = bytePrefix(start+24, end, 0);
-      ret |= (word<<shift);
+      retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      retHelper.byte[2] = d_data[startByte+3];
+      retHelper.byte[3] = bytePrefix(start+24, end, 0);
+      ret |= (retHelper.word<<shift);
     } else if (left>16) {
-      sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
-      byte[2] = bytePrefix(start+16, end, 0);
-      ret |= (word<<shift);
+      retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      retHelper.byte[2] = bytePrefix(start+16, end, 0);
+      ret |= (retHelper.word<<shift);
     } else { // left>8
-      byte[0] = d_data[startByte];
-      byte[1] = bytePrefix(start+8, end, 0);
-      ret |= (word<<shift);
+      retHelper.byte[0] = d_data[startByte];
+      retHelper.byte[1] = bytePrefix(start+8, end, 0);
+      ret |= (retHelper.word<<shift);
     }
   }
 
