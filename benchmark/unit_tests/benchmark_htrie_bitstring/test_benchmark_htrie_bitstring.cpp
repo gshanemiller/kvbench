@@ -492,15 +492,15 @@ TEST(bitstring, nextWord_bb_4byteend) {
   }
 }
 
-TEST(bitstring, nextWord_debug) {
-  const Benchmark::HTrie::htrie_word b = 9627645531742285868ULL;
-  Benchmark::HTrie::BitString<8> bs(b);
-  const Benchmark::HTrie::htrie_word start = 16;
-  const Benchmark::HTrie::htrie_word end   = 39;
-  const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+TEST(bitstring, nextWord_random) {
+  seedrng=false;
+  for (Benchmark::HTrie::htrie_word max=1; max<=64; ++max) {
+    randomSpan(max);
+  }
 }
 
-TEST(bitstring, nextWord_random) {
+TEST(bitstring, nextWord_random_seed) {
+  seedrng=true;
   for (Benchmark::HTrie::htrie_word max=1; max<=64; ++max) {
     randomSpan(max);
   }
