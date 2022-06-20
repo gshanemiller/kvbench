@@ -32,6 +32,35 @@ static bool testBitStringCallCounters(unsigned int expectedByteSuffixCalls,
       expectedSubstringCalls==Benchmark::HTrie::BitStringStats::d_substringCalls);
 }
 
+static void randomSpan(const Benchmark::HTrie::htrie_word max) {
+  seedRng();
+  std::uniform_int_distribution<uint64_t> distribution(0, 0xffffffffffffffff);
+  auto dice = bind(distribution, rng);
+  for (unsigned i=0; i<RANDOM_TESTS; ++i) {
+    const Benchmark::HTrie::htrie_word b = dice();
+    Benchmark::HTrie::BitString<8> bs(b);
+    const Benchmark::HTrie::htrie_word start = dice() & 63;
+    for (Benchmark::HTrie::htrie_word delta = 0; (delta<max) && (start+delta)<=63; ++delta) {
+      const Benchmark::HTrie::htrie_index end = start+delta;
+      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+      Benchmark::HTrie::htrie_word tmp(0);
+      for (Benchmark::HTrie::htrie_word t=start; t<=end; ++t) {
+        tmp |= (b & (1ULL<<t));
+      }
+      const Benchmark::HTrie::htrie_word expected = (tmp >> start);
+      // Inspect result
+      if (actual!=expected) {
+        printf("ERROR: line %d: bs.nextWord_random_substring(%lu, %u) on %lu failed\n", __LINE__, start, end, b);
+        EXPECT_EQ(actual, expected);
+      } else if (verbose) {
+        printf("OK   : line %d: bs.nextWord_random_substring(%lu, %u) on %lu: actual: %lu, expected: %lu\n",
+          __LINE__, start, end, b, actual, expected);
+      }
+    }
+  }
+  printf("randomSpan: max %lu tests %d done\n", max, RANDOM_TESTS);
+}
+
 // Determine if 'byteSuffix' is able to extract all bits from specified bit i
 // to the end of the byte in which i occurs. i may not be on an byte boundary.
 // All 256 value in a 1-byte bitstring are tested bits 1-7, 2,-7, ... 7-7
@@ -463,30 +492,16 @@ TEST(bitstring, nextWord_bb_4byteend) {
   }
 }
 
-TEST(bitstring, nextWord_random_substring) {
-  seedRng();
-  std::uniform_int_distribution<uint64_t> distribution(0, 0xffffffffffffffff);
-  auto dice = bind(distribution, rng);
-  for (unsigned i=0; i<RANDOM_TESTS; ++i) {
-    const Benchmark::HTrie::htrie_word b = dice();
-    Benchmark::HTrie::BitString<8> bs(b);
-    const Benchmark::HTrie::htrie_word start = dice() & 63;
-    for (Benchmark::HTrie::htrie_word delta = 0; (delta<6) && (start+delta)<=63; ++delta) {
-      const Benchmark::HTrie::htrie_index end = start+delta;
-      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
-      Benchmark::HTrie::htrie_word tmp(0);
-      for (Benchmark::HTrie::htrie_word t=start; t<=end; ++t) {
-        tmp |= (b & (1ULL<<t));
-      }
-      const Benchmark::HTrie::htrie_word expected = (tmp >> start);
-      // Inspect result
-      if (actual!=expected) {
-        printf("ERROR: line %d: bs.nextWord_random_substring(%lu, %u) on %lu failed\n", __LINE__, start, end, b);
-        EXPECT_EQ(actual, expected);
-      } else if (verbose) {
-        printf("OK   : line %d: bs.nextWord_random_substring(%lu, %u) on %lu: actual: %lu, expected: %lu\n",
-          __LINE__, start, end, b, actual, expected);
-      }
-    }
+TEST(bitstring, nextWord_debug) {
+  const Benchmark::HTrie::htrie_word b = 9627645531742285868ULL;
+  Benchmark::HTrie::BitString<8> bs(b);
+  const Benchmark::HTrie::htrie_word start = 16;
+  const Benchmark::HTrie::htrie_word end   = 39;
+  const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+}
+
+TEST(bitstring, nextWord_random) {
+  for (Benchmark::HTrie::htrie_word max=1; max<=64; ++max) {
+    randomSpan(max);
   }
 }

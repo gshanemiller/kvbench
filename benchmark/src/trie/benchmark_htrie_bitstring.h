@@ -415,8 +415,10 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
 
       // Fall into block case aka 'middle' subcase after fixing start
       start += shift;
-    } else {
+    } else if ((end&7)!=7) {
       return substring(start, end);
+    } else {
+      return byteSuffix(start);
     }
   } else if (endByte==startByte && (end&7)!=7) {
     return bytePrefix(start, end, 0);
@@ -463,7 +465,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       ret |= htrie_word(*reinterpret_cast<htrie_uint*>(d_data+startByte)) << shift;
     } else if (left==24) {
       retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
-      retHelper.byte[3] = d_data[startByte+3];
+      retHelper.byte[2] = d_data[startByte+2];
       ret |= (retHelper.word<<shift);
     } else if (left==16) {
       ret |= htrie_word(*reinterpret_cast<htrie_sword*>(d_data+startByte)) << shift;
@@ -501,7 +503,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       ret |= (retHelper.word<<shift);
     } else if (left>24) {
       retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
-      retHelper.byte[2] = d_data[startByte+3];
+      retHelper.byte[2] = d_data[startByte+2];
       retHelper.byte[3] = bytePrefix(start+24, end, 0);
       ret |= (retHelper.word<<shift);
     } else if (left>16) {
