@@ -1,7 +1,18 @@
 #include <trie/benchmark_htrie_bitstring.h>
 #include <gtest/gtest.h>
+#include <random>
 
 static bool verbose=false;
+static bool seedrng=false;
+static std::mt19937_64 rng;
+static unsigned RANDOM_TESTS = 1000000;
+
+static void seedRng() {
+  if (seedrng) {
+    auto seed = std::random_device{}();
+    rng.seed(seed);
+  }
+}
 
 static void resetBitStringCallCounters() {
   Benchmark::HTrie::BitStringStats::d_byteSuffixCalls = 0;
@@ -450,13 +461,32 @@ TEST(bitstring, nextWord_bb_4byteend) {
         __LINE__, start, end, b, actual, expected);
     }
   }
-
 }
 
-// extract 1 byte starting on a byte boundary *
-// extract 2 byte starting on a byte boundary * 
-// extract 3 byte starting on a byte boundary *
-// extract 4 byte starting on a byte boundary *
-
-// extract 3 bytes starting on a nbb end not on bit7
-// extract 3 bytes starting on a nbb end on bit 7
+TEST(bitstring, nextWord_random_substring) {
+  seedRng();
+  std::uniform_int_distribution<uint64_t> distribution(0, 0xffffffffffffffff);
+  auto dice = bind(distribution, rng);
+  for (unsigned i=0; i<RANDOM_TESTS; ++i) {
+    const Benchmark::HTrie::htrie_word b = dice();
+    Benchmark::HTrie::BitString<8> bs(b);
+    const Benchmark::HTrie::htrie_word start = dice() & 63;
+    for (Benchmark::HTrie::htrie_word delta = 0; (delta<6) && (start+delta)<=63; ++delta) {
+      const Benchmark::HTrie::htrie_index end = start+delta;
+      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+      Benchmark::HTrie::htrie_word tmp(0);
+      for (Benchmark::HTrie::htrie_word t=start; t<=end; ++t) {
+        tmp |= (b & (1ULL<<t));
+      }
+      const Benchmark::HTrie::htrie_word expected = (tmp >> start);
+      // Inspect result
+      if (actual!=expected) {
+        printf("ERROR: line %d: bs.nextWord_random_substring(%lu, %u) on %lu failed\n", __LINE__, start, end, b);
+        EXPECT_EQ(actual, expected);
+      } else if (verbose) {
+        printf("OK   : line %d: bs.nextWord_random_substring(%lu, %u) on %lu: actual: %lu, expected: %lu\n",
+          __LINE__, start, end, b, actual, expected);
+      }
+    }
+  }
+}
