@@ -38,7 +38,7 @@ void misc_test_bitstring_nextword(unsigned int runNumber, Benchmark::Stats& stat
   if (stats.config().d_runs-runNumber<=stats.config().d_recordRuns) {
     char label[128];
     snprintf(label, sizeof(label), "bitstring nextword run %u", runNumber);
-    stats.addResultSet(label, 63*63, startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
+    stats.addResultSet(label, 2080, startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
   }
 }
 
@@ -55,7 +55,7 @@ void misc_test_bitstring_opt_nextword(unsigned int runNumber, Benchmark::Stats& 
 
   for (unsigned int i=0; i<=63; ++i) {
     for (unsigned int j=i; j<=63; ++j) {
-      auto word = bs.nextWord(i,j);
+      auto word = bs.optNextWord(i,j);
       Intel::DoNotOptimize(word);
     }
   }
@@ -74,8 +74,8 @@ void misc_test_bitstring_opt_nextword(unsigned int runNumber, Benchmark::Stats& 
 
   if (stats.config().d_runs-runNumber<=stats.config().d_recordRuns) {
     char label[128];
-    snprintf(label, sizeof(label), "bitstring nextword run %u", runNumber);
-    stats.addResultSet(label, 63*63, startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
+    snprintf(label, sizeof(label), "bitstring OPT nextword run %u", runNumber);
+    stats.addResultSet(label, 2080, startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
   }
 }
 
