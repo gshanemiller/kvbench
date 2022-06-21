@@ -25,11 +25,11 @@ static bool testBitStringCallCounters(unsigned int expectedByteSuffixCalls,
 
   EXPECT_EQ(expectedByteSuffixCalls, Benchmark::HTrie::BitStringStats::d_byteSuffixCalls);
   EXPECT_EQ(expectedBytePrefixCalls, Benchmark::HTrie::BitStringStats::d_bytePrefixCalls);
-  EXPECT_EQ(expectedSubstringCalls, Benchmark::HTrie::BitStringStats::d_byteSubstringCalls);
+  EXPECT_EQ(expectedByteSubstringCalls, Benchmark::HTrie::BitStringStats::d_byteSubstringCalls);
 
   return (expectedByteSuffixCalls==Benchmark::HTrie::BitStringStats::d_byteSuffixCalls &&
       expectedBytePrefixCalls==Benchmark::HTrie::BitStringStats::d_bytePrefixCalls &&
-      expectedSubstringCalls==Benchmark::HTrie::BitStringStats::d_byteSubstringCalls);
+      expectedByteSubstringCalls==Benchmark::HTrie::BitStringStats::d_byteSubstringCalls);
 }
 
 static void randomSpan(const Benchmark::HTrie::htrie_uint64 max) {
@@ -66,7 +66,6 @@ static void randomSpan(const Benchmark::HTrie::htrie_uint64 max) {
       }
     }
   }
-  printf("randomSpan: max %lu tests %d done\n", max, RANDOM_TESTS);
 }
 
 // Determine if 'byteSuffix' is able to extract all bits from specified bit i
@@ -423,7 +422,7 @@ TEST(bitstring, nextWord_bb_4byteend) {
   for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
     const Benchmark::HTrie::htrie_uint64 expected(b);
-    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)b);
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint32)b);
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
@@ -443,7 +442,7 @@ TEST(bitstring, nextWord_bb_4byteend) {
   for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
     const Benchmark::HTrie::htrie_uint64 expected(b<<8);
-    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)(b<<8));
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint32)(b<<8));
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
@@ -463,7 +462,7 @@ TEST(bitstring, nextWord_bb_4byteend) {
   for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
     const Benchmark::HTrie::htrie_uint64 expected(b<<16);
-    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)(b<<16));
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint32)(b<<16));
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
@@ -483,7 +482,7 @@ TEST(bitstring, nextWord_bb_4byteend) {
   for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
     const Benchmark::HTrie::htrie_uint64 expected(b<<24);
-    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)(b<<24));
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint32)(b<<24));
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
