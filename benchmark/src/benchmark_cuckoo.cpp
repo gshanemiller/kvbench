@@ -60,7 +60,7 @@ static int cuckoo_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats&
   pmu.start();
 
   // Benchmark running: do insert
-  while (0==scanner.next(word)) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     map.insert(word, false);
   }
 
@@ -100,7 +100,7 @@ static int cuckoo_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& s
 
   // Benchmark running: do find
   bool value;
-  while (0==scanner.next(word)) {
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     value = map.find(word);
     Intel::DoNotOptimize(value);
   }

@@ -1,50 +1,16 @@
-#include <benchmark_hot.h>
+#include <benchmark_art.h>
 #include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
 #include <intel_skylake_pmu.h>
 
-#include <mimalloc.h>
-
 #pragma GCC diagnostic push                                                                                             
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#pragma GCC diagnostic ignored "-Wall"
-#pragma GCC diagnostic ignored "-Wextra"
-#pragma GCC diagnostic ignored "-Wpedantic"
-#include <HOTSingleThreaded.hpp>
-#include <IdentityKeyExtractor.hpp>
+#pragma GCC diagnostic ignored "-Wpedantic"                                                                             
+#include <art.h>
 #pragma GCC diagnostic pop 
 
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | Typedef                                    | Comment                                                                    |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-// | HOTTrie                                    | trie key=Slice<char> std::allocator                                        |
-// +--------------------------------------------+----------------------------------------------------------------------------+
-
-/*
-template<typename ValueType>
-struct SliceExtractor {
-  typedef ValueType KeyType;
-  inline KeyType operator()(ValueType const &value) const {
-    return value;
-  }
-};
-
-namespace idx {
-namespace contenthelpers {
-
-template<> inline size_t getKeyLength<const Word *>(const Word* const & key) {
-  return std::min<size_t>(key->d_size, MAX_STRING_KEY_LENGTH);
-}
-
-} // contenthelpers
-} // idx
-*/
-
-typedef hot::singlethreaded::HOTSingleThreaded<const char*, idx::contenthelpers::IdentityKeyExtractor> HOTTrie;
-
 template<typename T>
-static int hot_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
+static int art_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
 
   Benchmark::TextScan scanner(file);
@@ -56,10 +22,10 @@ static int hot_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
   pmu.reset();
   timespec_get(&startTime, TIME_UTC);
   pmu.start();
-
+  
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    map.insert(word.data());
+    art_insert(&map, (unsigned char*)word.data(), word.size()-1, (void*)word.data()); 
   }
 
   // Benchmark done: take stats
@@ -83,12 +49,14 @@ static int hot_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
 }
 
 template<typename T>
-static int hot_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
+static int art_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
 
   Benchmark::TextScan scanner(file);
 
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
+
+  unsigned int errors(0);
 
   timespec startTime;
   timespec endTime;
@@ -98,11 +66,12 @@ static int hot_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
 
   // Benchmark running: do find
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    auto iter = map.find(word.data());
-    Intel::DoNotOptimize(iter);
+    auto val = art_search(&map, (unsigned char*)word.data(), word.size()-1);
+    if (val==0) {
+      ++errors;
+    }
   }
 
-  // Benchmark done: take stats
   u_int64_t f0 = pmu.fixedCounterValue(0);
   u_int64_t f1 = pmu.fixedCounterValue(1);
   u_int64_t f2 = pmu.fixedCounterValue(2);
@@ -114,6 +83,11 @@ static int hot_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
 
   timespec_get(&endTime, TIME_UTC);
 
+  if (errors) {
+    printf("searchErrors: %u\n", errors);
+  }
+
+  // Benchmark done: take stats
   if (stats.config().d_runs-runNumber<=stats.config().d_recordRuns) {
     char label[128];
     snprintf(label, sizeof(label), "find run %u", runNumber);
@@ -122,7 +96,14 @@ static int hot_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
   return 0;
 }
 
-int Benchmark::HOT::start() {
+extern "C" {
+int art_test_text_iter(void *data, const unsigned char *key, unsigned int key_len, void *value) {
+  printf("key: %p, key_len: %u, key: '%s', value: %p\n", key, key_len, (const char*)(key), value);
+  return 0;
+}
+}
+
+int Benchmark::ART::start() {
   int rc(0);
 
   if (d_stats.config().d_format == "bin-text-kv") {
@@ -140,16 +121,19 @@ int Benchmark::HOT::start() {
         if (d_stats.config().d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
-        HOTTrie hotTrie;
-        hot_test_text_insert(i, hotTrie, d_stats, d_file);
-        hot_test_text_find(i, hotTrie, d_stats, d_file);
+        art_tree artTrie;
+        art_tree_init(&artTrie);
+        art_test_text_insert(i, artTrie, d_stats, d_file);
+        art_test_text_find(i, artTrie, d_stats, d_file);
+        // art_iter(&artTrie, art_test_text_iter, 0);
+        art_tree_destroy(&artTrie);
       }
     }
   }
   return rc;
 }
 
-void Benchmark::HOT::report() {
+void Benchmark::ART::report() {
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
   d_stats.print(pmu);
 }

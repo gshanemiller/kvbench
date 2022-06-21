@@ -1,41 +1,37 @@
 #pragma once
 
-// PURPOSE: Hold reference to an unowned memory array for read-only
+// PURPOSE: Represent an array of elements of type T
+//
+// CLASSES:
+//  Benchmark::Slice: Hold a pointer with size to an array of type 'T*'.
 
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
 
-#include <string>
-
-#include <trie/benchmark_htrie_bititerator.h>
-
 namespace Benchmark {
 
 template<typename T>
 class Slice {
   // DATA
-  const unsigned int d_size; // size of string including 0 terminator
-  const T           *d_data; // pointer to array of type 'T*' (not owned)
+  unsigned int  d_size;           // size of string including 0 terminator
+  T            *d_data;           // pointer to array of type 'T*'
 
 public:
   // CREATORS
-  Slice() = delete;
-    // Default constructor not provided
+  Slice();
+    // Create empty slice
 
-  explicit Slice(unsigned int sz, const T *data);
+  explicit Slice(unsigned int sz, T *data);
     // Create Slice from specified 'data' of specified 'sz'. Behavior is defined provided 'data' non-zero, and the
-    // memory range '[d_data, d_data+d_size)' is valid, contiguous over the lifetime of this Slice.
-
-  explicit Slice(const std::string& data);
-    // Create Slice from specified 'data'. 'data' lifetime must equal or exceed this Slice.
+    // memory range '[d_data, d_data+d_size)' is valid, contiguous.
 
   Slice(const Slice& other) = default;
     // Copy constructor
 
   ~Slice() = default;
-    // Destroy this object
+    // Destroy this object. 'd_data' not freed.
 
   // ACCESSORS
   unsigned int size() const;
@@ -44,23 +40,22 @@ public:
   const T *data() const;
     // Return 'data' attribute
 
-  HTrie::BitIterator iterator() const;
-    // Return an iterator on this object initialized to start of memory
-
   // MANIPULATORS
-  void reset(unsigned int sz, const T *data);
-    // Reset 'this' to hold a pointer to memory at specified 'data' of specific 'sz'. Behavior is defined provided
-    // 'data' non-zero, and the memory range '[d_data, d_data+d_size)' is valid, contiguous. 
+  unsigned int size();
+    // Return 'size' attribute
 
-  HTrie::BitIterator iterator();
-    // Return an iterator on this object initialized to start of memory
+  T *data();
+    // Return 'data' attribute
+
+  void reset(unsigned int sz, T* data);
+    // Reset 'this' to hold a pointer to memory at specified 'data' of specific 'sz'
 
   Slice& operator=(const Slice& rhs) = default;
     // Assignment operator
 
   // ASPECTS
   void print() const;
-    // Pretty-print this object to stdout followed by newline.
+    // Pretty-print this to stdout followed by newline.
 };
 
 // FREE OPERATORS
@@ -68,25 +63,22 @@ template<class T>
 bool operator==(const Slice<T>& lhs, const Slice<T>& rhs);
 
 // INLINE DEFINITIONS
-// CREATORS
 template<class T>
 inline
-Slice<T>::Slice(unsigned int sz, const T *data)
+Slice<T>::Slice()
+: d_size(0)
+, d_data(0)
+{
+}
+
+template<class T>
+inline
+Slice<T>::Slice(unsigned int sz, T *data)
 : d_size(sz)
 , d_data(data)
 {
   assert(sz>0);
   assert(data);
-}
-
-template<class T>
-inline
-Slice<T>::Slice(const std::string &data)
-: d_size(data.length())
-, d_data(reinterpret_cast<const T *>(data.c_str()))
-{
-  assert(d_size>0);
-  assert(d_data);
 }
 
 // ACCESSORS
@@ -102,26 +94,24 @@ const T *Slice<T>::data() const {
   return d_data;
 }
 
-template<class T>
-inline
-HTrie::BitIterator Slice<T>::iterator() const {
-  return HTrie::BitIterator(d_size<<3, d_data);
-}
-
 // MANIPULATORS
 template<class T>
 inline
-void Slice<T>::reset(unsigned int sz, const T *data) {
-  assert(sz>0);
-  assert(data);
-  d_size = sz;
-  d_data = data;
+unsigned int Slice<T>::size() {
+  return d_size;
 }
 
 template<class T>
 inline
-HTrie::BitIterator Slice<T>::iterator() {
-  return HTrie::BitIterator(d_size<<3, d_data);
+T *Slice<T>::data() {
+  return d_data;
+}
+
+template<class T>
+inline
+void Slice<T>::reset(unsigned int sz, T* data) {
+  d_size = sz;
+  d_data = data;
 }
 
 // ASPECTS
@@ -150,5 +140,13 @@ inline
 bool operator==(const Slice<T>& lhs, const Slice<T>& rhs) {
   return (lhs.size()==rhs.size()) ? 0==memcmp(lhs.data(), rhs.data(), lhs.size()) : false;
 }
+
+// KeyEqual helper for Hashing functions
+template<class T>
+struct SliceEqual {
+  bool operator()(const T &lhs, const T &rhs) const {
+    return (lhs.size()==rhs.size()) ? 0==memcmp(lhs.data(), rhs.data(), lhs.size()) : false;
+  }
+};
 
 } // namespace Benchmark

@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <assert.h>
+#include <string.h>
 #include <initializer_list>
 
 namespace Benchmark {

@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #include <sys/types.h>
+#include <sched.h>
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -371,7 +372,7 @@ PMU::~PMU() {
 // ACCESSORS
 inline
 int PMU::core() const {
-  return 0;
+  return sched_getcpu();
 }
 
 inline
@@ -625,7 +626,7 @@ int PMU::wrmsr(u_int32_t reg, u_int64_t data) {
   // printf("wrmsr reg 0x%x val 0x%lx\n", reg, data);
 
   if (pwrite(d_fid, &data, sizeof data, reg) != sizeof data) {
-    fprintf(stderr, "Error: MSR write error on register 0x%x value 0x%llx: %s\n", reg, data, strerror(errno));
+    fprintf(stderr, "Error: MSR write error on register 0x%x value 0x%lx: %s\n", reg, data, strerror(errno));
     return errno;
   }
 
@@ -651,6 +652,17 @@ int PMU::open(int cpu) {
 
 inline
 int PMU::pinToHWCore() {
+  int cpu = sched_getcpu();                                                                                             
+  cpu_set_t mask;                                                                                                       
+  CPU_ZERO(&mask);                                                                                                      
+  CPU_SET(cpu, &mask);                                                                                                  
+                                                                                                                        
+  // Pin caller's (current) thread to cpu                                                                            
+  if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1) {                                                           
+      fprintf(stderr, "Error: could not pin thread to core %d: %s\n", cpu, strerror(errno));                                                 
+      return 1;                                                                                                         
+  } 
+
   return 0;
 }
 
