@@ -541,7 +541,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
 }
 
 template<htrie_size N>
-HTRIE_ALWAYS_INLINE
+inline
 htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
   assert(start<d_size);
   assert(end<d_size);
@@ -564,9 +564,9 @@ htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
 
   if (startOnByte) {
       if (moveBytes) {
-        return benchmark_htrie_byteMove[moveBytes>>3](d_data+startByte);
+        return benchmark_htrie_byteMove[(end-start+1)>>3](d_data+startByte);
       } else {
-        return benchmark_htrie_byteMovePrefix[((end-start)>>3)&7](d_data+startByte, end&7);
+        return benchmark_htrie_byteMovePrefix[((end-start)>>3)&7](d_data+startByte, (end&7)+1);
       }
   }
 
@@ -589,6 +589,8 @@ htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
     return ret | bytePrefix(start+shift, end, 8-(start&7));
   }
 
+  // Advance start to account for 'byteSuffix' work
+  start += shift;
   // Must be on a byte boundary here
   assert((start&7)==0);
 
@@ -599,7 +601,7 @@ htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
   if ((left&7)==0) {
     return ret | (benchmark_htrie_byteMove[left>>3](d_data+(start>>3)) << shift);
   } else {
-    return ret | (benchmark_htrie_byteMovePrefix[((left-1)>>3)&7](d_data+(start>>3), end&7) << shift);
+    return ret | (benchmark_htrie_byteMovePrefix[((left-1)>>3)&7](d_data+(start>>3), (end&7)+1) << shift);
   }
 }
 

@@ -56,6 +56,14 @@ static void randomSpan(const Benchmark::HTrie::htrie_word max) {
         printf("OK   : line %d: bs.nextWord_random_substring(%lu, %u) on %lu: actual: %lu, expected: %lu\n",
           __LINE__, start, end, b, actual, expected);
       }
+      const Benchmark::HTrie::htrie_word optActual = bs.optNextWord(start, end);
+      if (optActual!=expected) {
+        printf("ERROR: line %d: bs.nextWord_random_substring_opt(%lu, %u) on %lu failed\n", __LINE__, start, end, b);
+        EXPECT_EQ(actual, expected);
+      } else if (verbose) {
+        printf("OK   : line %d: bs.nextWord_random_substring_opt(%lu, %u) on %lu: actual: %lu, expected: %lu\n",
+          __LINE__, start, end, b, actual, expected);
+      }
     }
   }
   printf("randomSpan: max %lu tests %d done\n", max, RANDOM_TESTS);
@@ -490,6 +498,14 @@ TEST(bitstring, nextWord_bb_4byteend) {
         __LINE__, start, end, b, actual, expected);
     }
   }
+}
+
+TEST(bitstring, nextword_debug) {
+  const Benchmark::HTrie::htrie_word b = 4728986788662773602UL;
+  Benchmark::HTrie::BitString<8> bs(b);
+  const Benchmark::HTrie::htrie_word start = 8;
+  const Benchmark::HTrie::htrie_index end = 63;
+  const Benchmark::HTrie::htrie_word actual = bs.optNextWord(start, end);
 }
 
 TEST(bitstring, nextWord_random) {

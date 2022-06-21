@@ -16,6 +16,7 @@ Benchmark::HTrie::htrie_word byteMove7(const Benchmark::HTrie::htrie_byte* start
   retHelper.uint[0] = *reinterpret_cast<const Benchmark::HTrie::htrie_uint*>(startByte);
   retHelper.byte[4] = startByte[4];
   retHelper.byte[5] = startByte[5];
+  retHelper.byte[6] = startByte[6];
   return retHelper.word;
 }
 
