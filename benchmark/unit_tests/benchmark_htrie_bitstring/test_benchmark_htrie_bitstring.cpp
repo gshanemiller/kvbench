@@ -17,37 +17,37 @@ static void seedRng() {
 static void resetBitStringCallCounters() {
   Benchmark::HTrie::BitStringStats::d_byteSuffixCalls = 0;
   Benchmark::HTrie::BitStringStats::d_bytePrefixCalls = 0;
-  Benchmark::HTrie::BitStringStats::d_substringCalls = 0;
+  Benchmark::HTrie::BitStringStats::d_byteSubstringCalls = 0;
 }
 
 static bool testBitStringCallCounters(unsigned int expectedByteSuffixCalls,
-    unsigned int expectedBytePrefixCalls, unsigned int expectedSubstringCalls) {
+    unsigned int expectedBytePrefixCalls, unsigned int expectedByteSubstringCalls) {
 
   EXPECT_EQ(expectedByteSuffixCalls, Benchmark::HTrie::BitStringStats::d_byteSuffixCalls);
   EXPECT_EQ(expectedBytePrefixCalls, Benchmark::HTrie::BitStringStats::d_bytePrefixCalls);
-  EXPECT_EQ(expectedSubstringCalls, Benchmark::HTrie::BitStringStats::d_substringCalls);
+  EXPECT_EQ(expectedSubstringCalls, Benchmark::HTrie::BitStringStats::d_byteSubstringCalls);
 
   return (expectedByteSuffixCalls==Benchmark::HTrie::BitStringStats::d_byteSuffixCalls &&
       expectedBytePrefixCalls==Benchmark::HTrie::BitStringStats::d_bytePrefixCalls &&
-      expectedSubstringCalls==Benchmark::HTrie::BitStringStats::d_substringCalls);
+      expectedSubstringCalls==Benchmark::HTrie::BitStringStats::d_byteSubstringCalls);
 }
 
-static void randomSpan(const Benchmark::HTrie::htrie_word max) {
+static void randomSpan(const Benchmark::HTrie::htrie_uint64 max) {
   seedRng();
   std::uniform_int_distribution<uint64_t> distribution(0, 0xffffffffffffffff);
   auto dice = bind(distribution, rng);
   for (unsigned i=0; i<RANDOM_TESTS; ++i) {
-    const Benchmark::HTrie::htrie_word b = dice();
+    const Benchmark::HTrie::htrie_uint64 b = dice();
     Benchmark::HTrie::BitString<8> bs(b);
-    const Benchmark::HTrie::htrie_word start = dice() & 63;
-    for (Benchmark::HTrie::htrie_word delta = 0; (delta<max) && (start+delta)<=63; ++delta) {
+    const Benchmark::HTrie::htrie_uint64 start = dice() & 63;
+    for (Benchmark::HTrie::htrie_uint64 delta = 0; (delta<max) && (start+delta)<=63; ++delta) {
       const Benchmark::HTrie::htrie_index end = start+delta;
-      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
-      Benchmark::HTrie::htrie_word tmp(0);
-      for (Benchmark::HTrie::htrie_word t=start; t<=end; ++t) {
+      const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
+      Benchmark::HTrie::htrie_uint64 tmp(0);
+      for (Benchmark::HTrie::htrie_uint64 t=start; t<=end; ++t) {
         tmp |= (b & (1ULL<<t));
       }
-      const Benchmark::HTrie::htrie_word expected = (tmp >> start);
+      const Benchmark::HTrie::htrie_uint64 expected = (tmp >> start);
       // Inspect result
       if (actual!=expected) {
         printf("ERROR: line %d: bs.nextWord_random_substring(%lu, %u) on %lu failed\n", __LINE__, start, end, b);
@@ -56,7 +56,7 @@ static void randomSpan(const Benchmark::HTrie::htrie_word max) {
         printf("OK   : line %d: bs.nextWord_random_substring(%lu, %u) on %lu: actual: %lu, expected: %lu\n",
           __LINE__, start, end, b, actual, expected);
       }
-      const Benchmark::HTrie::htrie_word optActual = bs.optNextWord(start, end);
+      const Benchmark::HTrie::htrie_uint64 optActual = bs.optNextWord(start, end);
       if (optActual!=expected) {
         printf("ERROR: line %d: bs.nextWord_random_substring_opt(%lu, %u) on %lu failed\n", __LINE__, start, end, b);
         EXPECT_EQ(actual, expected);
@@ -79,8 +79,8 @@ TEST(bitstring, byteSuffix) {
       const Benchmark::HTrie::htrie_byte byte = (Benchmark::HTrie::htrie_byte)(b);
       Benchmark::HTrie::BitString<1> bs(byte);
       // Get all bits from i onwards in i's byte
-      const Benchmark::HTrie::htrie_word actual = bs.byteSuffix(i);
-      const Benchmark::HTrie::htrie_word expected = (b&254)>>i;
+      const Benchmark::HTrie::htrie_uint64 actual = bs.byteSuffix(i);
+      const Benchmark::HTrie::htrie_uint64 expected = (b&254)>>i;
       // Inspect result
       if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
         printf("ERROR: line %d: bs.byteSuffix(%u) on %u failed\n", __LINE__, i, b);
@@ -108,15 +108,15 @@ TEST(bitstring, bytePrefix) {
       // at most <(63-7)=56 bits assuming sizeof(htrie_word)=8 bytes or 64 bits
       for (unsigned shift=0; shift<(63-7); shift++) {
         resetBitStringCallCounters();
-        const Benchmark::HTrie::htrie_word actual = bs.bytePrefix(0, end, shift);
+        const Benchmark::HTrie::htrie_uint64 actual = bs.bytePrefix(0, end, shift);
         // Construct a mask with loop unlike bytePrefix
-        Benchmark::HTrie::htrie_word mask(0);
+        Benchmark::HTrie::htrie_uint64 mask(0);
         for (unsigned t=0; t<=end; ++t) {
           mask |= (1<<t);
         }
         // bytePrefix never grabs last bit so make sure expected cannot have it
         EXPECT_EQ(unsigned(0), mask&128);
-        const Benchmark::HTrie::htrie_word expected = (byte & mask) << shift;
+        const Benchmark::HTrie::htrie_uint64 expected = (byte & mask) << shift;
         // Inspect result
         if (actual!=expected || !testBitStringCallCounters(0, 1, 0)) {
           printf("ERROR: line %d: bs.bytePrefix(%u, %u, %u) on %u failed\n", __LINE__, 0, end, shift, b);
@@ -143,21 +143,21 @@ TEST(bitstring, substring) {
         const Benchmark::HTrie::htrie_byte byte = (Benchmark::HTrie::htrie_byte)(b);
         Benchmark::HTrie::BitString<1> bs(byte);
         // Get bits in [start, end]
-        const Benchmark::HTrie::htrie_word actual = bs.substring(start, end);
+        const Benchmark::HTrie::htrie_uint64 actual = bs.byteSubstring(start, end);
         // Unlike 'substring' construct expected result with loops
-        Benchmark::HTrie::htrie_word tmp(0);
+        Benchmark::HTrie::htrie_uint64 tmp(0);
         for (unsigned t=0; t<7; ++t) {
           if (t>=start && t<=end) {
             tmp |= ((1<<t)&byte); // copy bit 't' into tmp
           }
         }
-        const Benchmark::HTrie::htrie_word expected(tmp >> start);
+        const Benchmark::HTrie::htrie_uint64 expected(tmp >> start);
         // Inspect result
         if (actual!=expected || !testBitStringCallCounters(0, 0, 1)) {
-          printf("ERROR: line %d: bs.substring(%u, %u) on %u failed\n", __LINE__, start, end, b);
+          printf("ERROR: line %d: bs.byteSubstring(%u, %u) on %u failed\n", __LINE__, start, end, b);
           EXPECT_EQ(actual, expected);
         } else if (verbose) {
-          printf("OK   : line %d: bs.substring(%u, %u) on %u: actual: %lu, expected: %lu\n",
+          printf("OK   : line %d: bs.byteSubstring(%u, %u) on %u: actual: %lu, expected: %lu\n",
               __LINE__, start, end, b, actual, expected);
         }
       }
@@ -172,15 +172,15 @@ TEST(bitstring, nextWord_bytePrefix) {
       const Benchmark::HTrie::htrie_byte byte = (Benchmark::HTrie::htrie_byte)(b);
       Benchmark::HTrie::BitString<1> bs(byte);
       resetBitStringCallCounters();
-      const Benchmark::HTrie::htrie_word actual = bs.nextWord(0, end);
+      const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(0, end);
       // Construct a mask with loop unlike bytePrefix
-      Benchmark::HTrie::htrie_word mask(0);
+      Benchmark::HTrie::htrie_uint64 mask(0);
       for (unsigned t=0; t<=end; ++t) {
         mask |= (1<<t);
       }
       // bytePrefix never grabs last bit so make sure expected cannot have it
       EXPECT_EQ(unsigned(0), mask&128);
-      const Benchmark::HTrie::htrie_word expected = (byte & mask);
+      const Benchmark::HTrie::htrie_uint64 expected = (byte & mask);
       // Inspect result
       if (actual!=expected || !testBitStringCallCounters(0, 1, 0)) {
         printf("ERROR: line %d: bs.nextWord_bytePrefix(%u, %u) on %u failed\n", __LINE__, 0, end, b);
@@ -202,15 +202,15 @@ TEST(bitstring, nextWord_substring) {
         const Benchmark::HTrie::htrie_byte byte = (Benchmark::HTrie::htrie_byte)(b);
         Benchmark::HTrie::BitString<1> bs(byte);
         // Get bits in [start, end]
-        const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+        const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
         // Unlike 'substring' construct expected result with loops
-        Benchmark::HTrie::htrie_word tmp(0);
+        Benchmark::HTrie::htrie_uint64 tmp(0);
         for (unsigned t=0; t<7; ++t) {
           if (t>=start && t<=end) {
             tmp |= ((1<<t)&byte); // copy bit 't' into tmp
           }
         }
-        const Benchmark::HTrie::htrie_word expected(tmp >> start);
+        const Benchmark::HTrie::htrie_uint64 expected(tmp >> start);
         // Inspect result
         if (actual!=expected || !testBitStringCallCounters(0, 0, 1)) {
           printf("ERROR: line %d: bs.nextWord_substring(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -237,8 +237,8 @@ TEST(bitstring, nextWord_bb_1byteend) {
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 7;
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
-    const Benchmark::HTrie::htrie_word expected = Benchmark::HTrie::htrie_word(b);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 expected = Benchmark::HTrie::htrie_uint64(b);
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -261,22 +261,22 @@ TEST(bitstring, nextWord_2bytesubstring) {
     for (unsigned start=1; start<=7; ++start) {           // w.r.t. to byte 0
       for (unsigned endDelta=0; endDelta<7; ++endDelta) { // w.r.t. to byte 1 
         resetBitStringCallCounters();
-        const Benchmark::HTrie::htrie_sword sword = (Benchmark::HTrie::htrie_sword)(b);
+        const Benchmark::HTrie::htrie_uint16 sword = (Benchmark::HTrie::htrie_uint16)(b);
         Benchmark::HTrie::BitString<2> bs(sword);
         const Benchmark::HTrie::htrie_index end = 8+endDelta; 
         // Get bits in [start, end]
-        const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+        const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
         // Mask for byte-0 (suffix part)
-        Benchmark::HTrie::htrie_word loMask(0);
+        Benchmark::HTrie::htrie_uint64 loMask(0);
         for (unsigned t=start; t<=7; ++t) {
           loMask |= (1<<t);
         }
         // Mask for byte-1 (prefix part)
-        Benchmark::HTrie::htrie_word hiMask(0);
+        Benchmark::HTrie::htrie_uint64 hiMask(0);
         for (unsigned t=0; t<=endDelta; ++t) {
           hiMask |= (1<<t);
         }
-        const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
+        const Benchmark::HTrie::htrie_uint64 expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
         // Inspect result
         if (actual!=expected || !testBitStringCallCounters(1, 1, 0)) {
           printf("ERROR: line %d: bs.nextWord_2bytesubstring(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -299,18 +299,18 @@ TEST(bitstring, nextWord_nbb_2byteend) {
   for (unsigned b=0; b<65536; ++b) {
     for (unsigned start=1; start<=7; ++start) {           // w.r.t. to byte 0
       resetBitStringCallCounters();
-      const Benchmark::HTrie::htrie_sword sword = (Benchmark::HTrie::htrie_sword)(b);
+      const Benchmark::HTrie::htrie_uint16 sword = (Benchmark::HTrie::htrie_uint16)(b);
       Benchmark::HTrie::BitString<2> bs(sword);
       const Benchmark::HTrie::htrie_index end = 15;
       // Get bits in [start, end]
-      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+      const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
       // Mask for byte-0 (suffix part)
-      Benchmark::HTrie::htrie_word loMask(0);
+      Benchmark::HTrie::htrie_uint64 loMask(0);
       for (unsigned t=start; t<=7; ++t) {
         loMask |= (1<<t);
       }
-      const Benchmark::HTrie::htrie_word hiMask = 255;
-      const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
+      const Benchmark::HTrie::htrie_uint64 hiMask = 255;
+      const Benchmark::HTrie::htrie_uint64 expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
       // Inspect result
       if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
         printf("ERROR: line %d: bs.nextWord_nbb_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -331,19 +331,19 @@ TEST(bitstring, nextWord_nbb_2byteend) {
 TEST(bitstring, nextWord_bb_2byteend) {
   for (unsigned b=0; b<65536; ++b) {
     resetBitStringCallCounters();
-    const Benchmark::HTrie::htrie_sword sword = (Benchmark::HTrie::htrie_sword)(b);
+    const Benchmark::HTrie::htrie_uint16 sword = (Benchmark::HTrie::htrie_uint16)(b);
     Benchmark::HTrie::BitString<2> bs(sword);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 15;
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
     // Mask for byte-0 (suffix part)
-    Benchmark::HTrie::htrie_word loMask(0);
+    Benchmark::HTrie::htrie_uint64 loMask(0);
     for (unsigned t=start; t<=7; ++t) {
       loMask |= (1<<t);
     }
-    const Benchmark::HTrie::htrie_word hiMask = 255;
-    const Benchmark::HTrie::htrie_word expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
+    const Benchmark::HTrie::htrie_uint64 hiMask = 255;
+    const Benchmark::HTrie::htrie_uint64 expected = ((sword&loMask) | (sword&(hiMask<<8))) >> start;
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_bb_2byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -370,8 +370,8 @@ TEST(bitstring, nextWord_bb_3byteend) {
     const Benchmark::HTrie::htrie_index end = 23;
     resetBitStringCallCounters();
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
-    const Benchmark::HTrie::htrie_word expected = Benchmark::HTrie::htrie_word(b);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 expected = Benchmark::HTrie::htrie_uint64(b);
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_bb_3byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -398,8 +398,8 @@ TEST(bitstring, nextWord_nbb_3byteend) {
     for (unsigned start=1; start<7; ++start) {
       resetBitStringCallCounters();
       // Get bits in [start, end]
-      const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
-      const Benchmark::HTrie::htrie_word expected = Benchmark::HTrie::htrie_word(b>>start);
+      const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
+      const Benchmark::HTrie::htrie_uint64 expected = Benchmark::HTrie::htrie_uint64(b>>start);
       // Inspect result
       if (actual!=expected || !testBitStringCallCounters(1, 0, 0)) {
         printf("ERROR: line %d: bs.nextWord_nbb_3byteend(%u, %u) on %u failed\n", __LINE__, start, end, b);
@@ -420,15 +420,15 @@ TEST(bitstring, nextWord_nbb_3byteend) {
 // correctness.
 TEST(bitstring, nextWord_bb_4byteend) {
   // Test all values for byte 0
-  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+  for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
-    const Benchmark::HTrie::htrie_word expected(b);
-    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)b);
+    const Benchmark::HTrie::htrie_uint64 expected(b);
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)b);
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
@@ -440,15 +440,15 @@ TEST(bitstring, nextWord_bb_4byteend) {
   }
 
   // Test all values for byte1
-  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+  for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
-    const Benchmark::HTrie::htrie_word expected(b<<8);
-    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)(b<<8));
+    const Benchmark::HTrie::htrie_uint64 expected(b<<8);
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)(b<<8));
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
@@ -460,15 +460,15 @@ TEST(bitstring, nextWord_bb_4byteend) {
   }
 
   // Test all values for byte2
-  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+  for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
-    const Benchmark::HTrie::htrie_word expected(b<<16);
-    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)(b<<16));
+    const Benchmark::HTrie::htrie_uint64 expected(b<<16);
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)(b<<16));
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
@@ -480,15 +480,15 @@ TEST(bitstring, nextWord_bb_4byteend) {
   }
 
   // Test all values for byte3
-  for (Benchmark::HTrie::htrie_word b=0; b<=0xff; ++b) {
+  for (Benchmark::HTrie::htrie_uint64 b=0; b<=0xff; ++b) {
     resetBitStringCallCounters();
-    const Benchmark::HTrie::htrie_word expected(b<<24);
-    const Benchmark::HTrie::htrie_uint val((Benchmark::HTrie::htrie_uint)(b<<24));
+    const Benchmark::HTrie::htrie_uint64 expected(b<<24);
+    const Benchmark::HTrie::htrie_uint32 val((Benchmark::HTrie::htrie_uint)(b<<24));
     Benchmark::HTrie::BitString<4> bs(val);
     const Benchmark::HTrie::htrie_index start = 0;
     const Benchmark::HTrie::htrie_index end = 31;
     // Get bits in [start, end]
-    const Benchmark::HTrie::htrie_word actual = bs.nextWord(start, end);
+    const Benchmark::HTrie::htrie_uint64 actual = bs.nextWord(start, end);
     // Inspect result
     if (actual!=expected || !testBitStringCallCounters(0, 0, 0)) {
       printf("ERROR: line %d: bs.nextWord_bb_4byteend(%u, %u) on %lu failed\n", __LINE__, start, end, b);
@@ -501,23 +501,23 @@ TEST(bitstring, nextWord_bb_4byteend) {
 }
 
 TEST(bitstring, nextword_debug) {
-  const Benchmark::HTrie::htrie_word b = 4728986788662773602UL;
+  const Benchmark::HTrie::htrie_uint64 b = 4728986788662773602UL;
   Benchmark::HTrie::BitString<8> bs(b);
-  const Benchmark::HTrie::htrie_word start = 8;
+  const Benchmark::HTrie::htrie_uint64 start = 8;
   const Benchmark::HTrie::htrie_index end = 63;
-  const Benchmark::HTrie::htrie_word actual = bs.optNextWord(start, end);
+  const Benchmark::HTrie::htrie_uint64 actual = bs.optNextWord(start, end);
 }
 
 TEST(bitstring, nextWord_random) {
   seedrng=false;
-  for (Benchmark::HTrie::htrie_word max=1; max<=64; ++max) {
+  for (Benchmark::HTrie::htrie_uint64 max=1; max<=64; ++max) {
     randomSpan(max);
   }
 }
 
 TEST(bitstring, nextWord_random_seed) {
   seedrng=true;
-  for (Benchmark::HTrie::htrie_word max=1; max<=64; ++max) {
+  for (Benchmark::HTrie::htrie_uint64 max=1; max<=64; ++max) {
     randomSpan(max);
   }
 }

@@ -24,21 +24,21 @@ namespace HTrie     {
 struct BitStringStats {
   static unsigned int d_byteSuffixCalls;
   static unsigned int d_bytePrefixCalls;
-  static unsigned int d_substringCalls;
+  static unsigned int d_byteSubstringCalls;
   static unsigned int d_3byteEndCalls;
   static unsigned int d_2byteEndCalls;
   static unsigned int d_1byteEndCalls;
 };
 
 union ByteMoveHelper {                                                                                                               
-  htrie_word  word;                                                                                                   
-  htrie_uint  uint[2];                                                                                                
-  htrie_sword sword[4];                                                                                               
-  htrie_byte  byte[8];                                                                                                
+  htrie_uint64  word;
+  htrie_uint32  uint[2];
+  htrie_uint16  sword[4];
+  htrie_byte    byte[8];
 };
 
-extern htrie_word (*benchmark_htrie_byteMove[9])(const htrie_byte *);
-extern htrie_word (*benchmark_htrie_byteMovePrefix[8])(const htrie_byte *, htrie_byte endBit);
+extern htrie_uint64 (*benchmark_htrie_byteMove[9])(const htrie_byte *);
+extern htrie_uint64 (*benchmark_htrie_byteMovePrefix[8])(const htrie_byte *, htrie_byte endBit);
 
 template<htrie_size N>
 class BitString {
@@ -65,12 +65,12 @@ public:
     // from 'data+0' one byte at a time until data[i]=0 e.g. the C string zero
     // terminator is seen or the capacity was reached whichever comes first. 
 
-  explicit BitString(htrie_word data);
+  explicit BitString(htrie_uint64 data);
     // Construct a BitString containing a copy of specified 'data'. The
     // behavior is defined provided template parameter N equals sizeof(data).
     // 'size()==capacity()' on return
 
-  explicit BitString(htrie_uint data);
+  explicit BitString(htrie_uint32 data);
     // Construct a BitString containing a copy of specified 'data'. The
     // behavior is defined provided template parameter N equals sizeof(data).
 
@@ -79,7 +79,7 @@ public:
     // behavior is defined provided template parameter N equals sizeof(data).
     // 'size()==capacity()' on return
 
-  explicit BitString(htrie_sword data);
+  explicit BitString(htrie_uint16 data);
     // Construct a BitString containing a copy of specified 'data'. The
     // behavior is defined provided template parameter N equals sizeof(data).
     // 'size()==capacity()' on return
@@ -133,13 +133,13 @@ public:
 
   // PRIVATE MANIPULATORS
 public:
-  htrie_word byteSuffix(htrie_index i);
+  htrie_uint64 byteSuffix(htrie_index i);
     // Return bits from specified 'i' plus all the subsequent bits until the
     // end-of-byte in which 'i' occurs. Behavior is defined provided 'i%8!=0'
     // and 'i<size()'. Bit 'i' is placed into bit-position-0 in result, 'i+1'
     // into bit-position 1 in result, and so on
 
-  htrie_word bytePrefix(htrie_index start, htrie_index end, htrie_size n);
+  htrie_uint64 bytePrefix(htrie_index start, htrie_index end, htrie_size n);
     // Return prefix bits in a byte from bit 'start' on a byte boundary through
     // 'end' inclusive in the same byte. The behavior is defined provided:
     //   * 'start%8==0'
@@ -155,7 +155,7 @@ public:
     // that 'end' cannot refer to bit position 7 (value 128) since the prefix
     // would simplify to the entire byte. Another routine handles that case.
 
-  htrie_word substring(htrie_index start, htrie_index end);
+  htrie_uint64 byteSubstring(htrie_index start, htrie_index end);
     // Return all bits b in '[start, end]' in one byte where 'start, end' does
     // not start on bit-position-0 or end on bit-position-7. Behavior is defined
     // provided:
@@ -168,7 +168,7 @@ public:
     // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
     // position 1 in result, and so on
 
-  htrie_word nextWord(htrie_index start, htrie_index end);
+  htrie_uint64 nextWord(htrie_index start, htrie_index end);
     // Return at most 64 bits '[start,end]'. Behavior is defined provided:
     //   * start<size()
     //   * start<=end
@@ -177,7 +177,7 @@ public:
     // Bit 'start' is placed into bit-position-0 in result, 'start+1' into bit
     // position 1 in result, and so on
 
-  htrie_word optNextWord(htrie_index start, htrie_index end);
+  htrie_uint64 optNextWord(htrie_index start, htrie_index end);
     // Return at most 64 bits '[start,end]'. Behavior is defined provided:
     //   * start<size()
     //   * start<=end
@@ -237,17 +237,17 @@ BitString<N>::BitString(const char *data)
 
 template<htrie_size N>
 inline
-BitString<N>::BitString(htrie_word data) {
-  static_assert(N==sizeof(htrie_word));
-  memcpy(d_data, &data, sizeof(htrie_word));
+BitString<N>::BitString(htrie_uint64 data) {
+  static_assert(N==sizeof(htrie_uint64));
+  memcpy(d_data, &data, sizeof(htrie_uint64));
   d_size = 64;
 }
 
 template<htrie_size N>
 inline
-BitString<N>::BitString(htrie_uint data) {
-  static_assert(N==sizeof(htrie_uint));
-  memcpy(d_data, &data, sizeof(htrie_uint));
+BitString<N>::BitString(htrie_uint32 data) {
+  static_assert(N==sizeof(htrie_uint32));
+  memcpy(d_data, &data, sizeof(htrie_uint32));
   d_size = 32;
 }
 
@@ -261,7 +261,7 @@ BitString<N>::BitString(htrie_byte data) {
 
 template<htrie_size N>
 inline
-BitString<N>::BitString(htrie_sword data) {
+BitString<N>::BitString(htrie_uint16 data) {
   static_assert(N==sizeof(data));
   d_data[0] = data & 0xff;
   d_data[1] = (data & 0xff00)>>8;
@@ -338,7 +338,7 @@ const BitString<N>& BitString<N>::operator=(const BitString<N>& rhs) {
 
 template<htrie_size N>
 HTRIE_ALWAYS_INLINE
-htrie_word BitString<N>::byteSuffix(htrie_index i) {
+htrie_uint64 BitString<N>::byteSuffix(htrie_index i) {
   assert(i&7);
   assert(i<d_size);
 
@@ -351,7 +351,7 @@ htrie_word BitString<N>::byteSuffix(htrie_index i) {
 
 template<htrie_size N>
 HTRIE_ALWAYS_INLINE
-htrie_word BitString<N>::bytePrefix(htrie_index start, htrie_index end, htrie_size n) {
+htrie_uint64 BitString<N>::bytePrefix(htrie_index start, htrie_index end, htrie_size n) {
   assert((start&7)==0);
   assert(start<=end);
   assert(start<d_size);
@@ -364,14 +364,14 @@ htrie_word BitString<N>::bytePrefix(htrie_index start, htrie_index end, htrie_si
   ++BitStringStats::d_bytePrefixCalls;
 #endif
 
-  //                   +-------+          +----------------+         +-----+
-  //                  /  byte   \        /    bits needed   \       / shift |
-  return (htrie_word(d_data[start>>3]) & (~(0xff<<(end-start+1)))) <<    n;
+  //                    +-------+            +----------------+         +-----+
+  //                   /  byte   \          /    bits needed   \       / shift |
+  return (htrie_uint64(d_data[start>>3]) & (~(0xff<<(end-start+1)))) <<    n;
 }
 
 template<htrie_size N>
 HTRIE_ALWAYS_INLINE
-htrie_word BitString<N>::substring(htrie_index start, htrie_index end) {
+htrie_uint64 BitString<N>::byteSubstring(htrie_index start, htrie_index end) {
   assert((start&7)!=0);
   assert(start<=end);
   assert(start<d_size);
@@ -380,7 +380,7 @@ htrie_word BitString<N>::substring(htrie_index start, htrie_index end) {
   assert(end-start<6);
 
 #ifndef NDEBUG
-  ++BitStringStats::d_substringCalls;
+  ++BitStringStats::d_byteSubstringCalls;
 #endif
 
   const htrie_byte shft   =  start&7;
@@ -394,21 +394,15 @@ htrie_word BitString<N>::substring(htrie_index start, htrie_index end) {
 
 template<htrie_size N>
 inline
-htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
+htrie_uint64 BitString<N>::nextWord(htrie_index start, htrie_index end) {
   assert(start<d_size);
   assert(end<d_size);
   assert(start<=end);
   assert(end-start+1<=64);
 
-  htrie_word ret(0);
-  htrie_word shift(0);
-
-  union {
-    htrie_word  word;
-    htrie_uint  uint[2];
-    htrie_sword sword[4];
-    htrie_byte  byte[8];
-  } retHelper;
+  htrie_uint64 ret(0);
+  htrie_uint64 shift(0);
+  ByteMoveHelper retHelper;
 
   htrie_index endByte(end>>3);
   htrie_index startByte(start>>3);
@@ -437,7 +431,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       // Fall into block case aka 'middle' subcase after fixing start
       start += shift;
     } else if ((end&7)!=7) {
-      return substring(start, end);
+      return byteSubstring(start, end);
     } else {
       return byteSuffix(start);
     }
@@ -459,7 +453,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
       assert(ret==0);
       assert(shift==0);
       assert((start>>3)==startByte);
-      return *(reinterpret_cast<htrie_word*>(d_data+startByte));
+      return *(reinterpret_cast<htrie_uint64*>(d_data+startByte));
     }
 
     // Update startByte
@@ -468,30 +462,30 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
     retHelper.word = 0;
 
     if (left==56) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
       retHelper.byte[4] = d_data[startByte+4];
       retHelper.byte[5] = d_data[startByte+5];
       retHelper.byte[6] = d_data[startByte+6];
       ret |= (retHelper.word<<shift);
     } else if (left==48) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
       retHelper.byte[4] = d_data[startByte+4];
       retHelper.byte[5] = d_data[startByte+5];
       ret |= (retHelper.word<<shift);
     } else if (left==40) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
       retHelper.byte[4] = d_data[startByte+4];
       ret |= (retHelper.word<<shift);
     } else if (left==32) {
-      ret |= htrie_word(*reinterpret_cast<htrie_uint*>(d_data+startByte)) << shift;
+      ret |= htrie_uint64(*reinterpret_cast<htrie_uint32*>(d_data+startByte)) << shift;
     } else if (left==24) {
-      retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      retHelper.sword[0] = *reinterpret_cast<htrie_uint16*>(d_data+startByte);
       retHelper.byte[2] = d_data[startByte+2];
       ret |= (retHelper.word<<shift);
     } else if (left==16) {
-      ret |= htrie_word(*reinterpret_cast<htrie_sword*>(d_data+startByte)) << shift;
+      ret |= htrie_uint64(*reinterpret_cast<htrie_uint16*>(d_data+startByte)) << shift;
     } else { // left==8
-      ret |= htrie_word(d_data[startByte]) << shift;
+      ret |= htrie_uint64(d_data[startByte]) << shift;
     }
   } else {
     assert((left>8)&&(left<64));
@@ -503,32 +497,32 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
     retHelper.word = 0;
 
     if (left>56) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      retHelper.sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
+      retHelper.sword[2] = *reinterpret_cast<htrie_uint16*>(d_data+startByte+4);
       retHelper.byte[6] = d_data[startByte+6];
       retHelper.byte[7] = bytePrefix(start+56, end, 0);
       ret |= (retHelper.word<<shift);
     } else if (left>48) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
-      retHelper.sword[2] = *reinterpret_cast<htrie_sword*>(d_data+startByte+4);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
+      retHelper.sword[2] = *reinterpret_cast<htrie_uint16*>(d_data+startByte+4);
       retHelper.byte[6] = bytePrefix(start+48, end, 0);
       ret |= (retHelper.word<<shift);
     } else if (left>40) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
       retHelper.byte[4] = d_data[startByte+4];
       retHelper.byte[5] = bytePrefix(start+40, end, 0);
       ret |= (retHelper.word<<shift);
     } else if (left>32) {
-      retHelper.uint[0] = *reinterpret_cast<htrie_uint*>(d_data+startByte);
+      retHelper.uint[0] = *reinterpret_cast<htrie_uint32*>(d_data+startByte);
       retHelper.byte[4] = bytePrefix(start+32, end, 0);
       ret |= (retHelper.word<<shift);
     } else if (left>24) {
-      retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      retHelper.sword[0] = *reinterpret_cast<htrie_uint16*>(d_data+startByte);
       retHelper.byte[2] = d_data[startByte+2];
       retHelper.byte[3] = bytePrefix(start+24, end, 0);
       ret |= (retHelper.word<<shift);
     } else if (left>16) {
-      retHelper.sword[0] = *reinterpret_cast<htrie_sword*>(d_data+startByte);
+      retHelper.sword[0] = *reinterpret_cast<htrie_uint16*>(d_data+startByte);
       retHelper.byte[2] = bytePrefix(start+16, end, 0);
       ret |= (retHelper.word<<shift);
     } else { // left>8
@@ -543,7 +537,7 @@ htrie_word BitString<N>::nextWord(htrie_index start, htrie_index end) {
 
 template<htrie_size N>
 inline
-htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
+htrie_uint64 BitString<N>::optNextWord(htrie_index start, htrie_index end) {
   assert(start<d_size);
   assert(end<d_size);
   assert(start<=end);
@@ -572,10 +566,10 @@ htrie_word BitString<N>::optNextWord(htrie_index start, htrie_index end) {
   }
 
   // Slurp up bits in suffix of first byte
-  htrie_word ret = byteSuffix(start);
+  htrie_uint64 ret = byteSuffix(start);
 
   // This is the number of bits 'byteSuffix' handled to move up one byte
-  htrie_word shift = (8-(start&7));
+  htrie_uint64 shift = (8-(start&7));
   assert(shift>0 && shift<=8);
 
   // Ensure start+shift still in valid memory
