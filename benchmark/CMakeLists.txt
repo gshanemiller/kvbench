@@ -8,6 +8,7 @@ set(BENCHMARK_SOURCES
   ./src/trie/benchmark_htrie_root.cpp
   ./src/trie/benchmark_htrie_bitstring.cpp
   ./src/trie/benchmark_htrie_bititerator.cpp
+  ./src/trie/benchmark_htrie_node.cpp
 
   ./src/benchmark_config.cpp
   ./src/benchmark_cstr.cpp

@@ -483,6 +483,7 @@ static void* mi_win_virtual_alloc(void* addr, size_t size, size_t try_alignment,
 #endif
 
 #if defined(MI_USE_PTHREADS)
+#error shane
 static pthread_mutex_t mi_heap_grow_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 

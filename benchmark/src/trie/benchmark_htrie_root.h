@@ -1,10 +1,6 @@
 #pragma once
 
-// PURPOSE: Reimplementation of HOT 
-//          HOT: A Height Optimized Trie Index for Main-Memory Database Systems
-//          SIGMOD '18: Proceedings of the 2018 International Conference on Management of DataMay 2018
-//          Pages 521–534https://doi.org/10.1145/3183713.3196896
-//          Author version: https://github.com/speedskater/hot
+// PURPOSE: Trie over byte sequences
 //          
 // CLASSES:
 //          Benchmark::HTrie::Root: Trie and client API
