@@ -34,3 +34,14 @@ make -j 8
 
 echo
 echo Built tasks are located here: ${PWD}
+
+echo "set expandtab" > ~/.vimrc
+echo "set tabstop=2" >> ~/.vimrc
+echo "set shiftwidth=2" >> ~/.vimrc
+echo "set bg=dark" >> ~/.vimrc
+echo "set noautoindent" >> ~/.vimrc
+echo "set nosmartindent" >> ~/.vimrc
+echo "set nocindent" >> ~/.vimrc
+echo "set wrap" >> ~/.vimrc
+echo ":syntax off" >> ~/.vimrc
+echo ":set colorcolumn=120" >> ~/.vimrc
