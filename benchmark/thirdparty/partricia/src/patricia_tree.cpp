@@ -6,129 +6,117 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <array>
 
-#include <patricia_tree.h>
+static MemoryManager memManager;
 
-#include <mimalloc.h>
-
-MemoryManager memManager;
-
-int critbit0_contains(critbit0_tree *t, Benchmark::Slice<unsigned char> key) {
-  const u_int8_t *ubytes = key.data();
-  const u_int16_t ulen = key.size();
+int Patricia::find(Patricia::Tree *t, Benchmark::Key key) {
   u_int8_t *p = t->root;
-
   if (!p) {
-    return 0;
+    return Patricia::Errno::e_NOT_FOUND;
   }
 
+  const u_int8_t *const keyData      = key.data();
+  const u_int16_t       keyDataSize  = key.size();
+
   while (1 & (intptr_t)p) {
-    critbit0_node *q = (void *)(p - 1);
+    Patricia::InternalNode *q = reinterpret_cast<void *>(p-1);
 
     u_int8_t c = 0;
-    if (q->byte < ulen) {
-      c = ubytes[q->byte];
+    if (q->diffIndex < keyDataSize) {
+      c = keyData[q->diffIndex];
     }
-    const int direction = (1 + (q->otherbits | c)) >> 8;
+    const int direction = (1 + (q->diffMask | c)) >> 8;
 
     p = q->child[direction];
   }
 
-  return key.equal(*reintpret_cast<Benchmark::Slice<unsigned char>*>(u));
+  return 0=key.equal(*reintpret_cast<Benchmark::Key*>(p))
+    ? Patricia::Errno::e_OK
+    : Patricia::Errno::e_NOT_FOUND;
 }
 
-int critbit0_insert(critbit0_tree *t, Benchmark::Slice<unsigned char> key) {
+int Patricia::insert(Patricia::Tree *t, Benchmark::Slice<unsigned char> key) {
   const u_int8_t *const newData      = key.data();
   const u_int16_t       newDataSize  = key.size();
 
   u_int8_t *p = t->root;
   if (!p) {
     t->root = reinterpret_cast<void*>(&key);
-    return 2;
+    return Patricia::Errno::e_OK;
   }
 
   while (1 & (intptr_t)p) {
-    critbit0_node *q = (void *)(p - 1);
+    Patricia::InternalNode *q = reinterpret_cast<void *>(p-1);
 
     u_int8_t c = 0;
-    if (q->byte < newDataSize) {
-      c = newData[q->byte];
+    if (q->diffIndex < newDataSize) {
+      c = newData[q->diffIndex];
     }
-    const int direction = (1 + (q->otherbits | c)) >> 8;
+    const int direction = (1 + (q->diffMask | c)) >> 8;
 
     p = q->child[direction];
   }
 
-  Benchmark::Slice<unsigned char> *existingKey = reinterpret_cast<Benchmark::Slice<unsigned char>*>(p);
+  Benchmark::Slice<unsigned char> *existingKey = reinterpret_cast<Benchmark::Key*>(p);
   const u_int8_t *const existingData      = existingKey->data();
   const u_int16_t       existingDataSize  = existingKey->size();
 
-  // We do not rely on a null terminator to find a difference
-  // if the newKey and existing key share a prefix and one is
-  // longer than the other
-  u_int16_t maxLen = (existingDataSize <= newDataSize) ? existingDataSize : newDataSize;
+  // Ensure we do not read off the end of either key
+  u_int16_t maxSize = (existingDataSize <= newDataSize) ? existingDataSize : newDataSize;
 
   u_int16_t idx(0);
-  u_int16_t newbyte;
-  u_int16_t newotherbits;
+  u_int16_t newDiffIndex;
+  u_int16_t newDiffMask;
 
-  for (; idx < maxLen; ++idx) {
+  for (; idx < maxSize; ++idx) {
     if (existingData[idx] != newData[idx]) {
-      newotherbits = existingData[idx] ^ newData[idx];
+      newDiffMask = existingData[idx] ^ newData[idx];
       goto different_byte_found;
     }
   }
 
-  if (idx != maxLen) {
-    newotherbits = existingData[newbyte];
+  if (idx != maxSize) {
+    newDiffMask = existingData[newbyte];
     goto different_byte_found;
   }
 
-  return 1;
+  return Patricia::Errno::e_EXISTS;
 
 different_byte_found:
 
-  newotherbits |= newotherbits >> 1;
-  newotherbits |= newotherbits >> 2;
-  newotherbits |= newotherbits >> 4;
-  newotherbits = (newotherbits & ~(newotherbits >> 1)) ^ 255;
+  newDiffMask |= newotherbits >> 1;
+  newDiffMask |= newotherbits >> 2;
+  newDiffMask |= newotherbits >> 4;
+  newDiffMask = (newDiffMask & ~(newDiffMask>> 1)) ^ 255;
   u_int8_t c = existingData[idx];
-  int newdirection = (1 + (newotherbits | c)) >> 8;
+  int newDirection = (1 + (newDiffMask | c)) >> 8;
 
-  critbit0_node *newnode = reinterpret_cast<critbit0_node*>(memManager.allocNode());
+  Patricia::InternalNode *newNode = reinterpret_cast<Patricia::InternalNode*>(memManager.allocNode());
 
-  newnode->byte = newbyte;
-  newnode->otherbits = newotherbits;
-  newnode->child[1 - newdirection] = reiterpret_cast<void*>(&key)
+  newNode->diffIndex = idx;
+  newNode->diffMask = newDiffMask;
+  newNode->child[1 - newdirection] = reiterpret_cast<void*>(&key)
+  newNode->child[!(1 - newdirection)] = 0;
 
   void **wherep = &t->root;
   for (;;) {
     u_int8_t *p = *wherep;
     if (!(1 & (intptr_t)p))
       break;
-    critbit0_node *q = (void *)(p - 1);
-    if (q->byte > newbyte)
+    Patricia::InternalNode *q = reinterpret_cast<void *>(p-1);
+    if (q->diffIndex > idx)
       break;
-    if (q->byte == newbyte && q->otherbits > newotherbits)
+    if (q->diffIndex == idx && q->diffMask > newDiffMask)
       break;
     u_int8_t c = 0;
-    if (q->byte < newKeySize)
+    if (q->diffInxex < idx)
       c = ubytes[q->byte];
-    const int direction = (1 + (q->otherbits | c)) >> 8;
+    const int direction = (1 + (q->diffMask | c)) >> 8;
     wherep = q->child + direction;
   }
 
-  newnode->child[newdirection] = *wherep;
+  newNode->child[newdirection] = *wherep;
   *wherep = (void *)(1 + (char *)newnode);
 
-  return 2;
-}
-
-static void traverse(void *top) {
-  return;
-}
-
-void critbit0_clear(critbit0_tree *t) {
-  t->root = NULL;
+  return Patricia::Errno::e_OK;
 }
