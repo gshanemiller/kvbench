@@ -5,10 +5,6 @@ add_subdirectory(thirdparty/mimalloc)
 
 set(BENCHMARK_SOURCES
   ./src/main.cpp
-  ./src/trie/benchmark_htrie_root.cpp
-  ./src/trie/benchmark_htrie_bitstring.cpp
-  ./src/trie/benchmark_htrie_bititerator.cpp
-  ./src/trie/benchmark_htrie_node.cpp
 
   ./src/benchmark_config.cpp
   ./src/benchmark_cstr.cpp
@@ -21,6 +17,7 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_textscan.cpp
   ./src/benchmark_hot.cpp
   ./src/benchmark_art.cpp
+  ./src/benchmark_patricia.cpp
 
   ./src/intel_skylake_pmu.cpp
 
@@ -36,6 +33,8 @@ set(BENCHMARK_SOURCES
   ./thirdparty/folly/lang/SafeAssert.cpp
   ./thirdparty/folly/container/f14.cpp                                                                                             
   ./thirdparty/folly/container/detail/F14Table.cpp
+
+  ./thirdparty/patricia/src/node.h
 )
 
 find_library(HUGELIB
@@ -57,6 +56,7 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cityhash)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/folly)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/folly/container)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hot/src)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/patricia/src)
 # target_link_options(${BENCHMARK_TARGET} PUBLIC -pg)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
