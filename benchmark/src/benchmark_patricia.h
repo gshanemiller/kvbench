@@ -1,27 +1,27 @@
 #pragma once
 
-// PURPOSE: Benchmark ART: Adaptive Radix Trie
-
 #include <benchmark_config.h>
 #include <benchmark_loadfile.h>
 #include <benchmark_stats.h>
 
+#include <patricia_tree.h>
+
 namespace Benchmark {
 
-class ART {
+class patricia {
   // DATA
   const LoadFile& d_file;
   Stats           d_stats;
 
 public:
   // CREATORS
-  explicit ART(const Config& config, const LoadFile& file);
-    // Create ART benchmark object with specified 'config, file'
+  explicit patricia(const Config& config, const LoadFile& file);
+    // Create patricia benchmark object with specified 'config, file'
 
-  ART(const ART& other) = delete;
+  patricia(const patricia& other) = delete;
     // Copy constructor not provided
 
-  ~ART() = default;
+  ~patricia() = default;
     // Destory this object
 
   // MANIPULATORS
@@ -32,11 +32,11 @@ public:
   void report();
     // Emit to stdout collected benchmark statistics
 
-  ART& operator=(const ART& rhs) = delete;
+  patricia& operator=(const patricia& rhs) = delete;
     // Assignment operator not provided
 };
 
-inline ART::ART(const Config& config, const LoadFile& file)
+inline patricia::patricia(const Config& config, const LoadFile& file)
 : d_file(file)
 , d_stats(config)
 {

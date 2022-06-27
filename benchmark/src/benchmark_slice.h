@@ -10,20 +10,22 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <benchmark_typedefs.h>
+
 namespace Benchmark {
 
 template<typename T>
 class Slice {
   // DATA
-  unsigned int  d_size;           // size of string including 0 terminator
-  T            *d_data;           // pointer to array of type 'T*'
+  T     *d_data; // pointer to array of type 'T*'
+  ssize  d_size; // size of string including 0 terminator
 
 public:
   // CREATORS
   Slice();
     // Create empty slice
 
-  explicit Slice(unsigned int sz, T *data);
+  explicit Slice(T *data, ssize size);
     // Create Slice from specified 'data' of specified 'sz'. Behavior is defined provided 'data' non-zero, and the
     // memory range '[d_data, d_data+d_size)' is valid, contiguous.
 
@@ -34,20 +36,20 @@ public:
     // Destroy this object. 'd_data' not freed.
 
   // ACCESSORS
-  unsigned int size() const;
+  ssize size() const;
     // Return 'size' attribute
 
   const T *data() const;
     // Return 'data' attribute
 
   // MANIPULATORS
-  unsigned int size();
+  ssize size();
     // Return 'size' attribute
 
   T *data();
     // Return 'data' attribute
 
-  void reset(unsigned int sz, T* data);
+  void reset(ssize sz, T* data);
     // Reset 'this' to hold a pointer to memory at specified 'data' of specific 'sz'
 
   Slice& operator=(const Slice& rhs) = default;
@@ -73,18 +75,18 @@ Slice<T>::Slice()
 
 template<class T>
 inline
-Slice<T>::Slice(unsigned int sz, T *data)
-: d_size(sz)
-, d_data(data)
+Slice<T>::Slice(T *data, ssize size)
+: d_data(data)
+, d_size(size)
 {
-  assert(sz>0);
+  assert(size>0);
   assert(data);
 }
 
 // ACCESSORS
 template<class T>
 inline
-unsigned int Slice<T>::size() const {
+ssize Slice<T>::size() const {
   return d_size;
 }
 
@@ -97,7 +99,7 @@ const T *Slice<T>::data() const {
 // MANIPULATORS
 template<class T>
 inline
-unsigned int Slice<T>::size() {
+ssize Slice<T>::size() {
   return d_size;
 }
 
@@ -109,7 +111,7 @@ T *Slice<T>::data() {
 
 template<class T>
 inline
-void Slice<T>::reset(unsigned int sz, T* data) {
+void Slice<T>::reset(ssize sz, T* data) {
   d_size = sz;
   d_data = data;
 }

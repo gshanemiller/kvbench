@@ -1,2 +1,0 @@
-add_subdirectory(htrie_bitstring)
-add_subdirectory(htrie_node)

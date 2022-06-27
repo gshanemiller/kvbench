@@ -1,6 +1,6 @@
 #pragma once
 
-#include <benchmark_typdefs.h>
+#include <benchmark_typedefs.h>
 #include <mimalloc.h>
 
 namespace Patricia {
@@ -9,7 +9,7 @@ typedef struct {
   void *root;
 } Tree;
 
-typedef struct {                                                                                                        
+typedef struct {
   void      *child[2];    // children
   u_int16_t diffIndex;    // offset into key(s) where diff starts
   u_int8_t  diffMask;     // bit mask for bit location of difference
@@ -110,5 +110,6 @@ void MemoryManager::print() {
 
 };
 
+extern MemoryManager memManager;
 
 }

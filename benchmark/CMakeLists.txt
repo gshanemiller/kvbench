@@ -34,7 +34,7 @@ set(BENCHMARK_SOURCES
   ./thirdparty/folly/container/f14.cpp                                                                                             
   ./thirdparty/folly/container/detail/F14Table.cpp
 
-  ./thirdparty/patricia/src/node.h
+  ./thirdparty/patricia/src/patricia_tree.cpp
 )
 
 find_library(HUGELIB
@@ -61,5 +61,3 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/patricia/src)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)
-
-add_subdirectory(unit_tests)

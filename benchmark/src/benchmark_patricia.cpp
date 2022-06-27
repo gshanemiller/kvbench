@@ -1,6 +1,8 @@
 #include <benchmark_patricia.h>
 #include <benchmark_textscan.h>
 
+#include <patricia_tree.h>
+
 #include <intel_skylake_pmu.h>
 
 #pragma GCC diagnostic push                                                                                             
@@ -9,8 +11,8 @@
 #pragma GCC diagnostic pop 
 
 template<typename T>
-static int patricia_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
-  Benchmark::Slice<char> word;
+static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
+  Benchmark::Slice<unsigned char> word;
 
   Benchmark::TextScan scanner(file);
 
@@ -24,7 +26,7 @@ static int patricia_test_text_insert(unsigned runNumber, T& map, Benchmark::Stat
   
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    // art_insert(&map, (unsigned char*)word.data(), word.size()-1, (void*)word.data()); 
+    Patricia::insert(map, word);
   }
 
   // Benchmark done: take stats
@@ -48,8 +50,8 @@ static int patricia_test_text_insert(unsigned runNumber, T& map, Benchmark::Stat
 }
 
 template<typename T>
-static int patricia_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
-  Benchmark::Slice<char> word;
+static int patricia_test_text_find(unsigned runNumber, T* map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
+  Benchmark::Slice<unsigned char> word;
 
   Benchmark::TextScan scanner(file);
 
@@ -65,10 +67,10 @@ static int patricia_test_text_find(unsigned runNumber, T& map, Benchmark::Stats&
 
   // Benchmark running: do find
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    // auto val = art_search(&map, (unsigned char*)word.data(), word.size()-1);
-    // if (val==0) {
-      // ++errors;
-    // }
+    auto val = Patricia::find(map, word);
+    if (val!=0) {
+      ++errors;
+    }
   }
 
   u_int64_t f0 = pmu.fixedCounterValue(0);
@@ -120,12 +122,9 @@ int Benchmark::patricia::start() {
         if (d_stats.config().d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
-        // art_tree artTrie;
-        // art_tree_init(&artTrie);
-        patricia_test_text_insert(i, artTrie, d_stats, d_file);
-        patricia_test_text_find(i, artTrie, d_stats, d_file);
-        // art_iter(&artTrie, patricia_test_text_iter, 0);
-        // art_tree_destroy(&artTrie);
+        Patricia::Tree *patriciaTree = Patricia::memManager.allocTree();
+        patricia_test_text_insert(i, patriciaTree, d_stats, d_file);
+        patricia_test_text_find(i, patriciaTree, d_stats, d_file);
       }
     }
   }

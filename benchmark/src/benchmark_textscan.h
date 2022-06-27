@@ -51,6 +51,10 @@ public:
     // Assign to 'value' the next word in file provided at construction time
     // The behavior is defined provided '!eof()'.
 
+  void next(Slice<unsigned char>& value);
+    // Assign to 'value' the next word in file provided at construction time
+    // The behavior is defined provided '!eof()'.
+
   void reset();
     // Reset internal state to point to the beginning of file.
 
@@ -92,6 +96,18 @@ void TextScan::next(Slice<char>& word) {
 
   unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
   word.reset(*i, d_ptr+sizeof(WordSizeType));
+
+  d_ptr += sizeof(WordSizeType)+(*i);
+}
+
+inline
+void TextScan::next(Slice<unsigned char>& word) {
+  assert(!eof());
+
+  ++d_index;
+
+  unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
+  word.reset(*i, reinterpret_cast<unsigned char*>(d_ptr)+sizeof(WordSizeType));
 
   d_ptr += sizeof(WordSizeType)+(*i);
 }
