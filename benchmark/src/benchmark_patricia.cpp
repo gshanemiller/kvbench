@@ -26,7 +26,7 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stat
   
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    Patricia::insert(map, word);
+    Patricia::insertKey(map, word);
   }
 
   // Benchmark done: take stats
@@ -67,7 +67,7 @@ static int patricia_test_text_find(unsigned runNumber, T* map, Benchmark::Stats&
 
   // Benchmark running: do find
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    auto val = Patricia::find(map, word);
+    auto val = Patricia::findKey(map, word);
     if (val!=0) {
       ++errors;
     }
@@ -122,7 +122,7 @@ int Benchmark::patricia::start() {
         if (d_stats.config().d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
-        Patricia::Tree *patriciaTree = Patricia::memManager.allocTree();
+        Patricia::Tree *patriciaTree = (Patricia::Tree *)Patricia::memManager.allocTree();
         patricia_test_text_insert(i, patriciaTree, d_stats, d_file);
         patricia_test_text_find(i, patriciaTree, d_stats, d_file);
       }

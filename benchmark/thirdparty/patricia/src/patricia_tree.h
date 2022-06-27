@@ -1,7 +1,7 @@
 #pragma once
 
-#include <benchmark_typedefs.h>
 #include <mimalloc.h>
+#include <benchmark_slice.h>
 
 namespace Patricia {
 
@@ -12,7 +12,7 @@ typedef struct {
 typedef struct {
   void      *child[2];    // children
   u_int16_t diffIndex;    // offset into key(s) where diff starts
-  u_int8_t  diffMask;     // bit mask for bit location of difference
+  u_int8_t  diffMask;     // bit mask at byte location of difference
 } InternalNode;
 
 enum Errno {
@@ -22,10 +22,10 @@ enum Errno {
   e_MEMORY    = 3,
 };
 
-extern void destroy(PatriciaTree *t);
-extern int  insert(PatriciaTree *t,   const Benchmark::Key *key);
-extern int  delete(PatriciaTree *t,   const Benchmark::Key *key);
-exterm bool find(PatriciaTree *t,     const Benchmark::Key *key);
+extern void destroyTree(Tree *t);
+extern int  insertKey(Tree *t,   const Benchmark::UKey key);
+extern int  deleteKey(Tree *t,   const Benchmark::UKey key);
+extern int  findKey(Tree *t,     const Benchmark::UKey key);
 
 class MemoryManager {
   // DATA
@@ -35,6 +35,8 @@ class MemoryManager {
   u_int64_t       d_maxBytes;
   u_int64_t       d_requestedBytes;
 
+public:
+  // CREATORS
   MemoryManager();
     // Create an object to allocate/free memory for Patricia tree's via mimalloc
 
@@ -44,16 +46,17 @@ class MemoryManager {
   ~MemoryManager() = default;
     // Note that Patricia trees must be destoyed beforr this object goes out of scope
 
-  void *allocInternalNode()
+  // MANIPULATORS
+  void *allocInternalNode();
     // Return a pointer to memory for a new InternalNode. Note that it is not initialized.
 
   void *allocTree();
     // Return a pointer to memory for a new Tree. Note that it is not initialized. 
 
-  void free(const void* ptr);
+  void free(void *ptr);
     // Free memory previously allocated by this object
 
-  void print() {
+  void print();
     // Print to stdout highlevel statistics on memory work
 
   const MemoryManager& operator=(const MemoryManager& rhs) = delete;
@@ -69,7 +72,7 @@ MemoryManager::MemoryManager()
 , d_allocCount(0)
 , d_currentBytes(0)
 , d_maxBytes(0)
-, d_requestedBytes(0);
+, d_requestedBytes(0)
 {
 } 
 
@@ -85,20 +88,15 @@ void *MemoryManager::allocInternalNode() {
   return mi_malloc_aligned(sizeof(InternalNode), sizeof(void*));
 }
 
+inline
 void *MemoryManager::allocTree() {
-  ++d_allocCount;
-  d_currentBytes += sizeof(Tree);
-  d_requestedBytes += sizeof(Tree);
-  if (d_currentBytes>d_maxBytes) {
-    d_maxBytes = d_currentBytes;
-  }
   return mi_malloc_aligned(sizeof(Tree), sizeof(void*));
 }
 
 inline
-void MemoryManager::free(const void* ptr) {
+void MemoryManager::free(void* ptr) {
   ++d_freeCount;
-  d_currentBytes -= d_size;
+  d_currentBytes -= sizeof(InternalNode);
   mi_free(ptr);
 }
 
@@ -107,8 +105,6 @@ void MemoryManager::print() {
   printf("allocCount: %lu, freeCount: %lu, currentBytes: %lu, maxBytes: %lu, requestedBytes: %lu\n",
     d_allocCount, d_freeCount, d_currentBytes, d_maxBytes, d_requestedBytes);
 }
-
-};
 
 extern MemoryManager memManager;
 

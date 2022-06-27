@@ -68,8 +68,8 @@ bool operator==(const Slice<T>& lhs, const Slice<T>& rhs);
 template<class T>
 inline
 Slice<T>::Slice()
-: d_size(0)
-, d_data(0)
+: d_data(0)
+, d_size(0)
 {
 }
 
@@ -150,5 +150,8 @@ struct SliceEqual {
     return (lhs.size()==rhs.size()) ? 0==memcmp(lhs.data(), rhs.data(), lhs.size()) : false;
   }
 };
+
+typedef Slice<char>           Key;
+typedef Slice<unsigned char> UKey;
 
 } // namespace Benchmark

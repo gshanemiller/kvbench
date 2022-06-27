@@ -7,10 +7,10 @@
 #include <string.h>
 #include <sys/types.h>
 
-static MemoryManager memManager;
+Patricia::MemoryManager memManager;
 
-int Patricia::find(Patricia::Tree *t, Benchmark::Key key) {
-  u_int8_t *p = t->root;
+int Patricia::findKey(Patricia::Tree *t, Benchmark::UKey key) {
+  u_int8_t *p = (u_int8_t*)t->root;
   if (!p) {
     return Patricia::Errno::e_NOT_FOUND;
   }
@@ -19,7 +19,7 @@ int Patricia::find(Patricia::Tree *t, Benchmark::Key key) {
   const u_int16_t       keyDataSize  = key.size();
 
   while (1 & (intptr_t)p) {
-    Patricia::InternalNode *q = reinterpret_cast<void *>(p-1);
+    Patricia::InternalNode *q = (Patricia::InternalNode*)(p-1);
 
     u_int8_t c = 0;
     if (q->diffIndex < keyDataSize) {
@@ -27,15 +27,15 @@ int Patricia::find(Patricia::Tree *t, Benchmark::Key key) {
     }
     const int direction = (1 + (q->diffMask | c)) >> 8;
 
-    p = q->child[direction];
+    p = ((Patricia::InternalNode*)q->child[direction]);
   }
 
-  return 0=key.equal(*reintpret_cast<Benchmark::Key*>(p))
+  return 0=key.equal(*reintpret_cast<Benchmark::UKey*>(p))
     ? Patricia::Errno::e_OK
     : Patricia::Errno::e_NOT_FOUND;
 }
 
-int Patricia::insert(Patricia::Tree *t, Benchmark::Slice<unsigned char> key) {
+int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
   const u_int8_t *const newData      = key.data();
   const u_int16_t       newDataSize  = key.size();
 
@@ -57,7 +57,7 @@ int Patricia::insert(Patricia::Tree *t, Benchmark::Slice<unsigned char> key) {
     p = q->child[direction];
   }
 
-  Benchmark::Slice<unsigned char> *existingKey = reinterpret_cast<Benchmark::Key*>(p);
+  Benchmark::UKey *existingKey = reinterpret_cast<Benchmark::UKey*>(p);
   const u_int8_t *const existingData      = existingKey->data();
   const u_int16_t       existingDataSize  = existingKey->size();
 
