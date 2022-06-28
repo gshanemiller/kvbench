@@ -10,6 +10,8 @@
 #include <art.h>
 #pragma GCC diagnostic pop 
 
+extern Patricia::MemoryManager memManager;
+
 template<typename T>
 static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<unsigned char> word;
@@ -122,7 +124,7 @@ int Benchmark::patricia::start() {
         if (d_stats.config().d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
-        Patricia::Tree *patriciaTree = (Patricia::Tree *)Patricia::memManager.allocTree();
+        Patricia::Tree *patriciaTree = memManager.allocTree();
         patricia_test_text_insert(i, patriciaTree, d_stats, d_file);
         patricia_test_text_find(i, patriciaTree, d_stats, d_file);
       }

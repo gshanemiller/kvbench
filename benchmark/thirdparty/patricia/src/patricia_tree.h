@@ -47,11 +47,11 @@ public:
     // Note that Patricia trees must be destoyed beforr this object goes out of scope
 
   // MANIPULATORS
-  void *allocInternalNode();
-    // Return a pointer to memory for a new InternalNode. Note that it is not initialized.
+  InternalNode *allocInternalNode();
+    // Return a pointer to memory for a new InternalNode. Note, only the children are iniialized 0.
 
-  void *allocTree();
-    // Return a pointer to memory for a new Tree. Note that it is not initialized. 
+  Tree *allocTree();
+    // Return a pointer to memory for a new Tree. Node, 'root' attribute initialized 0.
 
   void free(void *ptr);
     // Free memory previously allocated by this object
@@ -78,19 +78,25 @@ MemoryManager::MemoryManager()
 
 // MANIPULATORS
 inline
-void *MemoryManager::allocInternalNode() {
+InternalNode *MemoryManager::allocInternalNode() {
   ++d_allocCount;
   d_currentBytes += sizeof(InternalNode);
   d_requestedBytes += sizeof(InternalNode);
   if (d_currentBytes>d_maxBytes) {
     d_maxBytes = d_currentBytes;
   }
-  return mi_malloc_aligned(sizeof(InternalNode), sizeof(void*));
+  InternalNode *ptr = reinterpret_cast<InternalNode*>(mi_malloc_aligned(sizeof(InternalNode), sizeof(void*)));
+  assert(ptr);
+  ptr->child[0] = ptr->child[1] = 0;
+  return ptr;
 }
 
 inline
-void *MemoryManager::allocTree() {
-  return mi_malloc_aligned(sizeof(Tree), sizeof(void*));
+Tree *MemoryManager::allocTree() {
+  Tree *ptr = reinterpret_cast<Tree*>(mi_malloc_aligned(sizeof(Tree), sizeof(void*)));
+  assert(ptr);
+  ptr->root = 0;
+  return ptr;
 }
 
 inline
@@ -105,7 +111,5 @@ void MemoryManager::print() {
   printf("allocCount: %lu, freeCount: %lu, currentBytes: %lu, maxBytes: %lu, requestedBytes: %lu\n",
     d_allocCount, d_freeCount, d_currentBytes, d_maxBytes, d_requestedBytes);
 }
-
-extern MemoryManager memManager;
 
 }
