@@ -45,7 +45,7 @@ find_library(HUGELIB
 
 set(BENCHMARK_TARGET benchmark.tsk)
 add_executable(${BENCHMARK_TARGET} ${BENCHMARK_SOURCES})
-target_compile_options(${BENCHMARK_TARGET} PUBLIC -g)
+target_compile_options(${BENCHMARK_TARGET} PUBLIC -g -O0)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/art)

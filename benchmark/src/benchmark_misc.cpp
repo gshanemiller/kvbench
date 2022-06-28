@@ -4,6 +4,39 @@
 
 #include <intel_skylake_pmu.h>
 
+void misc_test_addresses(const Benchmark::LoadFile& file) {
+  Benchmark::Slice<char> word;
+
+  bool firstWord(true);
+  intptr_t baseUpper = 0;
+  const char *base = file.data();
+
+  Benchmark::TextScan scanner(file);
+
+  printf("sizeof(unsigned long)=%lu\n", sizeof(unsigned long));
+  printf("sizeof(intptr_t)=%lu\n", sizeof(intptr_t));
+
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
+    if (firstWord) {
+      // upper 16 bits
+      baseUpper = reinterpret_cast<intptr_t>(word.data()) & ~(0xFFFFFFFFFFFFUL);
+      firstWord = false;
+      printf("baseUpper %lx mask %lx\n", baseUpper, ~(0xFFFFFFFFFFFFUL));
+      continue;
+    }
+
+    intptr_t upper = reinterpret_cast<intptr_t>(word.data()) & ~(0xFFFFFFFFFFFFUL);
+    if (upper!=baseUpper) {
+      printf("ERROR: baseUpper %lx upper %lx mask %lx\n", baseUpper, upper,  ~(0xFFFFFFFFFFFFUL));
+    }
+
+    unsigned long diff = static_cast<unsigned long>(word.data() - base);
+    if (diff >= 0xFFFFFFFFUL) {
+      printf("ERROR: overflow base %p word %p diff %lx\n", (void*)base, (void*)word.data(), diff);
+    }
+  }
+}
+
 void misc_test_scanner(unsigned int runNumber, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
 
@@ -51,6 +84,8 @@ int Benchmark::Misc::start() {
     }
     misc_test_scanner(i, d_stats, d_file);
   }
+
+  misc_test_addresses(d_file);
 
   return rc;
 }
