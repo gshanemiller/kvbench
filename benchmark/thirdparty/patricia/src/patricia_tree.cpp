@@ -34,10 +34,7 @@ int Patricia::findKey(Patricia::Tree *t, Benchmark::UKey key) {
     p = reinterpret_cast<intptr_t>(q->child[direction]);
   }
 
-//return 0==key.equal(*reintpret_cast<Benchmark::UKey*>(p))
-//  ? Patricia::Errno::e_OK
-//  : Patricia::Errno::e_NOT_FOUND;
-  return Patricia::Errno::e_OK;
+  return key.equal(reinterpret_cast<void*>(p)) ? Patricia::Errno::e_OK : Patricia::Errno::e_NOT_FOUND;
 }
 
 int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
@@ -66,9 +63,9 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
     p = reinterpret_cast<intptr_t>(q->child[direction]);
   }
 
-  Benchmark::UKey *existingKey = reinterpret_cast<Benchmark::UKey*>(p);
-  const u_int8_t *const existingData      = existingKey->data();
-  const u_int16_t       existingDataSize  = existingKey->size();
+  Benchmark::UKey existingKey(reinterpret_cast<void*>(p));
+  const u_int8_t *const existingData      = existingKey.data();
+  const u_int16_t       existingDataSize  = existingKey.size();
 
   // Ensure we do not read off the end of either key
   u_int16_t maxSize = (existingDataSize <= newDataSize) ? existingDataSize : newDataSize;
@@ -105,14 +102,14 @@ different_byte_found:
 
   newNode->diffIndex = idx;
   newNode->diffMask = newDiffMask;
-  newNode->child[1 - newDirection] = reinterpret_cast<void*>(&key);
+  newNode->child[1 - newDirection] = static_cast<void*>(key);
 
   void **wherep = reinterpret_cast<void**>(&t->root);
   for (;;) {
     intptr_t p = reinterpret_cast<intptr_t>(*wherep);
     if (!(1 & p))
       break;
-    Patricia::InternalNode *q = reinterpret_cast< Patricia::InternalNode*>(p-1);
+    Patricia::InternalNode *q = reinterpret_cast<Patricia::InternalNode*>(p-1);
     if (q->diffIndex > idx)
       break;
     if (q->diffIndex == idx && q->diffMask > newDiffMask)

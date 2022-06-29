@@ -29,6 +29,7 @@ set(BENCHMARK_SOURCES
 
   ./thirdparty/art/art.c
 
+  ./thirdparty/folly/ScopeGuard.cpp
   ./thirdparty/folly/lang/ToAscii.cpp
   ./thirdparty/folly/lang/SafeAssert.cpp
   ./thirdparty/folly/container/f14.cpp                                                                                             
