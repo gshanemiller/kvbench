@@ -81,8 +81,9 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
     }
   }
 
-  if (idx != maxSize) {
-    newDiffMask = existingData[idx];
+  if (idx == maxSize) {
+    assert(idx+1<existingDataSize);
+    newDiffMask = existingData[idx+1];
     goto different_byte_found;
   }
 
