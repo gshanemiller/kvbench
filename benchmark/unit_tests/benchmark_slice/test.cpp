@@ -213,3 +213,87 @@ TEST(slice, ucharReset) {
     EXPECT_TRUE(slice.data() == constTmpPtr);
   }
 }
+
+TEST(slice, charCastVoidPtr) {
+  for (unsigned i=0; i<NUM_VALUES; ++i) {
+      const u_int8_t *constTmpPtr = VALUES[i].d_data;
+
+      Benchmark::Slice<char> sliceA(reinterpret_cast<char*>(constTmpPtr), VALUES[i].d_size);
+      void *actutalPtrA = static_cast<void*>(sliceA);
+      const u_int64_t uptrA = reinterpret_cast<u_int64_t>(constTmpPtr) | (u_int64_t)VALUES[i].d_size << 48;
+      const void *expectedPtrA= reinterpret_cast<const void*>(uptrA);
+      EXPECT_TRUE(actutalPtrA == expectedPtrA);
+
+      const Benchmark::Slice<char> sliceB(reinterpret_cast<char*>(constTmpPtr), VALUES[i].d_size);
+      const void *actualPtrB = static_cast<void*>(sliceB);
+      const u_int64_t uptrB = reinterpret_cast<u_int64_t>(constTmpPtr) | (u_int64_t)VALUES[i].d_size << 48;
+      const void *expectedPtrB= reinterpret_cast<const void*>(uptrB);
+      EXPECT_TRUE(actutalPtrB == expectedPtrB);
+  }
+}
+
+TEST(slice, ucharCastVoidPtr) {
+  for (unsigned i=0; i<NUM_VALUES; ++i) {
+      const u_int8_t *constTmpPtr = VALUES[i].d_data;
+
+      Benchmark::Slice<unsigned char> sliceA(constTmpPtr, VALUES[i].d_size);
+      void *actutalPtrA = static_cast<void*>(sliceA);
+      const u_int64_t uptrA = reinterpret_cast<u_int64_t>(constTmpPtr) | (u_int64_t)VALUES[i].d_size << 48;
+      const void *expectedPtrA= reinterpret_cast<const void*>(uptrA);
+      EXPECT_TRUE(actutalPtrA == expectedPtrA);
+
+      const Benchmark::Slice<unsigned char> sliceB(constTmpPtr, VALUES[i].d_size);
+      const void *actualPtrB = static_cast<void*>(sliceB);
+      const u_int64_t uptrB = reinterpret_cast<u_int64_t>(constTmpPtr) | (u_int64_t)VALUES[i].d_size << 48;
+      const void *expectedPtrB= reinterpret_cast<const void*>(uptrB);
+      EXPECT_TRUE(actutalPtrB == expectedPtrB);
+  }
+}
+
+TEST(slice, charEqual) {
+  for (unsigned i=0; i<NUM_VALUES; ++i) {
+    for (unsigned j=0; j<NUM_VALUES; ++j) {
+      const u_int8_t *constTmpPtrA = VALUES[i].d_data;
+      Benchmark::Slice<char> sliceA(reinterpret_cast<char*>(constTmpPtrA), VALUES[i].d_size);
+      const u_int64_t uptrA = reinterpret_cast<u_int64_t>(constTmpPtrA) | (u_int64_t)VALUES[i].d_size << 48;
+      const void *ptrA = reinterpret_cast<const void*>(uptrA);
+
+      const u_int8_t *constTmpPtrB = VALUES[j].d_data;
+      Benchmark::Slice<char> sliceB(reinterpret_cast<char*>(constTmpPtrB), VALUES[j].d_size);
+      const u_int64_t uptrB = reinterpret_cast<u_int64_t>(constTmpPtrB) | (u_int64_t)VALUES[j].d_size << 48;
+      const void *ptrB = reinterpret_cast<const void*>(uptrB);
+
+      if (i==j) {
+        EXPECT_EQ(sliceA.equal(ptrB), true);
+        EXPECT_EQ(sliceB.equal(ptrA), true);
+      } else {
+        EXPECT_EQ(sliceA.equal(ptrB), false);
+        EXPECT_EQ(sliceB.equal(ptrA), false);
+      }
+    }
+  }
+}
+
+TEST(slice, ucharEqual) {
+  for (unsigned i=0; i<NUM_VALUES; ++i) {
+    for (unsigned j=0; j<NUM_VALUES; ++j) {
+      const u_int8_t *constTmpPtrA = VALUES[i].d_data;
+      Benchmark::Slice<unsigned char> sliceA(constTmpPtrA, VALUES[i].d_size);
+      const u_int64_t uptrA = reinterpret_cast<u_int64_t>(constTmpPtrA) | (u_int64_t)VALUES[i].d_size << 48;
+      const void *ptrA = reinterpret_cast<const void*>(uptrA);
+
+      const u_int8_t *constTmpPtrB = VALUES[j].d_data;
+      Benchmark::Slice<unsigned char> sliceB(constTmpPtrB, VALUES[j].d_size);
+      const u_int64_t uptrB = reinterpret_cast<u_int64_t>(constTmpPtrB) | (u_int64_t)VALUES[j].d_size << 48;
+      const void *ptrB = reinterpret_cast<const void*>(uptrB);
+
+      if (i==j) {
+        EXPECT_EQ(sliceA.equal(ptrB), true);
+        EXPECT_EQ(sliceB.equal(ptrA), true);
+      } else {
+        EXPECT_EQ(sliceA.equal(ptrB), false);
+        EXPECT_EQ(sliceB.equal(ptrA), false);
+      }
+    }
+  }
+}

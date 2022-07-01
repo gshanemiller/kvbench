@@ -1,1 +1,2 @@
 add_subdirectory(benchmark_slice)
+add_subdirectory(benchmark_patricia_tree)

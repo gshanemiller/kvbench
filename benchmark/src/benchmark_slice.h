@@ -67,9 +67,9 @@ public:
     // Cast the underlying representation into a 'void*' so that the upper 16 bits holds the size and lower
     // 48 bits holds the pointer to the underlying data
 
-  bool equal(void *ptr);
-    // Return true of the Slice at 'ptr' is equal to this and false otherwise. 'ptr' encodes a pointer to a
-    // a Slice per the Slice constructor taking 'void*' and with the same requirements for defined behavior.
+  bool equal(const void *ptr) const;
+    // Return true if the Slice at 'ptr' is equal to this and false otherwise. 'ptr' encodes a pointer to a
+    // a Slice as per the Slice constructor taking 'void*' with the same defined requirements behavior.
 
   // MANIPULATORS
   ssize size();
@@ -157,11 +157,11 @@ Slice<T>::operator void*() {
 
 template<class T>
 inline
-bool Slice<T>::equal(void *ptr) {
+bool Slice<T>::equal(const void *ptr) const {
   const u_int64_t uptr = reinterpret_cast<u_int64_t>(ptr);
   assert(uptr & 0xFFFFFFFFFFFFULL);
   assert((uptr>>48)>0);
-  if ((uptr >> 48) == (d_opaque>>48)) {
+  if ((uptr>>48) == (d_opaque>>48)) {
     return 0==memcmp(reinterpret_cast<void*>(uptr & 0xFFFFFFFFFFFFULL), reinterpret_cast<void*>(d_opaque & 0xFFFFFFFFFFFFULL), uptr>>48);
   } else {
     return false;
