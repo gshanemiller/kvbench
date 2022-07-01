@@ -95,7 +95,7 @@ void TextScan::next(Slice<char>& word) {
   ++d_index;
 
   unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
-  word.reset(*i, d_ptr+sizeof(WordSizeType));
+  word.reset(d_ptr+sizeof(WordSizeType), *i);
 
   d_ptr += sizeof(WordSizeType)+(*i);
 }
@@ -107,7 +107,7 @@ void TextScan::next(Slice<unsigned char>& word) {
   ++d_index;
 
   unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
-  word.reset(*i, reinterpret_cast<unsigned char*>(d_ptr)+sizeof(WordSizeType));
+  word.reset(reinterpret_cast<unsigned char*>(d_ptr)+sizeof(WordSizeType), *i);
 
   d_ptr += sizeof(WordSizeType)+(*i);
 }

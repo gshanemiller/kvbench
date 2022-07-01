@@ -45,3 +45,5 @@ echo "set nocindent" >> ~/.vimrc
 echo "set wrap" >> ~/.vimrc
 echo ":syntax off" >> ~/.vimrc
 echo ":set colorcolumn=120" >> ~/.vimrc
+
+echo "alias edit=vi" >> ~/.bashrc

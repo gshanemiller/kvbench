@@ -21,18 +21,14 @@ namespace Benchmark {
 template<typename T>
 class Slice {
   // DATA
-  union {
-    u_int64_t d_data: 48; // pointer to array of type T (not owned)
-    u_int64_t d_size: 16; // size of string including 0 terminator if any
-    u_int64_t d_opaque;   // all 64-bits
-  };
+  u_int64_t d_opaque;
 
 public:
   // CREATORS
   Slice();
     // Create an empty slice having 0 size pointing to address 0
 
-  explicit Slice(T *data, ssize size);
+  explicit Slice(const T *data, ssize size);
     // Create Slice from specified 'data' of specified 'size'. Behavior is defined provided 'size>0', 'data' non-zero,
     // and the memory range '[d_data, d_data+d_size)' is valid, contiguous. It is also required the upper 16 bits of
     // 'data' are 0. This requirement is trivially met if `cpuid` reports the maximum linear (virtual) address bits
@@ -75,8 +71,6 @@ public:
     // Return true of the Slice at 'ptr' is equal to this and false otherwise. 'ptr' encodes a pointer to a
     // a Slice per the Slice constructor taking 'void*' and with the same requirements for defined behavior.
 
-  explicit operator bool();
-
   // MANIPULATORS
   ssize size();
     // Return 'size' attribute
@@ -84,7 +78,7 @@ public:
   T *data();
     // Return 'data' attribute
 
-  void reset(ssize sz, T* data);
+  void reset(const T* data, ssize sz);
     // Reset 'this' to hold a pointer to memory at specified 'data' of specific 'sz'
 
   Slice& operator=(const Slice& rhs) = default;
@@ -110,9 +104,8 @@ Slice<T>::Slice()
  
 template<class T>
 inline
-Slice<T>::Slice(T *data, ssize size)
-: d_data(data)
-, d_size(size)
+Slice<T>::Slice(const T *data, ssize size)
+: d_opaque((u_int64_t)data | (u_int64_t)size<<48)
 {
   assert(data);
   assert(size>0);
@@ -124,8 +117,8 @@ inline
 Slice<T>::Slice(void *ptr)
 : d_opaque(reinterpret_cast<u_int64_t>(ptr))
 {
-  assert(reinterpret_cast<u_int64_t>(ptr)==(reinterpret_cast<u_int64_t>(ptr) & 0xFFFFFFFFFFFFULL));
-  assert(d_size>0);
+  assert(reinterpret_cast<u_int64_t>(ptr) & 0xFFFFFFFFFFFFULL);
+  assert(reinterpret_cast<u_int64_t>(ptr) >> 48);
 }
 
 template<class T>
@@ -133,21 +126,21 @@ inline
 Slice<T>::Slice(const void *ptr)
 : d_opaque(reinterpret_cast<u_int64_t>(ptr))
 {
-  assert(reinterpret_cast<u_int64_t>(ptr)==(reinterpret_cast<u_int64_t>(ptr) & 0xFFFFFFFFFFFFULL));
-  assert(d_size>0);
+  assert(reinterpret_cast<u_int64_t>(ptr) & 0xFFFFFFFFFFFFULL);
+  assert(reinterpret_cast<u_int64_t>(ptr) >> 48);
 }
 
 // ACCESSORS
 template<class T>
 inline
 ssize Slice<T>::size() const {
-  return d_size;
+  return ssize(d_opaque>>48);
 }
 
 template<class T>
 inline
 const T *Slice<T>::data() const {
-  return reinterpret_cast<T*>(d_data);
+  return reinterpret_cast<T*>(d_opaque & 0xFFFFFFFFFFFFULL);
 }
 
 template<class T>
@@ -164,18 +157,12 @@ Slice<T>::operator void*() {
 
 template<class T>
 inline
-Slice<T>::operator bool() {
-  return d_size;
-}
-
-template<class T>
-inline
 bool Slice<T>::equal(void *ptr) {
   const u_int64_t uptr = reinterpret_cast<u_int64_t>(ptr);
-  assert(uptr==(uptr & 0xFFFFFFFFFFFFULL));
-  assert(d_size>0);
-  if ((uptr >> 48) == d_size) {
-    return 0==memcmp(reinterpret_cast<void*>(uptr & 0xFFFFFFFFFFFFULL), reinterpret_cast<void*>(d_data), d_size);
+  assert(uptr & 0xFFFFFFFFFFFFULL);
+  assert((uptr>>48)>0);
+  if ((uptr >> 48) == (d_opaque>>48)) {
+    return 0==memcmp(reinterpret_cast<void*>(uptr & 0xFFFFFFFFFFFFULL), reinterpret_cast<void*>(d_opaque & 0xFFFFFFFFFFFFULL), uptr>>48);
   } else {
     return false;
   }
@@ -185,40 +172,62 @@ bool Slice<T>::equal(void *ptr) {
 template<class T>
 inline
 ssize Slice<T>::size() {
-  return d_size;
+  return d_opaque>>48;
 }
 
 template<class T>
 inline
 T *Slice<T>::data() {
-  return reinterpret_cast<T*>(d_data);
+  return reinterpret_cast<T*>(d_opaque & 0xFFFFFFFFFFFFULL);
 }
 
 template<class T>
 inline
-void Slice<T>::reset(ssize sz, T* data) {
+void Slice<T>::reset(const T* data, ssize sz) {
+  assert(data);
+  assert(sz>0);
   assert(reinterpret_cast<u_int64_t>(data)==(reinterpret_cast<u_int64_t>(data) & 0xFFFFFFFFFFFFULL));
-  d_data = reinterpret_cast<u_int64_t>(data);
-  d_size = sz;
+  d_opaque = (u_int64_t)data | (u_int64_t)sz<<48;
 }
 
 // ASPECTS
 template<>
 inline
 void Slice<char>::print() const {
-  if (d_data!=0) {
-    printf("Slice<char> size: %u, data: '", d_size);
-    const char *start = reinterpret_cast<const char*>(d_data);
-    for(unsigned i=0; i<d_size; ++i, ++start) {
-      if (isprint(*start)) {
-        putchar(*start);
+  auto size = (d_opaque>>48);
+  const char *ptr = reinterpret_cast<const char*>(d_opaque & 0xFFFFFFFFFFFFULL);
+  if (ptr) {
+    printf("Slice<char> size: %lu, data: '", size);
+    for(u_int64_t i=0; i<size; ++i, ++ptr) {
+      if (isprint(*ptr)) {
+        putchar(*ptr);
       } else {
-        printf("0x%02x", *start);
+        printf("0x%02x", *ptr);
       }
     }
     printf("'\n");
   } else {
-    printf("Slice<char> size: %u, data: *NULL*\n", d_size);
+    printf("Slice<char> size: %lu, data: *NULL*\n", size);
+  }
+}
+
+template<>
+inline
+void Slice<unsigned char>::print() const {
+  auto size = (d_opaque>>48);
+  const char *ptr = reinterpret_cast<const char*>(d_opaque & 0xFFFFFFFFFFFFULL);
+  if (ptr) {
+    printf("Slice<unsigned char> size: %lu, data: '", size);
+    for(u_int64_t i=0; i<size; ++i, ++ptr) {
+      if (isprint(*ptr)) {
+        putchar(*ptr);
+      } else {
+        printf("0x%02x", *ptr);
+      }
+    }
+    printf("'\n");
+  } else {
+    printf("Slice<unsigned char> size: %lu, data: *NULL*\n", size);
   }
 }
 
