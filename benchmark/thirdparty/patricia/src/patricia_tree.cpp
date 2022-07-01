@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <stack>
 
 Patricia::MemoryManager memManager;
 
@@ -43,7 +44,7 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
   assert(key.size());
 
   if (!t->root) {
-    t->root = reinterpret_cast<void*>(&key);
+    t->root = static_cast<void*>(key);
     return Patricia::Errno::e_OK;
   }
 
@@ -125,4 +126,51 @@ different_byte_found:
   *wherep = reinterpret_cast<void*>(1 + (char *)newNode);
 
   return Patricia::Errno::e_OK;
+}
+
+void Patricia::allKeysSorted(Tree *t, std::vector<Benchmark::UKey>& leaf) {
+  leaf.clear();
+  
+  if (!t->root) {
+    return;
+  }
+
+  intptr_t p = reinterpret_cast<intptr_t>(t->root);
+
+  // There's only one leaf?
+  if ((1&p)==0) {
+    leaf.push_back(Benchmark::UKey(t->root));
+    return;
+  }
+
+  std::stack<intptr_t> stack;
+  Patricia::InternalNode *q(0);
+
+  // In-order tree traversal
+descend_left:
+  while (p && (1 & p)) {
+    stack.push(p);
+    q = reinterpret_cast<Patricia::InternalNode*>(p-1);
+    p = reinterpret_cast<intptr_t>(q->child[0]);
+  }
+
+  // Did escape loop because found leaf or left-child was 0?
+  if (p) {
+    assert((1&p)==0);
+    leaf.push_back(Benchmark::UKey(reinterpret_cast<void*>(p)));
+  }
+
+  // More work to do?
+  if (stack.empty()) {
+    return;
+  }
+
+  p = stack.top();
+  assert(p&1);
+  stack.pop();
+
+  q = reinterpret_cast<Patricia::InternalNode*>(p-1);
+  p = reinterpret_cast<intptr_t>(q->child[1]);
+  
+  goto descend_left;
 }

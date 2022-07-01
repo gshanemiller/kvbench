@@ -2,6 +2,7 @@
 
 #include <mimalloc.h>
 #include <benchmark_slice.h>
+#include <vector>
 
 namespace Patricia {
 
@@ -23,6 +24,8 @@ enum Errno {
 };
 
 extern void destroyTree(Tree *t);
+extern void allKeysSorted(Tree *t, std::vector<Benchmark::UKey>& leaf);
+
 extern int  insertKey(Tree *t,   const Benchmark::UKey key);
 extern int  deleteKey(Tree *t,   const Benchmark::UKey key);
 extern int  findKey(Tree *t,     const Benchmark::UKey key);
@@ -53,8 +56,11 @@ public:
   Tree *allocTree();
     // Return a pointer to memory for a new Tree. Node, 'root' attribute initialized 0.
 
-  void free(void *ptr);
-    // Free memory previously allocated by this object
+  void freeInternalNode(InternalNode *ptr);
+    // Free memory previously allocated by 'allocInternalNode()'
+
+  void freeTree(Tree *ptr);
+    // Free memory previously allocated by 'allocTree()'
 
   void print();
     // Print to stdout highlevel statistics on memory work
@@ -100,9 +106,14 @@ Tree *MemoryManager::allocTree() {
 }
 
 inline
-void MemoryManager::free(void* ptr) {
+void MemoryManager::freeInternalNode(InternalNode *ptr) {
   ++d_freeCount;
   d_currentBytes -= sizeof(InternalNode);
+  mi_free(ptr);
+}
+
+inline
+void MemoryManager::freeTree(Tree *ptr) {
   mi_free(ptr);
 }
 
