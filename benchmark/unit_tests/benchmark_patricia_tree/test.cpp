@@ -106,8 +106,8 @@ TEST(slice, addMuliKeyAllPerms) {
   do {
     Patricia::Tree *tree = memManager.allocTree();
     for (unsigned i=0; i<NUM_VALUES; ++i) {
-      const idx = index[i];
-      print("idx = %u\n", idx);
+      const unsigned idx = index[i];
+      printf("idx = %u\n", idx);
       Benchmark::UKey key(VALUES[idx].d_data, VALUES[idx].d_size);
       auto rc = Patricia::insertKey(tree, key);
       EXPECT_EQ(rc, Patricia::Errno::e_OK);
