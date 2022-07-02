@@ -24,6 +24,8 @@ enum Errno {
 };
 
 extern void destroyTree(Tree *t);
+
+extern void dotTree(Tree *t);
 extern void allKeysSorted(Tree *t, std::vector<Benchmark::UKey>& leaf);
 
 extern int  insertKey(Tree *t,   const Benchmark::UKey key);

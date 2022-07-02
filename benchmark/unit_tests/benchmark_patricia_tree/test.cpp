@@ -13,10 +13,10 @@ static const struct {
   //line      size data
   //----      ---- ----------------------------
   { __LINE__,   1,  {0}                           },  // empty string
-  { __LINE__,   2,  {0,1,0}                       },  // embedded null
-  { __LINE__,   3,  {1,2,3,0},                    },  // non-printable bytes no null
+  { __LINE__,   3,  {0,1,0}                       },  // embedded null
+  { __LINE__,   4,  {1,2,3,0},                    },  // non-printable bytes no null
   { __LINE__,   4,  {'a', 'A', 'C', 0},           },  // "aAC" 0 terminated string
-  { __LINE__,   4,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
+  { __LINE__,   5,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
 };
 
 const std::size_t NUM_VALUES = sizeof VALUES / sizeof *VALUES;                                                          
@@ -29,13 +29,13 @@ static const struct {
   //line      size data
   //----      ---- ----------------------------
   { __LINE__,   1,  {0}                           },  // empty string
-  { __LINE__,   2,  {0,1,0}                       },  // embedded null
-  { __LINE__,   3,  {1,2,3,0},                    },  // non-printable bytes no null
+  { __LINE__,   3,  {0,1,0}                       },  // embedded null
+  { __LINE__,   4,  {1,2,3,0},                    },  // non-printable bytes no null
+  { __LINE__,   5,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
   { __LINE__,   4,  {'a', 'A', 'C', 0},           },  // "aAC" 0 terminated string
-  { __LINE__,   4,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
 };
 
-
+const std::size_t NUM_SORTED_VALUES = sizeof SORTED_VALUES / sizeof *SORTED_VALUES;
 
 TEST(slice, mkRoot) {
   Patricia::Tree *ptr = memManager.allocTree();
@@ -95,4 +95,47 @@ TEST(slice, addMuliKey) {
 
   memManager.freeTree(tree);
   memManager.print();
+}
+
+TEST(slice, addMuliKeyAllPerms) {
+  std::vector<unsigned> index;
+  for (unsigned i=0; i<NUM_VALUES; ++i) {
+    index.push_back(i);
+  }
+
+  do {
+    Patricia::Tree *tree = memManager.allocTree();
+    for (unsigned i=0; i<NUM_VALUES; ++i) {
+      const idx = index[i];
+      print("idx = %u\n", idx);
+      Benchmark::UKey key(VALUES[idx].d_data, VALUES[idx].d_size);
+      auto rc = Patricia::insertKey(tree, key);
+      EXPECT_EQ(rc, Patricia::Errno::e_OK);
+      if (rc!=Patricia::Errno::e_OK) {
+        printf("ERROR: insert failed: ");
+        key.print();
+      } else {
+        printf("OK: insert success: ");
+        key.print();
+      }
+      rc = Patricia::findKey(tree, key);
+      EXPECT_EQ(rc, Patricia::Errno::e_OK);
+      if (rc!=Patricia::Errno::e_OK) {
+        printf("ERROR: find failed: ");
+        key.print();
+      } else {
+        printf("OK: find success: ");
+        key.print();
+      }
+    }
+
+    std::vector<Benchmark::UKey> leaf;
+    Patricia::allKeysSorted(tree, leaf);
+    for (unsigned i=0; i<leaf.size(); ++i) {
+      leaf[i].print();
+    }
+
+    memManager.freeTree(tree);
+    memManager.print();
+  } while (std::next_permutation(index.begin(), index.end()));
 }
