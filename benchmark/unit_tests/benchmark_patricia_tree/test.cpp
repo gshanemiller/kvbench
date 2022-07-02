@@ -1,6 +1,7 @@
 #include <benchmark_slice.h>
 #include <patricia_tree.h>
 #include <gtest/gtest.h>
+#include <algorithm>
 
 extern Patricia::MemoryManager memManager;                                                                                     
 
@@ -12,13 +13,29 @@ static const struct {
   //line      size data
   //----      ---- ----------------------------
   { __LINE__,   1,  {0}                           },  // empty string
-  { __LINE__,   2,  {0,1}                         },  // embedded null
-  { __LINE__,   3,  {1,2,3},                      },  // non-printable bytes no null
+  { __LINE__,   2,  {0,1,0}                       },  // embedded null
+  { __LINE__,   3,  {1,2,3,0},                    },  // non-printable bytes no null
   { __LINE__,   4,  {'a', 'A', 'C', 0},           },  // "aAC" 0 terminated string
-  { __LINE__,   4,  {'a', 0,   'F', 'G'}          },  // embedded null not 0 terminated
+  { __LINE__,   4,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
 };
 
 const std::size_t NUM_VALUES = sizeof VALUES / sizeof *VALUES;                                                          
+
+static const struct {
+  int           d_lineNum;  // source line number
+  u_int16_t     d_size;     // size of string in bytes
+  u_int8_t      d_data[16]; // up to 16 bytes of data
+} SORTED_VALUES[] = {
+  //line      size data
+  //----      ---- ----------------------------
+  { __LINE__,   1,  {0}                           },  // empty string
+  { __LINE__,   2,  {0,1,0}                       },  // embedded null
+  { __LINE__,   3,  {1,2,3,0},                    },  // non-printable bytes no null
+  { __LINE__,   4,  {'a', 'A', 'C', 0},           },  // "aAC" 0 terminated string
+  { __LINE__,   4,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
+};
+
+
 
 TEST(slice, mkRoot) {
   Patricia::Tree *ptr = memManager.allocTree();

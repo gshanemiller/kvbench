@@ -69,21 +69,22 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
   const u_int16_t       existingDataSize  = existingKey.size();
 
   // Ensure we do not read off the end of either key
-  u_int16_t maxSize = (existingDataSize <= newDataSize) ? existingDataSize : newDataSize;
+  // u_int16_t maxSize = (existingDataSize <= newDataSize) ? existingDataSize : newDataSize;
 
   u_int16_t idx(0);
   u_int16_t newDiffMask;
 
-  for (; idx < maxSize; ++idx) {
+  for (; idx < newDataSize; ++idx) {
     if (existingData[idx] != newData[idx]) {
       newDiffMask = existingData[idx] ^ newData[idx];
       goto different_byte_found;
     }
   }
 
-  if (idx == maxSize) {
-    assert(idx+1<existingDataSize);
-    newDiffMask = existingData[idx+1];
+  if (existingData[idx] != 0) {
+    // printf("idx is %u existingDataSize %u newDataSize %u maxSize %u\n", idx, existingDataSize, newDataSize, maxSize);
+    // assert(idx+1<existingDataSize);
+    newDiffMask = existingData[idx];
     goto different_byte_found;
   }
 
@@ -96,7 +97,6 @@ different_byte_found:
   newDiffMask |= newDiffMask >> 2;
   newDiffMask |= newDiffMask >> 4;
   newDiffMask = (newDiffMask & ~(newDiffMask >> 1)) ^ 255;
-  assert(idx<existingDataSize);
   u_int8_t c = existingData[idx];
   int newDirection = (1 + (newDiffMask | c)) >> 8;
 
