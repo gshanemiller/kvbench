@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/errno.h>
 
 #include <string>
 
@@ -158,14 +159,20 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
       }
       ++words;
       if (config.d_verbosity) {
-        printf("word: %09d, size: %05u, data '", words, sz);
+        printf("word: %09d, size: %05u, data '", words, outputSize);
         for (unsigned int i=0; i<sz; ++i) {
-          putchar(*(start+i));
+          if (isprint(*(start+i))) {
+            putchar(*(start+i));
+          } else {
+            unsigned char uc = static_cast<unsigned char>(*(start+i));
+            printf("0x%02x", uc);
+          }
+        }
+        if (config.d_cstringTerminator) {
+            printf("0x00");
         }
         printf("'\n");
-      } else if (words%10000==0) {
-        printf("wrote %09u words\r", words);
-      }
+      } 
     }
   }
 
@@ -213,7 +220,7 @@ int convertText() {
   // Allocate memory [lazy approach: will not read & process in blocks]
   data = static_cast<char*>(malloc(fstat.st_size));
   if (data==0) {
-    printf("cannot allocate %lu bytes\n", fstat.st_size);
+    printf("cannot allocate %llu bytes\n", fstat.st_size);
     close(fin);
     close(fout);
     return -1;
@@ -242,7 +249,6 @@ int convertText() {
     }
     ptr += blockSize;
     left -= blockSize;
-    printf("%09u bytes left\r", left);
   }
 
   // Read remaining bytes
@@ -260,7 +266,6 @@ int convertText() {
     free(data);
     return -1;
   }
-  printf("%09d bytes left\n", 0);
 
   // Write number of words - we'll seek back and overwrite at end
   if (write(fout, &words, sizeof(words))==-1) {
