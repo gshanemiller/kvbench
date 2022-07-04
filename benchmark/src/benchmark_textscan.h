@@ -74,7 +74,7 @@ TextScan::TextScan(const LoadFile& file)
 // ACCESSORS
 inline
 bool TextScan::eof() const {
-  return (d_index>d_available);
+  return (d_index>=d_available);
 }
 
 inline
@@ -107,6 +107,7 @@ void TextScan::next(Slice<unsigned char>& word) {
   ++d_index;
 
   unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
+  printf("TextScan::next: making word %u of %u with size %u\n", d_index-1, d_available, *i);
   word.reset(reinterpret_cast<unsigned char*>(d_ptr)+sizeof(WordSizeType), *i);
 
   d_ptr += sizeof(WordSizeType)+(*i);

@@ -3,8 +3,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
-extern Patricia::MemoryManager memManager;                                                                                     
+extern Patricia::MemoryManager memManager;
 
+/*
 static const struct {
   int           d_lineNum;  // source line number
   u_int16_t     d_size;     // size of string in bytes
@@ -18,8 +19,22 @@ static const struct {
   { __LINE__,   4,  {'a', 'A', 'C', 0},           },  // "aAC" 0 terminated string
   { __LINE__,   5,  {'a', 0,   'F', 'G', 0}       },  // embedded null not 0 terminated
 };
+*/
 
-const std::size_t NUM_VALUES = sizeof VALUES / sizeof *VALUES;                                                          
+static const struct {
+  int           d_lineNum;  // source line number
+  u_int16_t     d_size;     // size of string in bytes
+  u_int8_t      d_data[16]; // up to 16 bytes of data
+} VALUES[] = {
+  //line      size data
+  //----      ---- ----------------------------
+  { __LINE__,   8,  {'P', 'r', 'o', 'j', 'e', 'c', 't', 0 }},
+  { __LINE__,  10,  {'G', 'u', 't', 'e', 'n', 'b', 'e', 'r', 'g', 0}},
+  { __LINE__,   6,  {'E', 'B', 'o', 'o', 'k', 0}},
+  { __LINE__,   3,  {'o', 'f', 0}},
+};
+
+const std::size_t NUM_VALUES = sizeof VALUES / sizeof *VALUES;
 
 static const struct {
   int           d_lineNum;  // source line number

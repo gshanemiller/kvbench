@@ -166,7 +166,6 @@ int Benchmark::LoadFile::readFile() {
     }
     ptr += blockSize;
     left -= blockSize;
-    printf("%09u bytes left\r", left);
   }
 
   // Read remaining bytes
@@ -180,8 +179,6 @@ int Benchmark::LoadFile::readFile() {
   } else if (rc==-1) {
     return errno;
   }
-
-  printf("%09d bytes left\n", 0);
 
   return 0;
 }                                                                                                      

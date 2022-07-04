@@ -20,7 +20,7 @@ int Patricia::findKey(Patricia::Tree *t, Benchmark::UKey key) {
   }
 
   const u_int8_t *const keyData      = key.data();
-  const u_int16_t       keyDataSize  = key.size();
+  const u_int16_t       keyDataSize  = key.size() - 1;
 
   intptr_t p = reinterpret_cast<intptr_t>(t->root);
   while (1 & p) {
@@ -49,7 +49,7 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
   }
 
   const u_int8_t *const newData      = key.data();
-  const u_int16_t       newDataSize  = key.size();
+  const u_int16_t       newDataSize  = key.size() - 1;
 
   intptr_t p = reinterpret_cast<intptr_t>(t->root);
   while (1 & p) {
@@ -66,10 +66,7 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
 
   Benchmark::UKey existingKey(reinterpret_cast<void*>(p));
   const u_int8_t *const existingData      = existingKey.data();
-  const u_int16_t       existingDataSize  = existingKey.size();
-
-  // Ensure we do not read off the end of either key
-  // u_int16_t maxSize = (existingDataSize <= newDataSize) ? existingDataSize : newDataSize;
+  const u_int16_t       existingDataSize  = existingKey.size() - 1;
 
   u_int16_t idx(0);
   u_int16_t newDiffMask;
@@ -82,8 +79,7 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
   }
 
   if (existingData[idx] != 0) {
-    // printf("idx is %u existingDataSize %u newDataSize %u maxSize %u\n", idx, existingDataSize, newDataSize, maxSize);
-    // assert(idx+1<existingDataSize);
+    printf("idx is %u existingDataSize %u newDataSize %u\n", idx, existingDataSize, newDataSize);
     newDiffMask = existingData[idx];
     goto different_byte_found;
   }

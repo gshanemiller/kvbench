@@ -17,6 +17,7 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stat
   Benchmark::Slice<unsigned char> word;
 
   Benchmark::TextScan scanner(file);
+  scanner.next(word);
 
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
@@ -28,6 +29,7 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stat
   
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
+    word.print();
     Patricia::insertKey(map, word);
   }
 
@@ -97,13 +99,6 @@ static int patricia_test_text_find(unsigned runNumber, T* map, Benchmark::Stats&
     stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
   }
   return 0;
-}
-
-extern "C" {
-int patricia_test_text_iter(void *data, const unsigned char *key, unsigned int key_len, void *value) {
-  printf("key: %p, key_len: %u, key: '%s', value: %p\n", key, key_len, (const char*)(key), value);
-  return 0;
-}
 }
 
 int Benchmark::patricia::start() {

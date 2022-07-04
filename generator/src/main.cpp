@@ -220,7 +220,7 @@ int convertText() {
   // Allocate memory [lazy approach: will not read & process in blocks]
   data = static_cast<char*>(malloc(fstat.st_size));
   if (data==0) {
-    printf("cannot allocate %llu bytes\n", fstat.st_size);
+    printf("cannot allocate %lu bytes\n", fstat.st_size);
     close(fin);
     close(fout);
     return -1;
