@@ -29,7 +29,6 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stat
   
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    word.print();
     Patricia::insertKey(map, word);
   }
 

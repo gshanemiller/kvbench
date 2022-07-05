@@ -79,7 +79,7 @@ int Patricia::insertKey(Patricia::Tree *t, Benchmark::UKey key) {
   }
 
   if (existingData[idx] != 0) {
-    printf("idx is %u existingDataSize %u newDataSize %u\n", idx, existingDataSize, newDataSize);
+    // printf("idx is %u existingDataSize %u newDataSize %u\n", idx, existingDataSize, newDataSize);
     newDiffMask = existingData[idx];
     goto different_byte_found;
   }

@@ -18,6 +18,7 @@ struct Config {
   Config()
   : d_mode(UNDEFINED)
   , d_verbosity(0)
+  , d_boundary(1)
   , d_cstringTerminator(false)
   {
   }
@@ -26,6 +27,7 @@ struct Config {
   std::string     d_inFilename;
   std::string     d_outFilename;
   unsigned int    d_verbosity;
+  unsigned int    d_boundary;
   bool            d_cstringTerminator;
 };
 
@@ -45,7 +47,11 @@ void usageAndExit() {
   printf("       -o <outputFilename>      mandatory: output file which contains output as per <mode>\n");
   printf("\n");
   printf("       -t                       optional : add 0 terminator to string on write\n");
-  printf("                                           valid 'convert-text' for uses where 0 terminator required\n");
+  printf("                                           valid with 'convert-text' for uses where 0 terminator required\n");
+  printf("\n");
+  printf("       -b <n>                   optional : ensure each string starts on an address p s.t. p mod n == 0\n");
+  printf("                                           valid with 'convert-text' when n boundaries are required\n");
+  printf("                                           n must be a power of 2 in range [2,8]\n");
   printf("\n");
   printf("       -v                       optional : increase verbosity of output\n");
   exit(2);
@@ -53,7 +59,7 @@ void usageAndExit() {
 
 void parseCommandLine(int argc, char **argv) {                                                                          
   int opt;
-  const char *switches = "m:i:o:tv";
+  const char *switches = "m:i:o:b:tv";
 
   while ((opt = getopt(argc, argv, switches)) != -1) {
     switch (opt) {
@@ -83,6 +89,18 @@ void parseCommandLine(int argc, char **argv) {
             config.d_outFilename = optarg;
           } else {
             usageAndExit();
+          }
+        }
+        break;
+
+      case 'b':
+        {
+          unsigned b = static_cast<unsigned>(atoi(optarg));
+          switch (b) {
+            case 2: config.d_boundary = b; break;
+            case 4: config.d_boundary = b; break;
+            case 8: config.d_boundary = b; break;
+            default: usageAndExit();
           }
         }
         break;
@@ -120,6 +138,9 @@ void parseCommandLine(int argc, char **argv) {
 int convertTextHelper(int fid, char *data, const char *end, unsigned int& words) {
   char *ptr = data;
 
+  // first words starts 4 bytes into file after 4 byte word count
+  unsigned long offset = 4; 
+
   while(ptr!=end) {
     // strip leading whitespaces
     while(isspace(*ptr)) {
@@ -139,40 +160,75 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
     const unsigned int sz = ptr-start;
     unsigned int outputSize(sz);
 
-    if (sz) {
-      if (config.d_cstringTerminator) {
-        ++outputSize;
-      }
-      if (write(fid, &outputSize, sizeof(outputSize))==-1) {
+    // Skip empty words
+    if (sz==0) {
+      continue;
+    }
+
+    // Error out of word is too big
+    if (sz>0xfffe) {
+      printf("ERROR: word size %u exceeds maximum of 0xfffe\n", sz);
+      return -1;
+    }
+
+    if (config.d_cstringTerminator) {
+      ++outputSize;
+    }
+
+    unsigned padding = 0;
+    for (; (offset+outputSize+padding)%config.d_boundary!=0; ++padding);
+    outputSize |= (padding<<16);
+      
+    if (write(fid, &outputSize, sizeof(outputSize))==-1) {
+      printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+      return -1;
+    }
+    offset += sizeof(outputSize);
+
+    const unsigned long previousWordOffset = offset;
+
+    if (write(fid, start, sz)==-1) {
+      printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+      return -1;
+    }
+    offset += sz;
+
+    if (config.d_cstringTerminator) {
+      offset++;
+      if (write(fid, &terminator, sizeof(terminator))==-1) {
         printf("write error: %s (errno=%d)\n", strerror(errno), errno);
         return -1;
       }
-      if (write(fid, start, sz)==-1) {
-        printf("write error: %s (errno=%d)\n", strerror(errno), errno);
-        return -1;
-      }
-      if (config.d_cstringTerminator) {
+    }
+
+    if (padding) {
+      offset += padding;
+      while(padding--) {
         if (write(fid, &terminator, sizeof(terminator))==-1) {
           printf("write error: %s (errno=%d)\n", strerror(errno), errno);
           return -1;
         }
       }
-      ++words;
-      if (config.d_verbosity) {
-        printf("word: %09d, size: %05u, data '", words, outputSize);
-        for (unsigned int i=0; i<sz; ++i) {
-          if (isprint(*(start+i))) {
-            putchar(*(start+i));
-          } else {
-            unsigned char uc = static_cast<unsigned char>(*(start+i));
-            printf("0x%02x", uc);
-          }
+    }
+    
+    ++words;
+
+    if (config.d_verbosity) {
+      unsigned pad = outputSize>>16;
+      unsigned outSize = outputSize & 0xffff;
+      printf("word: %09d, offset: %lu, rawSize: %u, padding: %u, size: %05u, data '", words, previousWordOffset, outputSize, pad, outSize);
+      for (unsigned int i=0; i<sz; ++i) {
+        if (isprint(*(start+i))) {
+          putchar(*(start+i));
+        } else {
+          unsigned char uc = static_cast<unsigned char>(*(start+i));
+          printf("0x%02x", uc);
         }
-        if (config.d_cstringTerminator) {
-            printf("0x00");
-        }
-        printf("'\n");
-      } 
+      }
+      if (config.d_cstringTerminator) {
+        printf("0x00");
+      }
+      printf("'\n");
     }
   }
 

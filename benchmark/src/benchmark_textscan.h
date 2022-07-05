@@ -95,9 +95,9 @@ void TextScan::next(Slice<char>& word) {
   ++d_index;
 
   unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
-  word.reset(d_ptr+sizeof(WordSizeType), *i);
+  word.reset(d_ptr+sizeof(WordSizeType), (*i)&0xffff);
 
-  d_ptr += sizeof(WordSizeType)+(*i);
+  d_ptr += sizeof(WordSizeType) + ((*i)&0xffff) + ((*i)>>16);
 }
 
 inline
@@ -107,10 +107,12 @@ void TextScan::next(Slice<unsigned char>& word) {
   ++d_index;
 
   unsigned int *i = reinterpret_cast<WordSizeType*>(d_ptr);
-  printf("TextScan::next: making word %u of %u with size %u\n", d_index-1, d_available, *i);
-  word.reset(reinterpret_cast<unsigned char*>(d_ptr)+sizeof(WordSizeType), *i);
 
-  d_ptr += sizeof(WordSizeType)+(*i);
+//printf("TextScan::next: making word %u of %u with size %u padding %u at %p\n",
+//  d_index-1, d_available, (*i)&0xffff, (*i)>>16, reinterpret_cast<unsigned char*>(d_ptr));
+  word.reset(reinterpret_cast<unsigned char*>(d_ptr)+sizeof(WordSizeType), (*i)&0xffff);
+
+  d_ptr += sizeof(WordSizeType) + ((*i)&0xffff) + ((*i)>>16);
 }
 
 inline
