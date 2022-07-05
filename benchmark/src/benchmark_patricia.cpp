@@ -121,6 +121,7 @@ int Benchmark::patricia::start() {
         Patricia::Tree *patriciaTree = memManager.allocTree();
         patricia_test_text_insert(i, patriciaTree, d_stats, d_file);
         patricia_test_text_find(i, patriciaTree, d_stats, d_file);
+        memManager.print();
       }
     }
   }

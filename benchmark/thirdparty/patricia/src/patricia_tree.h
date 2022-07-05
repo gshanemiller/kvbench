@@ -6,6 +6,27 @@
 
 namespace Patricia {
 
+struct TreeStats {
+  u_int64_t   d_maxDepth;
+  u_int64_t   d_nodeCount;
+  u_int64_t   d_leftChildEmptyCount;
+  u_int64_t   d_rightChildEmptyCount;
+
+  TreeStats()
+  : d_maxDepth(0)
+  , d_nodeCount(0)
+  , d_leftChildEmptyCount(0)
+  , d_rightChildEmptyCount(0)
+  {
+  }
+
+  ~TreeStats() = default;
+
+  void print() const {
+    printf("PatriciaTree stats: maxDepth: %lu, nodeCount: %lu, leftChildEmptyCount: %lu, rightChildEmptyCount: %lu\n",
+      d_maxDepth, d_nodeCount, d_leftChildEmptyCount, d_rightChildEmptyCount);
+};
+
 typedef struct {
   void *root;
 } Tree;
@@ -23,7 +44,7 @@ enum Errno {
   e_MEMORY    = 3,
 };
 
-extern void destroyTree(Tree *t);
+extern void destroyTree(Tree *t, TreeStats *stats);
 
 extern void dotTree(Tree *t);
 extern void allKeysSorted(Tree *t, std::vector<Benchmark::UKey>& leaf);
