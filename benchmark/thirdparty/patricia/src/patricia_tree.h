@@ -25,6 +25,7 @@ struct TreeStats {
   void print() const {
     printf("PatriciaTree stats: maxDepth: %lu, nodeCount: %lu, leftChildEmptyCount: %lu, rightChildEmptyCount: %lu\n",
       d_maxDepth, d_nodeCount, d_leftChildEmptyCount, d_rightChildEmptyCount);
+  }
 };
 
 typedef struct {
@@ -44,10 +45,11 @@ enum Errno {
   e_MEMORY    = 3,
 };
 
-extern void destroyTree(Tree *t, TreeStats *stats);
+extern void destroyTree(Tree *t);
 
 extern void dotTree(Tree *t);
 extern void allKeysSorted(Tree *t, std::vector<Benchmark::UKey>& leaf);
+extern void statsTree(Tree *t, TreeStats *stats);
 
 extern int  insertKey(Tree *t,   const Benchmark::UKey key);
 extern int  deleteKey(Tree *t,   const Benchmark::UKey key);
