@@ -17,7 +17,6 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Benchmark::Stat
   Benchmark::Slice<unsigned char> word;
 
   Benchmark::TextScan scanner(file);
-  scanner.next(word);
 
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
