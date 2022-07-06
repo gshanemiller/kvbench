@@ -172,52 +172,8 @@ descend_left:
   goto descend_left;
 }
 
-void Patricia::destroryTreeTree *t, TreeStats *stats) {
+void Patricia::destroyTree(Patricia::Tree *tree) {
   assert(tree);
-  assert(stats);
   
-  // There's always at least one node, which is the root
-  stats->d_nodeCount=1;
-
-  // Is tree empty?
-  if (!t->root) {
-    memManager.freeTree(t);
-    return;
-  }
-
-  intptr_t p = reinterpret_cast<intptr_t>(t->root);
-
-  // There's only one leaf?
-  if ((1&p)==0) {
-    stats->d_maxDepth=1;
-    memManager.freeTree(t);
-    return;
-  }
-
-  std::stack<intptr_t> stack;
-  Patricia::InternalNode *q(0);
-
-  // In-order tree traversal
-descend_left:
-  while (p && (1 & p)) {
-    ++stats->d_nodeCount;
-    ++stats->d_maxDepth;
-    stack.push(p);
-    q = reinterpret_cast<Patricia::InternalNode*>(p-1);
-    p = reinterpret_cast<intptr_t>(q->child[0]);
-  }
-
-  // More work to do?
-  if (stack.empty()) {
-    return;
-  }
-
-  p = stack.top();
-  assert(p&1);
-  stack.pop();
-
-  q = reinterpret_cast<Patricia::InternalNode*>(p-1);
-  p = reinterpret_cast<intptr_t>(q->child[1]);
-  
-  goto descend_left;
+  return;
 }
