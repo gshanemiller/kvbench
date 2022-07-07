@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "art.h"
+#include "art_mem.h"
 
 #ifdef __i386__
     #include <emmintrin.h>
@@ -28,16 +29,16 @@ static art_node* alloc_node(uint8_t type) {
     art_node* n;
     switch (type) {
         case NODE4:
-            n = (art_node*)calloc(1, sizeof(art_node4));
+            n = (art_node*)art_calloc(sizeof(art_node4));
             break;
         case NODE16:
-            n = (art_node*)calloc(1, sizeof(art_node16));
+            n = (art_node*)art_calloc(sizeof(art_node16));
             break;
         case NODE48:
-            n = (art_node*)calloc(1, sizeof(art_node48));
+            n = (art_node*)art_calloc(sizeof(art_node48));
             break;
         case NODE256:
-            n = (art_node*)calloc(1, sizeof(art_node256));
+            n = (art_node*)art_calloc(sizeof(art_node256));
             break;
         default:
             abort();
@@ -63,7 +64,7 @@ static void destroy_node(art_node *n) {
 
     // Special case leafs
     if (IS_LEAF(n)) {
-        free(LEAF_RAW(n));
+        art_free(LEAF_RAW(n));
         return;
     }
 
@@ -112,7 +113,7 @@ static void destroy_node(art_node *n) {
     }
 
     // Free ourself on the way up
-    free(n);
+    art_free(n);
 }
 
 /**
@@ -357,7 +358,7 @@ art_leaf* art_maximum(art_tree *t) {
 }
 
 static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
-    art_leaf *l = (art_leaf*)calloc(1, sizeof(art_leaf)+key_len);
+    art_leaf *l = (art_leaf*)art_calloc(sizeof(art_leaf)+key_len);
     l->value = value;
     l->key_len = key_len;
     memcpy(l->key, key, key_len);
@@ -402,7 +403,7 @@ static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *ch
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        free(n);
+        art_free(n);
         add_child256(new_node, ref, c, child);
     }
 }
@@ -470,7 +471,7 @@ static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *ch
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        free(n);
+        art_free(n);
         add_child48(new_node, ref, c, child);
     }
 }
@@ -502,7 +503,7 @@ static void add_child4(art_node4 *n, art_node **ref, unsigned char c, void *chil
                 sizeof(unsigned char)*n->n.num_children);
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        free(n);
+        art_free(n);
         add_child16(new_node, ref, c, child);
     }
 }
@@ -682,7 +683,7 @@ static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
                 pos++;
             }
         }
-        free(n);
+        art_free(n);
     }
 }
 
@@ -706,7 +707,7 @@ static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
                 child++;
             }
         }
-        free(n);
+        art_free(n);
     }
 }
 
@@ -722,7 +723,7 @@ static void remove_child16(art_node16 *n, art_node **ref, art_node **l) {
         copy_header((art_node*)new_node, (art_node*)n);
         memcpy(new_node->keys, n->keys, 4);
         memcpy(new_node->children, n->children, 4*sizeof(void*));
-        free(n);
+        art_free(n);
     }
 }
 
@@ -753,7 +754,7 @@ static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
             child->partial_len += n->n.partial_len + 1;
         }
         *ref = child;
-        free(n);
+        art_free(n);
     }
 }
 
@@ -827,7 +828,7 @@ void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
     if (l) {
         t->size--;
         void *old = l->value;
-        free(l);
+        art_free(l);
         return old;
     }
     return NULL;

@@ -29,6 +29,7 @@ set(BENCHMARK_SOURCES
   ./thirdparty/cityhash/city.cc
 
   ./thirdparty/art/art.c
+  ./thirdparty/art/art_mem.c
 
   ./thirdparty/folly/ScopeGuard.cpp
   ./thirdparty/folly/lang/ToAscii.cpp

@@ -2,6 +2,8 @@
 #include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
+#include <art_mem.h>                                                                                                    
+
 #include <intel_skylake_pmu.h>
 
 #pragma GCC diagnostic push                                                                                             
@@ -126,7 +128,9 @@ int Benchmark::ART::start() {
         art_test_text_insert(i, artTrie, d_stats, d_file);
         art_test_text_find(i, artTrie, d_stats, d_file);
         // art_iter(&artTrie, art_test_text_iter, 0);
+        art_print_memory();
         art_tree_destroy(&artTrie);
+        art_print_memory();
       }
     }
   }
