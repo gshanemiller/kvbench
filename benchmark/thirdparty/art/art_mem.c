@@ -1,6 +1,7 @@
 #include <art_mem.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <mimalloc.h>
 
@@ -32,8 +33,30 @@ void *art_malloc(u_int64_t size) {
   return ptr;
 }
 
-void art_free(void *ptr) {
+void art_free_node(art_node*ptr) {
   ++art_freeCount;
+  switch(ptr->type) {
+    case NODE4:
+      art_currentBytes -= (sizeof(art_node4));
+      break;
+    case NODE16:
+      art_currentBytes -= (sizeof(art_node16));
+      break;
+    case NODE48:
+      art_currentBytes -= (sizeof(art_node48));
+      break;
+    case NODE256:
+      art_currentBytes -= (sizeof(art_node256));
+      break;
+    default:
+      abort();
+  }
+  mi_free(ptr);
+}
+
+void art_free_leaf(art_leaf*ptr) {
+  ++art_freeCount;
+  art_currentBytes -= (sizeof(art_leaf)+ptr->key_len);
   mi_free(ptr);
 }
 

@@ -64,7 +64,7 @@ static void destroy_node(art_node *n) {
 
     // Special case leafs
     if (IS_LEAF(n)) {
-        art_free(LEAF_RAW(n));
+        art_free_leaf(LEAF_RAW(n));
         return;
     }
 
@@ -113,7 +113,7 @@ static void destroy_node(art_node *n) {
     }
 
     // Free ourself on the way up
-    art_free(n);
+    art_free_node((art_node*)n);
 }
 
 /**
@@ -403,7 +403,7 @@ static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *ch
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        art_free(n);
+        art_free_node((art_node*)n);
         add_child256(new_node, ref, c, child);
     }
 }
@@ -471,7 +471,7 @@ static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *ch
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        art_free(n);
+        art_free_node((art_node*)n);
         add_child48(new_node, ref, c, child);
     }
 }
@@ -503,7 +503,7 @@ static void add_child4(art_node4 *n, art_node **ref, unsigned char c, void *chil
                 sizeof(unsigned char)*n->n.num_children);
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        art_free(n);
+        art_free_node((art_node*)n);
         add_child16(new_node, ref, c, child);
     }
 }
@@ -683,7 +683,7 @@ static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
                 pos++;
             }
         }
-        art_free(n);
+        art_free_node((art_node*)n);
     }
 }
 
@@ -707,7 +707,7 @@ static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
                 child++;
             }
         }
-        art_free(n);
+        art_free_node((art_node*)n);
     }
 }
 
@@ -723,7 +723,7 @@ static void remove_child16(art_node16 *n, art_node **ref, art_node **l) {
         copy_header((art_node*)new_node, (art_node*)n);
         memcpy(new_node->keys, n->keys, 4);
         memcpy(new_node->children, n->children, 4*sizeof(void*));
-        art_free(n);
+        art_free_node((art_node*)n);
     }
 }
 
@@ -754,7 +754,7 @@ static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
             child->partial_len += n->n.partial_len + 1;
         }
         *ref = child;
-        art_free(n);
+        art_free_node((art_node*)n);
     }
 }
 
@@ -828,7 +828,7 @@ void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
     if (l) {
         t->size--;
         void *old = l->value;
-        art_free(l);
+        art_free_leaf(l);
         return old;
     }
     return NULL;
