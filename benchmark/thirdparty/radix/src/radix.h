@@ -81,16 +81,35 @@ void TreeStats::reset(void) {
 
 struct Node256 {
   // DATA
-  void     *d_children[k_MAX_CHILDREN256];
+  Node256 *d_children[k_MAX_CHILDREN256];
+
+  // CREATORS
+  Node256();
+    // Create a Node256 object with all children zeroed
+
+  Node256(const Node256& other) = delete;
+    // Copy constructor not provided
+
+  ~Node256() = default;
+    // Destory this object. Note, destructor does not deallocate memory. Those
+    // roles and responsibilities are done in 'Tree::remove' or 'Tree::destroy'
 
   // MANIPULATORS
-  int insert(MemManager *memManager, const u_int8_t* key, u_int16_t index, u_int16_t size);
+  Node256& operator=(const Node256& rhs) = delete;
+    // Assignment opertor not provided
 };
+
+// INLINE DEFINITIONS
+inline
+Node256::Node256()
+{
+  memset(d_children, 0, sizeof(Node256 *)*k_MAX_CHILDREN256);
+}
 
 class Tree {
   // DATA
   MemManager  *d_memManager;
-  Node256     *d_root[k_MAX_CHILDREN256];
+  Node256     d_root;
 
   // CREATORS
   Tree() = delete;
@@ -132,8 +151,19 @@ class Tree {
 
 private:
   // PRIVATE ACCESSORS
-  int internalFind(const Benchmark::Slice<u_int8_t> key) const;
-  
+  int internalFind(const u_int8_t *key, const u_int16_t size,
+    u_int16_t *lastMatchIndex, Node256 **lastMatch) const;
+    // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
+    // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
+    // 'size>0'. Upon return 'lastMatchIndex' is set to the last character
+    // matched, and '*lastMatch' points to the node in which the last match was
+    // found. That is, if 'e_EXISTS' is returned '*lastMatchIndex==size' and
+    // '*lastMatch' points to the leaf containing last character in 'key'.
+    // Otherwise 'e_NOT_FOUND' was returned and '*lastMatch' contains the node
+    // in which the highest byte '0<=*lastMatchIndex<size' was matched. If this
+    // call co-occurs with 'insert' the output data can be used to recursively
+    // insert the rest of the key under '*lastMatch' when 'e_NOT_FOUND' is
+    // returned.
 };
 
 // INLINE DEFINITIONS
@@ -143,7 +173,6 @@ Tree::Tree(MemManager *memManager)
 : d_memManager(memManager)
 {
   assert(memManager!=0);
-  memset(d_root, 0, sizeof(Node256*)*k_MAX_CHILDREN256);
 }
 
 } // namespace Radix
