@@ -1,29 +1,14 @@
 #pragma once
 
-#include <benchmark_slice.h>
-
 #include <assert.h>
 #include <iostream>
+
+#include <benchmark_slice.h>
+#include <radix_enums.h>
 
 namespace Radix {
 
 class MemManager;
-
-extern "C" {
-  int radix_insert(MemManager *memManager, const u_int8_t *key, u_int16_t size);
-}
-
-ennum {
-  k_MAX_CHILDREN256 = 256,
-  k_IS_INNER_NODE = 1,
-  k_IS_INNER_NODE256 = 2,
-  k_IS_KEY_COMPRESSED = 4,
-  k_IS_CHILDREN_COMPRESSED = 8,
-  e_OK = 0,
-  e_EXISTS = 1,
-  e_NOT_FOUND = 2,
-  e_MEMORY_ERROR = 3,
-};
 
 struct TreeStats {
   // DATA
@@ -33,6 +18,7 @@ struct TreeStats {
   u_int64_t d_maxDepth;
   u_int64_t d_totalSizeBytes;
   u_int64_t d_totalCompressedSizeBytes;
+  u_int64_t d_totalUncompressedSizeBytes;
 
   // CREATORS
   TreeStats();
@@ -52,7 +38,7 @@ struct TreeStats {
     // Create and return a copy of specified 'rhs' s.t. all attributes equal.
 
   // ASPECTS
-  std::stream& print(std::ostream& stream) const;
+  std::ostream& print(std::ostream& stream) const;
     // Pretty print into specified 'stream' a human readable dump of attributes
     // returning 'stream'
 };
@@ -61,19 +47,23 @@ struct TreeStats {
 // CREATORS
 inline
 TreeStats::TreeStats()
-: reset()
 {
+  reset();
 }
 
 // ASPECTS
 inline 
-void TreeStats::print(std::stream& stream) {
-  stream  << "innerNodeCount: "   << d_innerNodeCount
-          << " leafCount: "       << d_leafCount
-          << " emptyChildCount: " << d_emptyChildCount
-          << " depth: "           << d_depth
-          << " totalSizeBytes: "  << d_totalSizeBytes
-          << " compressionRatio: "<< d_compressionRatio
+std::ostream& TreeStats::print(std::ostream& stream) const {
+  double ratio = static_cast<double>(d_totalCompressedSizeBytes) /
+                 static_cast<double>(d_totalUncompressedSizeBytes);
+  stream  << "innerNodeCount: "               << d_innerNodeCount
+          << " leafCount: "                   << d_leafCount
+          << " emptyChildCount: "             << d_emptyChildCount
+          << " maxDepth: "                    << d_maxDepth
+          << " totalSizeBytes: "              << d_totalSizeBytes
+          << " totalCompressedSizeBytes: "    << d_totalCompressedSizeBytes
+          << " totalUncompressedSizeBytes: "  << d_totalUncompressedSizeBytes
+          << " compressionRatio: "            << ratio
           << std::endl;
   return stream;
 }
@@ -85,22 +75,22 @@ void TreeStats::reset(void) {
   d_emptyChildCount = 0;
   d_maxDepth = 0;
   d_totalSizeBytes = 0;
-  d_compressionRatio = 0.0;
-
-  d_depth = 0;
-  d_totalSizeBytes = 0;
-  d_compressionRatio = 0.0;
+  d_totalCompressedSizeBytes = 0;
+  d_totalUncompressedSizeBytes = 0;
 }
 
-class Node256 {
+struct Node256 {
   // DATA
   void     *d_children[k_MAX_CHILDREN256];
+
+  // MANIPULATORS
+  int insert(MemManager *memManager, const u_int8_t* key, u_int16_t index, u_int16_t size);
 };
 
 class Tree {
   // DATA
-  Node256     *d_root;
   MemManager  *d_memManager;
+  Node256     *d_root[k_MAX_CHILDREN256];
 
   // CREATORS
   Tree() = delete;
@@ -137,24 +127,23 @@ class Tree {
   void destroy();
     // Deallocate all memory leaving tree empty
 
-  Tree& operator=(const Tree& rhs);
+  Tree& operator=(const Tree& rhs) = delete;
     // Assignment operator not provided
+
+private:
+  // PRIVATE ACCESSORS
+  int internalFind(const Benchmark::Slice<u_int8_t> key) const;
+  
 };
 
 // INLINE DEFINITIONS
 // CREATORS
 inline
 Tree::Tree(MemManager *memManager)
-: d_root(0)
-, d_memManager(memManager)
+: d_memManager(memManager)
 {
   assert(memManager!=0);
-}
-
-// MANIPULATORS
-inline
-int Tree::insert(const Benchmark::Slice<u_int8_t> key) {
-  return radix_insert(d_memManager, key.data(), key.size());
+  memset(d_root, 0, sizeof(Node256*)*k_MAX_CHILDREN256);
 }
 
 } // namespace Radix

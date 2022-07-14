@@ -1,8 +1,10 @@
 #pragma once
 
-#include <iostream.h>
+#include <iostream>
 
 namespace Radix {
+
+class Node256;
 
 struct MemManagerStats {
   // DATA
@@ -10,9 +12,9 @@ struct MemManagerStats {
   u_int64_t d_freeCount;            // number of times free called
   u_int64_t d_currentSizeBytes;     // current amount of allocated memory
   u_int64_t d_maximumSizeBytes;     // max 'currentSizeBytes' seen so far
-  u_int64 t d_requestedBytes;       // sum of sizes to all malloc calls
-  u_int64 t d_freedBytes;           // sum of sizes to all free calls
-  u_int64 t d_limitSizeBytes;       // size in bytes of memory pool
+  u_int64_t d_requestedBytes;       // sum of sizes to all malloc calls
+  u_int64_t d_freedBytes;           // sum of sizes to all free calls
+  u_int64_t d_limitSizeBytes;       // size in bytes of memory pool
 
   // CREATORS
   MemManagerStats();
@@ -32,14 +34,13 @@ struct MemManagerStats {
     // Create and return MemManagerStats object with attributes equal to 'rhs'
 
   // ASPECTS
-  std::stream& print(std::ostream& stream);
+  std::ostream& print(std::ostream& stream);
     // Print into specified stream a human readable dump of this' attributes
     // returning stream
 };
 
-class MemManager() {
-  // DATA
-
+class MemManager {
+public:
   // CREATORS
   MemManager();
     // Create a memory manager object
@@ -56,6 +57,9 @@ class MemManager() {
     // Write into specified 'stats' memory statistics
 
   // MANIPULATORS
+  Node256 *mallocNode256();
+    // Allocate 'Node256' object
+ 
   MemManager& operator=(const MemManager& rhs) = delete;
     // Assignment operator not provided
 };
