@@ -1,5 +1,9 @@
 #pragma once
 
+#include <radix_enums.h>
+
+#include <mimalloc.h>
+
 #include <iostream>
 
 namespace Radix {
@@ -42,10 +46,10 @@ struct MemManagerStats {
 class MemManager {
 public:
   // CREATORS
-  MemManager();
+  MemManager() = default;
     // Create a memory manager object
 
-  ~MemManager();
+  ~MemManager() = default;
     // Destory this object and all memory it manages. Note that all Radix
     // trees must be destoyed before this call
 
@@ -63,5 +67,14 @@ public:
   MemManager& operator=(const MemManager& rhs) = delete;
     // Assignment operator not provided
 };
+
+// INLINE DEFINITIONS
+// CREATORS
+
+// MANIPULATORS
+inline
+Node256 *MemManager::mallocNode256() {
+  return (Node256*)mi_malloc_aligned(sizeof(Node256*)*k_MAX_CHILDREN256, 2);
+}
 
 } // nsmaespace Radix

@@ -54,8 +54,13 @@ TreeStats::TreeStats()
 // ASPECTS
 inline 
 std::ostream& TreeStats::print(std::ostream& stream) const {
-  double ratio = static_cast<double>(d_totalCompressedSizeBytes) /
-                 static_cast<double>(d_totalUncompressedSizeBytes);
+  double ratio(0);
+
+  if (d_totalUncompressedSizeBytes!=0) {
+    ratio = static_cast<double>(d_totalCompressedSizeBytes) /
+            static_cast<double>(d_totalUncompressedSizeBytes);
+  }
+
   stream  << "innerNodeCount: "               << d_innerNodeCount
           << " leafCount: "                   << d_leafCount
           << " emptyChildCount: "             << d_emptyChildCount
@@ -111,6 +116,7 @@ class Tree {
   MemManager  *d_memManager;
   Node256     d_root;
 
+public:
   // CREATORS
   Tree() = delete;
     // Default constructor not provided
@@ -128,6 +134,9 @@ class Tree {
   // ACCESSORS
   void statistics(TreeStats *stats) const;
     // Compute tree statistics setting result into specified 'stats'.
+
+  void dotGraph(std::ostream& stream) const;
+    // Print into specified 'stream' a AT&T dot graph representation of tree
 
   int find(const Benchmark::Slice<u_int8_t> key) const;
     // Return 'e_EXISTS' if specified key was found in tree, and 'e_NOT_FOUND'
@@ -173,6 +182,18 @@ Tree::Tree(MemManager *memManager)
 : d_memManager(memManager)
 {
   assert(memManager!=0);
+}
+
+inline
+Tree::~Tree() {
+}
+
+// MANIPULATORS
+inline
+int Tree::find(const Benchmark::Slice<u_int8_t> key) const {
+  u_int16_t index(0);
+  Node256   *node(0);
+  return internalFind(key.data(), key.size(), &index, &node);
 }
 
 } // namespace Radix

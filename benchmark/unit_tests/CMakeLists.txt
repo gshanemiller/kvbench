@@ -1,3 +1,4 @@
 add_subdirectory(art)
+add_subdirectory(radix)
 add_subdirectory(benchmark_slice)
 add_subdirectory(benchmark_patricia_tree)
