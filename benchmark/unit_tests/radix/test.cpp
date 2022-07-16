@@ -14,6 +14,7 @@ static const struct {
   { __LINE__,   1,  {0}},
   { __LINE__,   2,  {'A', 0}},
   { __LINE__,   8,  {'P', 'r', 'o', 'j', 'e', 'c', 't', 0 }},
+  { __LINE__,   3,  {'P', 'r', 'o'}},
   { __LINE__,   8,  {'P', 'r', 'o', 'g', 'r', 'a', 'm', 0 }},
   { __LINE__,  10,  {'G', 'u', 't', 'e', 'n', 'b', 'e', 'r', 'g', 0}},
   { __LINE__,   6,  {'E', 'B', 'o', 'o', 'k', 0}},
@@ -33,11 +34,6 @@ TEST(radix, addKeySize1) {
   EXPECT_TRUE(rc==Radix::e_OK);
   rc = tree.find(key);
   EXPECT_TRUE(rc==Radix::e_EXISTS);
-
-  Radix::TreeStats stats;
-  tree.statistics(&stats);
-  stats.print(std::cout);
-  tree.dotGraph(std::cout);
 }
 
 TEST(radix, addKeySize2) {
@@ -51,11 +47,6 @@ TEST(radix, addKeySize2) {
   EXPECT_TRUE(rc==Radix::e_OK);
   rc = tree.find(key);
   EXPECT_TRUE(rc==Radix::e_EXISTS);
-
-  Radix::TreeStats stats;
-  tree.statistics(&stats);
-  stats.print(std::cout);
-  tree.dotGraph(std::cout);
 }
 
 TEST(radix, addOneLongerKey) {
@@ -69,10 +60,6 @@ TEST(radix, addOneLongerKey) {
   EXPECT_TRUE(rc==Radix::e_OK);
   rc = tree.find(key);
   EXPECT_TRUE(rc==Radix::e_EXISTS);
-
-  Radix::TreeStats stats;
-  tree.statistics(&stats);
-  stats.print(std::cout);
 }
 
 TEST(radix, addMuliKey) {
@@ -92,11 +79,6 @@ TEST(radix, addMuliKey) {
       EXPECT_TRUE(rc==Radix::e_EXISTS);
     }
   }
-
-  Radix::TreeStats stats;
-  tree.statistics(&stats);
-  stats.print(std::cout);
-  tree.dotGraph(std::cout);
 }
 
 TEST(radix, addMuliKeyAllPerms) {

@@ -6,36 +6,69 @@
 
 namespace Radix {
   static Node256 *RadixLeafNode = reinterpret_cast<Node256*>(k_IS_LEAF_NODE);
+  const u_int64_t RadixTermMask = Radix::k_IS_TERMINAL_NODE;
 }
 
-int Radix::Tree::internalFind(const u_int8_t *key, const u_int16_t size,                                                           
-    u_int16_t *lastMatchIndex, Node256 **lastMatch) const {
+int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
   assert(key!=0);
   assert(size>0);
-  assert(index!=0);
-  assert(lastMatch!=0);
 
   Node256 *node = const_cast<Node256*>(&d_root);
 
   for (u_int16_t i=0; i<size; ++i) {
-    const u_int8_t byte(key[i]);
-    Radix::Node256 *childEdge = node->d_children[byte];
+    Radix::Node256 *childEdge = node->d_children[key[i]];
     if (childEdge>RadixLeafNode) {
+      node = childEdge ; 
+    } else if (childEdge==0) {
+      return Radix::e_NOT_FOUND;
+    } else if (childEdge==RadixLeafNode) {
+      return ((i+1U)==size) ? Radix::e_EXISTS : Radix::e_NOT_FOUND;
+    }
+  }
+
+  // Terminated on last byte in key
+  printf("findHelper terminated\n");
+
+  return (node==RadixLeafNode || (reinterpret_cast<u_int64_t>(node) & Radix::RadixTermMask))
+    ? Radix::e_EXISTS
+    : Radix::e_NOT_FOUND;
+}
+
+int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,                                                           
+    u_int16_t *lastMatchIndex, Node256 **lastMatch) {
+  assert(key!=0);
+  assert(size>0);
+  assert(index!=0);
+  assert(lastMatch!=0);
+  assert(*lastMatch!=0);
+
+  Node256 *node = &d_root;
+  Node256 *gpNode = node;
+
+  for (u_int16_t i=0; i<size; ++i) {
+    Radix::Node256 *childEdge = node->d_children[key[i]];
+    if (childEdge>RadixLeafNode) {
+      gpNode = node;
       node = childEdge; 
     } else if (childEdge==0) {
       *lastMatchIndex = i;
       *lastMatch = node;
       return Radix::e_NOT_FOUND;
-    } else if (node->d_children[byte]==RadixLeafNode) {
+    } else if (childEdge==RadixLeafNode) {
       *lastMatchIndex = i+1;
       *lastMatch = childEdge;
       return (*lastMatchIndex==size) ? Radix::e_EXISTS : Radix::e_NOT_FOUND;
     }
   }
 
-  // Control should never get here
-  assert(0);
-  return Radix::e_NOT_FOUND;
+  // Terminated on last byte in key
+  assert(gpNode);
+  assert(node==childEdge);
+  assert(gpNode.d_children[key[size-1]]==node);
+  assert(0==(reinterpret_cast<u_int64_t>(gpNode)&RadixTermMask));
+
+  gpNode->d_children[key[size-1]] += Radix::RadixTermMask;
+  return Radix::e_EXISTS;
 }
 
 int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
@@ -45,22 +78,22 @@ int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   // Search for key
   Node256 *lastMatch(0);
   u_int16_t lastMatchIndex(0);
-  if (Radix::Tree::internalFind(keyPtr, size, &lastMatchIndex, &lastMatch) == Radix::e_EXISTS) {
+  if (Radix::Tree::insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch) == Radix::e_EXISTS) {
     return Radix::e_EXISTS;
   }
 
   // Not found so we should have a child node in tree where last match found
   assert(lastMatchIndex<size);
   assert(lastMatch!=0);
+  assert(lastMatch==RadixLeafNode||lastMatch->d_children[lastMatchIndex]==0);
+
+  u_int8_t byte(keyPtr[lastMatchIndex]);
+  // Look one child node down from lastMatch location
+  Radix::Node256 *childEdge = lastMatch->d_children[byte];
 
   // Insert remainder of key starting in 'lastMatch' at 'lastMatchIndex'
   for (; lastMatchIndex < size; ++lastMatchIndex) {
-    // Look one child node down from lastMatch location
-    u_int8_t byte(keyPtr[lastMatchIndex]);
-    Radix::Node256 *childEdge = lastMatch->d_children[byte];
-    if (childEdge>RadixLeafNode) {
-      lastMatch = childEdge;
-    } else if (childEdge==0) {
+    if (childEdge==0) {
       if (lastMatchIndex+1==size) {
         // Insert last char & return OK
         lastMatch->d_children[byte] = RadixLeafNode;

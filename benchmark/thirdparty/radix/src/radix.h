@@ -159,19 +159,23 @@ public:
     // Assignment operator not provided
 
 private:
-  // PRIVATE ACCESSORS
-  int internalFind(const u_int8_t *key, const u_int16_t size,
-    u_int16_t *lastMatchIndex, Node256 **lastMatch) const;
+  // PRIAVTE ACCESSORS
+  int findHelper(const u_int8_t *key, const u_int16_t size) const;
     // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
     // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
-    // 'size>0'. Upon return 'lastMatchIndex' is set to the last character
-    // matched, and '*lastMatch' points to the node in which the last match was
-    // found. That is, if 'e_EXISTS' is returned '*lastMatchIndex==size' and
-    // '*lastMatch' points to the leaf containing last character in 'key'.
-    // Otherwise 'e_NOT_FOUND' was returned and '*lastMatch' contains the node
-    // in which the highest byte '0<=*lastMatchIndex<size' was matched. If this
-    // call co-occurs with 'insert' the output data can be used to recursively
-    // insert the rest of the key under '*lastMatch' when 'e_NOT_FOUND' is
+    // 'size>0'.
+
+  // PRIVATE MANIPULATORS
+  int insertHelper(const u_int8_t *key, const u_int16_t size,
+    u_int16_t *lastMatchIndex, Node256 **lastMatch);
+    // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
+    // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
+    // 'size>0', and 'lastMatchIndex, lastMatch' are defined only when
+    // 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size' is set
+    // to the last byte matched in key, and '*lastMatch' points to the node in
+    // which the last byte match was found. Note that in the special case the
+    // prefix already exists in the tree, but the node containing the last
+    // byte of 'key' is not tagged terminal, it is so tagged and 'e_EXISTS' is
     // returned.
 };
 
@@ -191,9 +195,7 @@ Tree::~Tree() {
 // MANIPULATORS
 inline
 int Tree::find(const Benchmark::Slice<u_int8_t> key) const {
-  u_int16_t index(0);
-  Node256   *node(0);
-  return internalFind(key.data(), key.size(), &index, &node);
+  return findHelper(key.data(), key.size());
 }
 
 struct TreeIterState {
