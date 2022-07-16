@@ -105,9 +105,10 @@ void Radix::Tree::statistics(TreeStats *stats) const {
   assert(stats);
   stats->reset();
 
-  unsigned i(0);
-  std::stack<unsigned> indexStack;
-  std::stack<Radix::Node256*> nodeStack;
+  u_int16_t i(0);
+  u_int16_t depth(0);
+  std::stack<Radix::TreeIterState> stack;
+
   Radix::Node256 *node = const_cast<Radix::Node256*>(&d_root);
 
 begin:
@@ -118,8 +119,8 @@ begin:
     }
 
     // We have a leaf or vanilla Node256. Either way depth increases
-    if ((stats->d_maxDepth+1)>stats->d_maxDepth) {
-      ++stats->d_maxDepth;
+    if ((depth+1U)>stats->d_maxDepth) {
+      stats->d_maxDepth = depth+1;
     }
 
     if (node->d_children[i]==RadixLeafNode) {
@@ -129,28 +130,27 @@ begin:
 
     // Recurse w/ stack
     ++stats->d_innerNodeCount;                                                                                           
-    nodeStack.push(node);
-    indexStack.push(i);
-    assert(nodeStack.size()==indexStack.size());
+    stack.push(Radix::TreeIterState(node, i, depth));
     node = node->d_children[i];
-    i = 0;
+    i = 0xffff; // increments to back to 0
+    ++depth;
   }
 
-  if (!nodeStack.empty()) {
-    node = nodeStack.top();
-    i = indexStack.top()+1;
-    nodeStack.pop();
-    indexStack.pop();
-    assert(nodeStack.size()==indexStack.size());
+  if (!stack.empty()) {
+    Radix::TreeIterState state = stack.top();
+    node = state.d_node;
+    i = state.d_index+1;
+    depth = state.d_depth;
+    stack.pop();
     goto begin;
   }
 }
 
 void Radix::Tree::dotGraph(std::ostream& stream) const {
   char buf[16];
-  unsigned i(0);
-  std::stack<unsigned> indexStack;
-  std::stack<Radix::Node256*> nodeStack;
+  u_int16_t i(0);
+  u_int16_t depth(0);
+  std::stack<Radix::TreeIterState> stack;
   Radix::Node256 *node = const_cast<Radix::Node256*>(&d_root);
 
   stream << "digraph Radix {" << std::endl;
@@ -208,19 +208,17 @@ begin:
            << std::endl;
 
     // Recurse w/ stack
-    nodeStack.push(node);
-    indexStack.push(i);
-    assert(nodeStack.size()==indexStack.size());
+    stack.push(Radix::TreeIterState(node, i, depth));
     node = node->d_children[i];
-    i = 0;
+    i = 0xffff; // increments to back to 0
   }
 
-  if (!nodeStack.empty()) {
-    node = nodeStack.top();
-    i = indexStack.top()+1;
-    nodeStack.pop();
-    indexStack.pop();
-    assert(nodeStack.size()==indexStack.size());
+  if (!stack.empty()) {
+    Radix::TreeIterState state = stack.top();
+    i = state.d_index+1;
+    node = state.d_node;
+    depth = state.d_depth;
+    stack.pop();
     goto begin;
   }
 

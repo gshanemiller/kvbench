@@ -196,4 +196,28 @@ int Tree::find(const Benchmark::Slice<u_int8_t> key) const {
   return internalFind(key.data(), key.size(), &index, &node);
 }
 
+struct TreeIterState {
+  Node256  *d_node;
+  u_int16_t d_index;
+  u_int16_t d_depth;
+
+  TreeIterState() = delete;
+    // Default constructor not provided
+
+  TreeIterState(Node256 *node, u_int16_t index, u_int16_t depth);
+    // Construct TreeIterState with specified arguments
+};
+
+// INLINE DEFINITIONS
+// CREATORS
+
+inline
+TreeIterState::TreeIterState(Node256 *node, u_int16_t index, u_int16_t depth)
+: d_node(node)
+, d_index(index)
+, d_depth(depth)
+{
+  assert(node!=0);
+}
+
 } // namespace Radix

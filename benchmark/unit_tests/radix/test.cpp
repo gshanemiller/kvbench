@@ -12,6 +12,7 @@ static const struct {
   //line      size data
   //----      ---- ----------------------------
   { __LINE__,   1,  {0}},
+  { __LINE__,   2,  {'A', 0}},
   { __LINE__,   8,  {'P', 'r', 'o', 'j', 'e', 'c', 't', 0 }},
   { __LINE__,   8,  {'P', 'r', 'o', 'g', 'r', 'a', 'm', 0 }},
   { __LINE__,  10,  {'G', 'u', 't', 'e', 'n', 'b', 'e', 'r', 'g', 0}},
@@ -36,6 +37,25 @@ TEST(radix, addKeySize1) {
   Radix::TreeStats stats;
   tree.statistics(&stats);
   stats.print(std::cout);
+  tree.dotGraph(std::cout);
+}
+
+TEST(radix, addKeySize2) {
+  Radix::MemManager mem;
+  Radix::Tree tree(&mem);
+
+  Benchmark::Slice<unsigned char> key(VALUES[1].d_data, VALUES[1].d_size);
+  int rc = tree.find(key);
+  EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+  rc = tree.insert(key);
+  EXPECT_TRUE(rc==Radix::e_OK);
+  rc = tree.find(key);
+  EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+  Radix::TreeStats stats;
+  tree.statistics(&stats);
+  stats.print(std::cout);
+  tree.dotGraph(std::cout);
 }
 
 TEST(radix, addOneLongerKey) {
