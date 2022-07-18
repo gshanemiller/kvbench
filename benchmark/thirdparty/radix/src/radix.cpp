@@ -14,7 +14,7 @@ int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
   assert(key!=0);
   assert(size>0);
 
-  Node256* node = &d_root;
+  Node256* node = const_cast<Node256*>(&d_root);
 
   union {
     Node256  *ptr;    // as pointer
@@ -24,11 +24,11 @@ int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
   for (u_int16_t i=0; i<size; ++i) {
     childNode.ptr = node->d_children[key[i]];
     if (childNode.ptr>RadixLeafNode) {
-      childNode.ptr &= RadixNodeMask;
+      childNode.val &= RadixNodeMask;
       node = childNode.ptr; 
-    } else if (childEdge==0) {
+    } else if (childNode.ptr==0) {
       return e_NOT_FOUND;
-    } else if (childEdge==RadixLeafNode) {
+    } else if (childNode.ptr==RadixLeafNode) {
       return ((i+1U)==size) ? e_EXISTS : e_NOT_FOUND;
     }
   }
@@ -41,8 +41,8 @@ int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
     : e_NOT_FOUND;
 }
 
-int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,                                                           
-    u_int16_t *lastMatchIndex, Node256 **lastMatch) {
+int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
+  u_int16_t *lastMatchIndex, Node256 **lastMatch) {
   assert(key!=0);
   assert(size>0);
   assert(index!=0);
@@ -54,19 +54,19 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
     u_int64_t val;    // as u_int64_t
   } node;
 
-  Node256 node.ptr = &d_root;
-  Node256 *pNode; // parent of node
+  node.ptr = &d_root;
+  Node256 *pNode;     // parent of node
 
   for (u_int16_t i=0; i<size; ++i) {
     // Follow edge @ key[i] from node to child
     Node256 *childNode = node.ptr->d_children[key[i]];
     if (childNode>RadixLeafNode) {
-      pNode = node;
+      pNode = node.ptr;
       node.ptr = childNode;
       node.val &= RadixNodeMask;
-    } else if (childnode==0) {
+    } else if (childNode==0) {
       *lastMatchIndex = i;
-      *lastMatch = node;
+      *lastMatch = node.ptr;
       return e_NOT_FOUND;
     } else {
       assert(childNode==RadixLeafNode);
@@ -117,10 +117,7 @@ int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   assert(lastMatch!=0);
   assert(lastMatch!=RadixLeafNode);
 
-  // It's a linked list of nodes from here-on-down
   u_int8_t byte(keyPtr[lastMatchIndex]);
-  Radix::Node256 *childNode = lastMatch->d_children[byte];
-  assert(childNode==0);
 
   if (lastMatchIndex+1==size) {
     // Insert last char & return OK
