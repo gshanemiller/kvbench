@@ -72,6 +72,10 @@ TEST(radix, addMuliKey) {
     EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
     rc = tree.insert(key);
     EXPECT_TRUE(rc==Radix::e_OK);
+  }
+
+  tree.dotGraph(std::cout);
+
 /*
     // All previous keys should still be there
     for (unsigned j=0; j<=i; ++j) {
@@ -80,7 +84,6 @@ TEST(radix, addMuliKey) {
       EXPECT_TRUE(rc==Radix::e_EXISTS);
     }
 */
-  }
 }
 
 TEST(radix, addMuliKeyAllPerms) {

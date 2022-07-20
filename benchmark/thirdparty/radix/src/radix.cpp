@@ -8,6 +8,7 @@ namespace Radix {
   static Node256 *RadixLeafNode = reinterpret_cast<Node256*>(k_IS_LEAF_NODE);
   const u_int64_t RadixTermMask = Radix::k_IS_TERMINAL_NODE;
   const u_int64_t RadixNodeMask = 0xFFFFFFFFFFFFFF00UL;
+  const u_int64_t RadixTagClear = 0xFFFFFFFFFFFFFFFDUL;
 }
 
 int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
@@ -32,9 +33,6 @@ int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
       return ((i+1U)==size) ? e_EXISTS : e_NOT_FOUND;
     }
   }
-
-  // Terminated on last byte in key
-  printf("findHelper terminated\n");
 
   return (childNode.ptr==RadixLeafNode || (childNode.val & RadixTermMask))
     ? e_EXISTS
@@ -94,22 +92,23 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
   // is to ensure the link/pointer from pNode to node is marked terminal.
   // We'll reuse node union to so mark it
 
-  node.ptr = pNode->d_children[size-1];
+  node.ptr = pNode->d_children[key[size-1]];
   node.val |= RadixTermMask;
-  pNode->d_children[size-1] = node.ptr;
+  pNode->d_children[key[size-1]] = node.ptr;
 
-  return e_EXISTS;
+  return e_OK;
 }
 
 int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
+  int rc;
   const u_int16_t size = key.size();
   const u_int8_t *keyPtr = key.data();
 
   // Search for key
   Node256 *lastMatch(0);
   u_int16_t lastMatchIndex(0);
-  if (insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch) == e_EXISTS) {
-    return e_EXISTS;
+  if ((rc = insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch)) != e_NOT_FOUND) {
+    return rc;
   }
 
   // Not found so have a inner child node in tree where last match found
@@ -187,18 +186,24 @@ void Radix::Tree::dotGraph(std::ostream& stream) const {
   u_int16_t i(0);
   u_int16_t depth(0);
   std::stack<Radix::TreeIterState> stack;
-  Radix::Node256 *node = const_cast<Radix::Node256*>(&d_root);
+
+  Radix::Node256 *rawNode = const_cast<Radix::Node256*>(&d_root);
+
+  union {
+    Node256  *ptr;    // as pointer
+    u_int64_t val;    // as u_int64_t
+  } memNode, nodeHelper;
+
+  memNode.ptr = rawNode;
 
   stream << "digraph Radix {" << std::endl;
-  stream << "  " << reinterpret_cast<u_int64_t>(node) << " [shape=diamond, label=\"root\"]" << std::endl;
+  stream << "  " << reinterpret_cast<u_int64_t>(rawNode) << " [shape=diamond, label=\"root\"]" << std::endl;
 
+  // On entry to loop rawNode & memNode point
+  // to root there are no tags to worry about
 begin:
   for (; i<Radix::k_MAX_CHILDREN256; ++i) {
-    if (node->d_children[i]==0) {
-      continue;
-    }
-
-    if (node->d_children[i]==RadixLeafNode) {
+    if (memNode.ptr->d_children[i]==RadixLeafNode) {
       // The leaf node
       if (isprint(i)) {
         buf[0] = char(i);
@@ -207,7 +212,7 @@ begin:
         sprintf(buf, "0x%02u", i);
       }
       stream << "  "
-             << reinterpret_cast<u_int64_t>(node->d_children[i])
+             << reinterpret_cast<u_int64_t>(memNode.ptr->d_children[i])
              << " [shape=box, "
              << "label=\""
              << buf
@@ -215,44 +220,62 @@ begin:
              << std::endl;
       // The edge from parent to leaf
       stream << "  "
-             << reinterpret_cast<u_int64_t>(node)
+             << reinterpret_cast<u_int64_t>(rawNode)
              << " -> "
-             << reinterpret_cast<u_int64_t>(node->d_children[i])
+             << reinterpret_cast<u_int64_t>(memNode.ptr->d_children[i])
              << std::endl;
       continue;
     }
 
-    // The inner node
+    if (memNode.ptr->d_children[i]==0) {
+      continue;
+    }
+
+
+    // otherwise Inner node
     if (isprint(i)) {
       buf[0] = char(i);
       buf[1] = 0;
     } else {
       sprintf(buf, "0x%02u", i);
     }
-    stream << "  "
-           << reinterpret_cast<u_int64_t>(node->d_children[i])
+    nodeHelper.ptr = memNode.ptr->d_children[i];
+    if (nodeHelper.val & RadixTermMask) {
+      stream << "  "
+             << reinterpret_cast<u_int64_t>(nodeHelper.ptr)
+             << " [shape=box, "
+             << "label=\""
+             << buf
+             << "\"]"
+             << std::endl;
+    } else { 
+      stream << "  "
+             << reinterpret_cast<u_int64_t>(nodeHelper.ptr)
              << " [shape=circle, "
              << "label=\""
              << buf
              << "\"]"
-           << std::endl;
+             << std::endl;
+    }
     // The edge from parent to inner node
     stream << "  "
-           << reinterpret_cast<u_int64_t>(node)
+           << reinterpret_cast<u_int64_t>(rawNode)
            << " -> "
-           << reinterpret_cast<u_int64_t>(node->d_children[i])
+           << reinterpret_cast<u_int64_t>(nodeHelper.ptr)
            << std::endl;
 
     // Recurse w/ stack
-    stack.push(Radix::TreeIterState(node, i, depth));
-    node = node->d_children[i];
+    stack.push(Radix::TreeIterState(rawNode, i, depth));
+    rawNode = memNode.ptr = memNode.ptr->d_children[i];
+    memNode.val &= RadixTagClear;
     i = 0xffff; // increments to back to 0
   }
 
   if (!stack.empty()) {
     Radix::TreeIterState state = stack.top();
     i = state.d_index+1;
-    node = state.d_node;
+    rawNode = memNode.ptr = state.d_node;
+    memNode.val &= RadixTagClear;
     depth = state.d_depth;
     stack.pop();
     goto begin;
