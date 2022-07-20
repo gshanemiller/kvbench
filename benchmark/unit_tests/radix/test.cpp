@@ -72,18 +72,18 @@ TEST(radix, addMuliKey) {
     EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
     rc = tree.insert(key);
     EXPECT_TRUE(rc==Radix::e_OK);
-  }
-
-  tree.dotGraph(std::cout);
-
-/*
     // All previous keys should still be there
     for (unsigned j=0; j<=i; ++j) {
       Benchmark::Slice<unsigned char> skey(VALUES[j].d_data, VALUES[j].d_size);
       rc = tree.find(key);
       EXPECT_TRUE(rc==Radix::e_EXISTS);
     }
-*/
+  }
+
+  tree.dotGraph(std::cout);
+  Radix::TreeStats stats;
+  tree.statistics(&stats);
+  stats.print(std::cout);
 }
 
 TEST(radix, addMuliKeyAllPerms) {

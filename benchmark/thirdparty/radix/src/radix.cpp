@@ -144,37 +144,58 @@ void Radix::Tree::statistics(TreeStats *stats) const {
   u_int16_t depth(0);
   std::stack<Radix::TreeIterState> stack;
 
-  Radix::Node256 *node = const_cast<Radix::Node256*>(&d_root);
+  Radix::Node256 *rawNode = const_cast<Radix::Node256*>(&d_root);
 
+  union {
+    Node256  *ptr;    // as pointer
+    u_int64_t val;    // as u_int64_t
+  } memNode, nodeHelper;
+
+  memNode.ptr = rawNode;
+
+  stats->d_totalSizeBytes += sizeof(Node256); // of root
+
+  // On entry to loop rawNode & memNode point
+  // to root there are no tags to worry about
 begin:
   for (; i<Radix::k_MAX_CHILDREN256; ++i) {
-    if (node->d_children[i]==0) {
+    if (memNode.ptr->d_children[i]==RadixLeafNode) {
+      ++stats->d_leafCount;
+      if ((depth+1U)>stats->d_maxDepth) {
+        stats->d_maxDepth = depth+1;
+      }
+      continue;
+    }
+
+    if (memNode.ptr->d_children[i]==0) {
       ++stats->d_emptyChildCount;
       continue;
     }
 
-    // We have a leaf or vanilla Node256. Either way depth increases
+    // otherwise Inner node
+    ++stats->d_innerNodeCount;
     if ((depth+1U)>stats->d_maxDepth) {
       stats->d_maxDepth = depth+1;
     }
-
-    if (node->d_children[i]==RadixLeafNode) {
+    nodeHelper.ptr = memNode.ptr->d_children[i];
+    if (nodeHelper.val & RadixTermMask) {
       ++stats->d_leafCount;
-      continue;
     }
-
+    stats->d_totalSizeBytes += sizeof(Node256); // inner node
+    
     // Recurse w/ stack
-    ++stats->d_innerNodeCount;                                                                                           
-    stack.push(Radix::TreeIterState(node, i, depth));
-    node = node->d_children[i];
+    stack.push(Radix::TreeIterState(rawNode, i, depth));
+    rawNode = memNode.ptr = memNode.ptr->d_children[i];
+    memNode.val &= RadixTagClear;
     i = 0xffff; // increments to back to 0
     ++depth;
   }
 
   if (!stack.empty()) {
     Radix::TreeIterState state = stack.top();
-    node = state.d_node;
     i = state.d_index+1;
+    rawNode = memNode.ptr = state.d_node;
+    memNode.val &= RadixTagClear;
     depth = state.d_depth;
     stack.pop();
     goto begin;

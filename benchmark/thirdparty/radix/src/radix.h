@@ -10,6 +10,33 @@ namespace Radix {
 
 class MemManager;
 
+struct Node256 {
+  // DATA
+  Node256 *d_children[k_MAX_CHILDREN256];
+
+  // CREATORS
+  Node256();
+    // Create a Node256 object with all children zeroed
+
+  Node256(const Node256& other) = delete;
+    // Copy constructor not provided
+
+  ~Node256() = default;
+    // Destory this object. Note, destructor does not deallocate memory. Those
+    // roles and responsibilities are done in 'Tree::remove' or 'Tree::destroy'
+
+  // MANIPULATORS
+  Node256& operator=(const Node256& rhs) = delete;
+    // Assignment opertor not provided
+};
+
+// INLINE DEFINITIONS
+inline
+Node256::Node256()
+{
+  memset(d_children, 0, sizeof(Node256 *)*k_MAX_CHILDREN256);
+}
+
 struct TreeStats {
   // DATA
   u_int64_t d_innerNodeCount;
@@ -61,6 +88,8 @@ std::ostream& TreeStats::print(std::ostream& stream) const {
             static_cast<double>(d_totalUncompressedSizeBytes);
   }
 
+  double bytesPerInnerNode = static_cast<double>(d_totalSizeBytes)/static_cast<double>(d_innerNodeCount);
+
   stream  << "innerNodeCount: "               << d_innerNodeCount
           << " leafCount: "                   << d_leafCount
           << " emptyChildCount: "             << d_emptyChildCount
@@ -69,6 +98,8 @@ std::ostream& TreeStats::print(std::ostream& stream) const {
           << " totalCompressedSizeBytes: "    << d_totalCompressedSizeBytes
           << " totalUncompressedSizeBytes: "  << d_totalUncompressedSizeBytes
           << " compressionRatio: "            << ratio
+          << " totalSizeBytes-per-innerNode: "<< bytesPerInnerNode
+          << " sizeof(Node256): "             << sizeof(Node256)
           << std::endl;
   return stream;
 }
@@ -82,33 +113,6 @@ void TreeStats::reset(void) {
   d_totalSizeBytes = 0;
   d_totalCompressedSizeBytes = 0;
   d_totalUncompressedSizeBytes = 0;
-}
-
-struct Node256 {
-  // DATA
-  Node256 *d_children[k_MAX_CHILDREN256];
-
-  // CREATORS
-  Node256();
-    // Create a Node256 object with all children zeroed
-
-  Node256(const Node256& other) = delete;
-    // Copy constructor not provided
-
-  ~Node256() = default;
-    // Destory this object. Note, destructor does not deallocate memory. Those
-    // roles and responsibilities are done in 'Tree::remove' or 'Tree::destroy'
-
-  // MANIPULATORS
-  Node256& operator=(const Node256& rhs) = delete;
-    // Assignment opertor not provided
-};
-
-// INLINE DEFINITIONS
-inline
-Node256::Node256()
-{
-  memset(d_children, 0, sizeof(Node256 *)*k_MAX_CHILDREN256);
 }
 
 class Tree {
