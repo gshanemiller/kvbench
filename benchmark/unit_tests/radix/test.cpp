@@ -72,20 +72,77 @@ TEST(radix, addMuliKey) {
     EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
     rc = tree.insert(key);
     EXPECT_TRUE(rc==Radix::e_OK);
+    rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
     // All previous keys should still be there
-    for (unsigned j=0; j<=i; ++j) {
+    for (unsigned j=0; j<i; ++j) {
       Benchmark::Slice<unsigned char> skey(VALUES[j].d_data, VALUES[j].d_size);
-      rc = tree.find(key);
+      rc = tree.find(skey);
       EXPECT_TRUE(rc==Radix::e_EXISTS);
     }
   }
-
-  tree.dotGraph(std::cout);
-  Radix::TreeStats stats;
-  tree.statistics(&stats);
-  stats.print(std::cout);
 }
 
+TEST(radix, problemCase) {
+  Radix::MemManager mem;
+  Radix::Tree tree(&mem);
+
+  std::vector<unsigned> perm = {0,1,3,2,4,5,6,7};
+
+  for (unsigned i=0; i<perm.size(); ++i) {
+    printf("  process %u\n", perm[i]);
+    Benchmark::Slice<unsigned char> key(VALUES[perm[i]].d_data, VALUES[perm[i]].d_size);
+    int rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    rc = tree.insert(key);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+    tree.dotGraph(std::cout);
+/*
+    // All previous keys should still be there
+    for (unsigned j=0; j<i; ++j) {
+      printf("    recheck %u\n", j);
+      Benchmark::Slice<unsigned char> skey(VALUES[perm[j]].d_data, VALUES[perm[j]].d_size);
+      rc = tree.find(skey);
+      EXPECT_TRUE(rc==Radix::e_EXISTS);
+    }
+*/
+  }
+}
+
+/*
 TEST(radix, addMuliKeyAllPerms) {
-  return;
+  // A m-ary Radix final shape should not depend on insertion order
+  std::vector<unsigned> perm;
+  for (unsigned i=0; i<NUM_VALUES; ++i) {
+    perm.push_back(i);
+  }
+
+  unsigned permutation(0);
+
+  do {
+    Radix::MemManager mem;
+    Radix::Tree tree(&mem);
+    printf("permutation %u\n", permutation);
+    for (unsigned i=0; i<perm.size(); ++i) {
+      printf("  process %u\n", perm[i]);
+      Benchmark::Slice<unsigned char> key(VALUES[perm[i]].d_data, VALUES[perm[i]].d_size);
+      int rc = tree.find(key);
+      EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+      rc = tree.insert(key);
+      EXPECT_TRUE(rc==Radix::e_OK);
+      rc = tree.find(key);
+      EXPECT_TRUE(rc==Radix::e_EXISTS);
+      // All previous keys should still be there
+      for (unsigned j=0; j<i; ++j) {
+        printf("    recheck %u\n", j);
+        Benchmark::Slice<unsigned char> skey(VALUES[perm[j]].d_data, VALUES[perm[j]].d_size);
+        rc = tree.find(skey);
+        EXPECT_TRUE(rc==Radix::e_EXISTS);
+      }
+    }
+    ++permutation;
+  } while (std::next_permutation(perm.begin(), perm.end()));
 }
+*/

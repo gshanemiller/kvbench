@@ -22,10 +22,13 @@ int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
     u_int64_t val;    // as u_int64_t
   } childNode;
 
+  bool childWasTerminal(false);
+
   for (u_int16_t i=0; i<size; ++i) {
     childNode.ptr = node->d_children[key[i]];
     if (childNode.ptr>RadixLeafNode) {
-      childNode.val &= RadixNodeMask;
+      childWasTerminal = childNode.val & RadixTermMask;
+      childNode.val &= RadixTagClear;
       node = childNode.ptr; 
     } else if (childNode.ptr==0) {
       return e_NOT_FOUND;
@@ -34,9 +37,7 @@ int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
     }
   }
 
-  return (childNode.ptr==RadixLeafNode || (childNode.val & RadixTermMask))
-    ? e_EXISTS
-    : e_NOT_FOUND;
+  return (childNode.ptr==RadixLeafNode || childWasTerminal) ? e_EXISTS : e_NOT_FOUND;
 }
 
 int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
