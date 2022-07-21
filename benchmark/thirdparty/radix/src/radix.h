@@ -1,5 +1,14 @@
 #pragma once
 
+// PURPOSE: 8bit-ary Radix tree over keys of type 'Benchmark::Slice<unsigned char>'
+//
+// CLASSES:
+//  Radix::Tree: Holds root of Radix tree with APIs for insert, find, remove
+//  Radix::Node256: Radix inner node with 2^8=256 children
+//  Radix::TreeStats: Summarizing stats over Radix tree e.g. counts, depth, size
+//  Radix::TreeIterState: Pre-order traversal state for Radix tree
+//
+
 #include <assert.h>
 #include <iostream>
 

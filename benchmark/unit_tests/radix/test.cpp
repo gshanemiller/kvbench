@@ -4,6 +4,11 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
+// TEST PLAN: There are two difficulties to overcome when testing Radix Tree. First, all insertion orders should
+// lead to the same final shape. This is important property bounds worst case behavior. Testing must verify this.
+// Second, every possible node life-cycle in the tree must be tested. Initial, next, and final states depend on 
+// order insertion.
+
 static const struct {
   int           d_lineNum;  // source line number
   u_int16_t     d_size;     // size of string in bytes
