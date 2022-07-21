@@ -233,8 +233,11 @@ begin:
       } else {
         sprintf(buf, "0x%02u", i);
       }
-      stream << "  "
+      stream << "  \""
              << reinterpret_cast<u_int64_t>(memNode.ptr->d_children[i])
+             << "_" 
+             << buf
+             << "\""
              << " [shape=box, "
              << "label=\""
              << buf
@@ -243,8 +246,11 @@ begin:
       // The edge from parent to leaf
       stream << "  "
              << reinterpret_cast<u_int64_t>(rawNode)
-             << " -> "
+             << " -> \""
              << reinterpret_cast<u_int64_t>(memNode.ptr->d_children[i])
+             << "_" 
+             << buf
+             << "\""
              << std::endl;
       continue;
     }
