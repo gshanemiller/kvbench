@@ -70,7 +70,7 @@
 // |           | shorter key                   |                                                                  |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | m + 3     | A Radix inner node that's     | m+3  -> unchanged                                                |             |
-// |           | also a temrinal byte of a     |                                                                  |             |
+// |           | also a terminal byte of a     |                                                                  |             |
 // |           | shorter key and compressed    |                                                                  |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // 
@@ -98,7 +98,14 @@ static const struct {
 
 const std::size_t NUM_REFERENCE_VALUES = sizeof REFERENCE_VALUES / sizeof *REFERENCE_VALUES;
 
-TEST(radix, case0_0) {
+// Case 0a one leaf at a time
+//
+// Before            After
+// +--------+       +--------+
+// |  root  |  |->  |  root  | -> 0xff
+// +--------+       +--------+
+//
+TEST(radix, case0a) {
   u_int8_t byte; 
   Radix::TreeStats stats;
 
@@ -135,7 +142,8 @@ TEST(radix, case0_0) {
   }
 }
 
-TEST(radix, case0_1) {
+// Case 0b all leafs added to one tree
+TEST(radix, case0b) {
   u_int8_t byte; 
   Radix::MemManager mem;
   Radix::Tree tree(&mem);
@@ -177,4 +185,64 @@ TEST(radix, case0_1) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
   EXPECT_EQ(mstats.d_requestedBytes, 0);
   EXPECT_EQ(mstats.d_freedBytes, 0);
+}
+
+// Case 1a: Update a Node256 child pointer from 0xff to bonafide Node256
+//          one leaf at a time
+//
+//  Before                  After
+// +--------+ 'o'           +--------+ 'o'    'p'
+// |  root  | -> 0xff  |->  |  root  | -> m+2 -> 0xff
+// +--------+               +--------+
+//
+// Key 'o' in tree. Upon adding 'op' pointer to 0xff must be replaced with m+2
+// so it can point to leaf node 'p' without losing 'o' as a valid key
+TEST(radix, case1a) {
+  u_int8_t byte[2];
+  Radix::TreeStats stats;
+
+  for (unsigned i=0; i<256; ++i) {
+    byte = i;
+    Benchmark::Slice<unsigned char> key(&byte[0], 1);
+
+    Radix::MemManager mem;
+    Radix::Tree tree(&mem);
+
+    int rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    // Now add key {<i>,'T'} so that <i> is a prefix of {<i>,'T'} 
+    byte[1] = 'T';
+    Benchmark::Slice<unsigned char> key1(&byte[0], 2);
+
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key1);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    tree.statistics(&stats);
+    EXPECT_EQ(stats.d_innerNodeCount, 1);
+    EXPECT_EQ(stats.d_leafCount, 1);
+    EXPECT_EQ(stats.d_emptyChildCount, 255);
+    EXPECT_EQ(stats.d_maxDepth, 2);
+
+    Radix::MemManagerStats mstats;
+    mem.statistics(&mstats);
+    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_freeCount, 0);
+    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
+    EXPECT_EQ(mstats.d_requestedBytes, 0);
+    EXPECT_EQ(mstats.d_freedBytes, 0);
+  }
 }
