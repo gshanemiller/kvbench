@@ -203,7 +203,7 @@ Tree::Tree(MemManager *memManager)
 
 inline
 Tree::~Tree() {
-  destory();
+  destroy();
 }
 
 // MANIPULATORS

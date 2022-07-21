@@ -109,7 +109,7 @@ TEST(radix, case0a) {
   u_int8_t byte; 
   Radix::TreeStats stats;
 
-  for (unsigned i=0; i<256; ++i) {
+  for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
     byte = i;
     Benchmark::Slice<unsigned char> key(&byte, 1);
 
@@ -149,7 +149,7 @@ TEST(radix, case0b) {
   Radix::Tree tree(&mem);
   Radix::TreeStats stats;
 
-  for (unsigned i=0; i<256; ++i) {
+  for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
     byte = i;
     Benchmark::Slice<unsigned char> key(&byte, 1);
 
@@ -167,13 +167,13 @@ TEST(radix, case0b) {
       byte = j;
       Benchmark::Slice<unsigned char> skey(&byte, 1);
       rc = tree.find(skey);
-      EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+      EXPECT_TRUE(rc==Radix::e_EXISTS);
     }
   }
 
   tree.statistics(&stats);
   EXPECT_EQ(stats.d_innerNodeCount, 0);
-  EXPECT_EQ(stats.d_leafCount, 256);
+  EXPECT_EQ(stats.d_leafCount, Radix::k_MAX_CHILDREN256);
   EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 1);
 
@@ -185,6 +185,9 @@ TEST(radix, case0b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
   EXPECT_EQ(mstats.d_requestedBytes, 0);
   EXPECT_EQ(mstats.d_freedBytes, 0);
+
+  stats.print(std::cout);
+  mstats.print(std::cout);
 }
 
 // Case 1a: Update a Node256 child pointer from 0xff to bonafide Node256
@@ -201,9 +204,9 @@ TEST(radix, case1a) {
   u_int8_t byte[2];
   Radix::TreeStats stats;
 
-  for (unsigned i=0; i<256; ++i) {
-    byte = i;
-    Benchmark::Slice<unsigned char> key(&byte[0], 1);
+  for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
+    byte[0] = i;
+    Benchmark::Slice<unsigned char> key(byte+0, 1);
 
     Radix::MemManager mem;
     Radix::Tree tree(&mem);
@@ -219,7 +222,7 @@ TEST(radix, case1a) {
 
     // Now add key {<i>,'T'} so that <i> is a prefix of {<i>,'T'} 
     byte[1] = 'T';
-    Benchmark::Slice<unsigned char> key1(&byte[0], 2);
+    Benchmark::Slice<unsigned char> key1(byte+0, 2);
 
     rc = tree.find(key1);
     EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
@@ -233,16 +236,19 @@ TEST(radix, case1a) {
     tree.statistics(&stats);
     EXPECT_EQ(stats.d_innerNodeCount, 1);
     EXPECT_EQ(stats.d_leafCount, 1);
-    EXPECT_EQ(stats.d_emptyChildCount, 255);
+    // root + 1 inner node each of which has 255 empty slots, 1 used slot
+    EXPECT_EQ(stats.d_emptyChildCount, 2*Radix::k_MAX_CHILDREN256-2);
     EXPECT_EQ(stats.d_maxDepth, 2);
+    stats.print(std::cout);
 
     Radix::MemManagerStats mstats;
     mem.statistics(&mstats);
     EXPECT_EQ(mstats.d_allocCount, 1);
     EXPECT_EQ(mstats.d_freeCount, 0);
-    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-    EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
-    EXPECT_EQ(mstats.d_requestedBytes, 0);
+    EXPECT_EQ(mstats.d_currentSizeBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 0);
+    mstats.print(std::cout);
   }
 }

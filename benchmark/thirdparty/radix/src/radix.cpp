@@ -54,7 +54,7 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
   } node;
 
   node.ptr = &d_root;
-  Node256 *pNode;     // parent of node
+  Node256 *pNode = &d_root; // raw parent of node
 
   for (u_int16_t i=0; i<size; ++i) {
     // Follow edge @ key[i] from node to child
@@ -62,7 +62,7 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
     if (childNode>RadixLeafNode) {
       pNode = node.ptr;
       node.ptr = childNode;
-      node.val &= RadixNodeMask;
+      node.val &= RadixTagClear;
     } else if (childNode==0) {
       *lastMatchIndex = i;
       *lastMatch = node.ptr;
@@ -74,9 +74,9 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
         // Last byte matched ends on leaf node. However the whole key
         // was not found so insert will have work to do. But in order
         // to do that, lastMatch has to be promoted to a Node256, and
-        // the pointer to it needs to be updated. Leafs have no kids
+        // the pointer to it needs to be updated. Leafs have no children
         *lastMatch = d_memManager->mallocNode256();
-        pNode->d_children[i-1] = *lastMatch;
+        pNode->d_children[key[i]] = *lastMatch;
         return e_NOT_FOUND;
       } else {
         *lastMatch = childNode;
@@ -321,7 +321,7 @@ void Radix::Tree::destroy() {
   union {
     Node256  *ptr;    // as pointer
     u_int64_t val;    // as u_int64_t
-  } memNode
+  } memNode;
 
   memNode.ptr = rawNode;
 
@@ -345,7 +345,7 @@ begin:
   }
 
   if (rawNode!=&d_root) {
-    d_memManager->freeNode256(rawNode)
+    d_memManager->freeNode256(rawNode);
   }
 
   if (!stack.empty()) {

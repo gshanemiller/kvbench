@@ -27,7 +27,7 @@ struct MemManagerStats {
   MemManagerStats(const MemManagerStats& other) = default;
     // Create MemManagerStats object with attributes equal to 'other'
 
-  ~MemManagerStats();
+  ~MemManagerStats() = default;
     // Destory this object
 
   // MANIPULATORS
@@ -42,6 +42,34 @@ struct MemManagerStats {
     // Print into specified stream a human readable dump of this' attributes
     // returning stream
 };
+
+// INLINE DEFINITIONS
+// CREATORS
+inline
+MemManagerStats::MemManagerStats()
+: d_allocCount(0)
+, d_freeCount(0)
+, d_currentSizeBytes(0)
+, d_maximumSizeBytes(0)
+, d_requestedBytes(0)
+, d_freedBytes(0)
+, d_limitSizeBytes(0)
+{
+}
+
+// ASPECTS
+inline
+std::ostream& MemManagerStats::print(std::ostream& stream) {
+  stream << "allocCount: "        << d_allocCount
+         << " freeCount: "        << d_freeCount
+         << " currentSizeBytes: " << d_currentSizeBytes
+         << " maximumSizeBytes: " << d_maximumSizeBytes
+         << " requestedBytes: "   << d_requestedBytes
+         << " freedBytes: "       << d_freedBytes
+         << " limitSizeBytes: "   << d_limitSizeBytes
+         << std::endl;
+  return stream;
+}
 
 class MemManager {
   // DATA
@@ -60,6 +88,9 @@ public:
     // Copy constructor not provided
 
   // ACCESSORS
+  u_int64_t sizeOfUncompressedNode256() const;
+    // Return size in bytes of a Node256 object
+
   void statistics(MemManagerStats *stats);
     // Write into specified 'stats' memory statistics
 
@@ -77,27 +108,36 @@ public:
 // INLINE DEFINITIONS
 // CREATORS
 
+// ACCESSORS
+inline
+u_int64_t MemManager::sizeOfUncompressedNode256() const {
+  return sizeof(Node256*)*k_MAX_CHILDREN256;
+}
+
+inline
+void MemManager::statistics(MemManagerStats *stats) {
+  *stats = d_stats;
+}
+
 // MANIPULATORS
 inline
 Node256 *MemManager::mallocNode256() {
-  const u_int64_t sz = sizeof(Node256*)*k_MAX_CHILDREN256;
-
-  d_stats->d_requestedBytes += sz;
-  d_stats->d_currentSizeBytes += sz;
-  if (d_stats->d_currentSizeBytes > d_stats->d_maximumSizeBytes) {
-    d_stats->d_maximumSizeBytes = d_stats->d_currentSizeBytes;
+  d_stats.d_requestedBytes += sizeOfUncompressedNode256();
+  d_stats.d_currentSizeBytes += sizeOfUncompressedNode256();
+  if (d_stats.d_currentSizeBytes > d_stats.d_maximumSizeBytes) {
+    d_stats.d_maximumSizeBytes = d_stats.d_currentSizeBytes;
   }
-  ++d_stats->d_allocCount;
+  ++d_stats.d_allocCount;
 
   // Ask for 'sz' bytes on 2-byte alignment
-  return (Node256*)mi_malloc_aligned(sz, 2);
+  return (Node256*)mi_malloc_aligned(sizeOfUncompressedNode256(), 2);
 }
 
 inline
 void MemManager::freeNode256(const Node256 *node) {
-  d_stats->d_currentSizeBytes -= (sizeof(Node256*)*k_MAX_CHILDREN256);
-  ++d_stats->d_freeCount;
-  mi_free(node);
+  d_stats.d_currentSizeBytes -= sizeOfUncompressedNode256();
+  ++d_stats.d_freeCount;
+  mi_free((void*)node);
 }
 
 } // nsmaespace Radix
