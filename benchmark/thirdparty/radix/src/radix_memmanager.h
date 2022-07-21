@@ -44,6 +44,9 @@ struct MemManagerStats {
 };
 
 class MemManager {
+  // DATA
+  MemManagerStats d_stats;
+
 public:
   // CREATORS
   MemManager() = default;
@@ -63,6 +66,9 @@ public:
   // MANIPULATORS
   Node256 *mallocNode256();
     // Allocate 'Node256' object
+
+  void freeNode256(const Node256 *node);
+    // Deallocate specified 'node'
  
   MemManager& operator=(const MemManager& rhs) = delete;
     // Assignment operator not provided
@@ -74,7 +80,24 @@ public:
 // MANIPULATORS
 inline
 Node256 *MemManager::mallocNode256() {
-  return (Node256*)mi_malloc_aligned(sizeof(Node256*)*k_MAX_CHILDREN256, 2);
+  const u_int64_t sz = sizeof(Node256*)*k_MAX_CHILDREN256;
+
+  d_stats->d_requestedBytes += sz;
+  d_stats->d_currentSizeBytes += sz;
+  if (d_stats->d_currentSizeBytes > d_stats->d_maximumSizeBytes) {
+    d_stats->d_maximumSizeBytes = d_stats->d_currentSizeBytes;
+  }
+  ++d_stats->d_allocCount;
+
+  // Ask for 'sz' bytes on 2-byte alignment
+  return (Node256*)mi_malloc_aligned(sz, 2);
+}
+
+inline
+void MemManager::freeNode256(const Node256 *node) {
+  d_stats->d_currentSizeBytes -= (sizeof(Node256*)*k_MAX_CHILDREN256);
+  ++d_stats->d_freeCount;
+  mi_free(node);
 }
 
 } // nsmaespace Radix

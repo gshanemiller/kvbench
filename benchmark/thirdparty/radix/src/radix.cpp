@@ -311,3 +311,49 @@ begin:
 
   stream << "}" << std::endl;
 }
+
+void Radix::Tree::destroy() {
+  u_int16_t i(0);
+  std::stack<Radix::TreeIterState> stack;
+
+  Radix::Node256 *rawNode = const_cast<Radix::Node256*>(&d_root);
+
+  union {
+    Node256  *ptr;    // as pointer
+    u_int64_t val;    // as u_int64_t
+  } memNode
+
+  memNode.ptr = rawNode;
+
+begin:
+  for (; i<Radix::k_MAX_CHILDREN256; ++i) {
+    // Easy case
+    if (memNode.ptr->d_children[i]==RadixLeafNode) {
+      continue;
+    }
+
+    // Easy case
+    if (memNode.ptr->d_children[i]==0) {
+      continue;
+    }
+
+    // Inner node, recurse w/ stack
+    stack.push(Radix::TreeIterState(rawNode, i, 0));
+    rawNode = memNode.ptr = memNode.ptr->d_children[i];
+    memNode.val &= RadixTagClear;
+    i = 0xffff; // increments to back to 0
+  }
+
+  if (rawNode!=&d_root) {
+    d_memManager->freeNode256(rawNode)
+  }
+
+  if (!stack.empty()) {
+    Radix::TreeIterState state = stack.top();
+    i = state.d_index+1;
+    rawNode = memNode.ptr = state.d_node;
+    memNode.val &= RadixTagClear;
+    stack.pop();
+    goto begin;
+  }
+}
