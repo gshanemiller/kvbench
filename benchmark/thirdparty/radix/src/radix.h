@@ -6,7 +6,8 @@
 //  Radix::Tree: Holds root of Radix tree with APIs for insert, find, remove, iteration
 //  Radix::Node256: Radix inner node with 2^8=256 children
 //  Radix::TreeStats: Summarizing stats over Radix tree e.g. counts, depth, size
-//  Radix::TreeIterState: Pre-order traversal state for Radix tree
+//  Radix::TreeIterState: Pre-order traversal helper state for Radix tree
+//  Radix::TreeIterator: Pre-order traversal of tree key-by-key
 //
 
 #include <string>
@@ -138,7 +139,10 @@ public:
   TreeIterator(Node256& root, u_int64_t maxDepth);
     // Create a TreeIterator on specified 'root' holding keys of at most 'ccurrentMaxDepth' bytes
 
-  TreeIterator() = default;
+  TreeIterator(const TreeIterator& other) = delete;
+    // Copy constructor not provided
+
+  ~TreeIterator() = default;
     // Destory this object
 
   // ACCESSORS
@@ -160,6 +164,9 @@ public:
   // MANIPULATORS
   void next();
     // Advance to the next key. Behavior is defined provided 'end()==false'
+
+  TreeIterator& operator=(const TreeIterator& rhs) = delete;
+    // Assignment operator not provided
 
   // ASPECTS
   std::ostream& print(std::ostream& stream) const;
@@ -242,6 +249,9 @@ public:
     // Return 'e_EXISTS' if specified key was found in tree, and 'e_NOT_FOUND'
     // otherwise.
 
+  TreeIterator begin() const;
+    // Return a tree iterator on this tree
+
   // MANIUPLATORS
   int insert(const Benchmark::Slice<u_int8_t> key);
     // Return 'e_OK' if specified key was inserted into tree or 'e_EXISTS' if 
@@ -298,6 +308,11 @@ Tree::~Tree() {
 inline
 u_int64_t Tree::currentMaxDepth() const {
   return d_currentMaxDepth;
+}
+
+inline
+TreeIterator Tree::begin() const {
+  return TreeIterator(const_cast<Node256&>(d_root), currentMaxDepth());
 }
 
 // MANIPULATORS
