@@ -3,17 +3,19 @@
 // PURPOSE: 8bit-ary Radix tree over keys of type 'Benchmark::Slice<unsigned char>'
 //
 // CLASSES:
-//  Radix::Tree: Holds root of Radix tree with APIs for insert, find, remove
+//  Radix::Tree: Holds root of Radix tree with APIs for insert, find, remove, iteration
 //  Radix::Node256: Radix inner node with 2^8=256 children
 //  Radix::TreeStats: Summarizing stats over Radix tree e.g. counts, depth, size
 //  Radix::TreeIterState: Pre-order traversal state for Radix tree
 //
 
-#include <assert.h>
+#include <string>
 #include <iostream>
 
-#include <benchmark_slice.h>
+#include <assert.h>
+
 #include <radix_enums.h>
+#include <benchmark_slice.h>
 
 namespace Radix {
 
@@ -124,10 +126,92 @@ void TreeStats::reset(void) {
   d_totalUncompressedSizeBytes = 0;
 }
 
+class TreeIterator {
+  // DATA
+  Node256& d_root;
+  std::basic_string<u_int8_t> d_key;
+  u_int16_t d_attributes;
+  bool d_end;
+
+public:
+  // CREATORS
+  TreeIterator(Node256& root, u_int64_t maxDepth);
+    // Create a TreeIterator on specified 'root' holding keys of at most 'ccurrentMaxDepth' bytes
+
+  TreeIterator() = default;
+    // Destory this object
+
+  // ACCESSORS
+  const std::basic_string<u_int8_t>& key() const;
+    // Return the current key. Behavior is defined provided 'end()==false'
+
+  bool isCompressed() const;
+    // Return 'true' if current node is compressed. Behavior is defined provided 'end()==false'
+
+  bool isTerminal() const;
+    // Return 'true' if current node is a terminal node or leaf node. Behavior is defined provided 'end()==false'
+
+  bool isLeaf() const;
+    // Return 'true' if current node is a leaf node. Behavior is defined provided 'end()==false'
+
+  bool end() const;
+    // Return 'true' if all keys have been iterated over
+
+  // MANIPULATORS
+  void next();
+    // Advance to the next key. Behavior is defined provided 'end()==false'
+
+  // ASPECTS
+  std::ostream& print(std::ostream& stream) const;
+    // Print into specified 'stream' a human readable representation of the current key returning 'stream'.
+    // Behavior is defined provided 'end()==false'
+};
+
+// INLINE DEFINITIONS
+// CREATORS
+
+inline
+TreeIterator::TreeIterator(Node256& root, u_int64_t maxDepth)
+: d_root(root)
+, d_attributes(0)
+, d_end(false)
+{
+  if (maxDepth>0) {
+    d_key.reserve(maxDepth);
+  }
+}
+
+// ACCESSORS
+inline
+const std::basic_string<u_int8_t>& TreeIterator::key() const {
+  return d_key;
+}
+
+inline
+bool TreeIterator::isCompressed() const {
+  return (d_attributes & k_IS_CHILDREN_COMPRESSED) && d_attributes!=k_IS_LEAF_NODE;
+}
+
+inline
+bool TreeIterator::isTerminal() const {
+  return (d_attributes & k_IS_TERMINAL_NODE) || d_attributes==k_IS_LEAF_NODE;
+}
+
+inline
+bool TreeIterator::isLeaf() const {
+  return d_attributes == k_IS_LEAF_NODE;
+}
+
+inline
+bool TreeIterator::end() const {
+  return d_end;
+}
+
 class Tree {
   // DATA
   MemManager  *d_memManager;
   Node256     d_root;
+  u_int64_t   d_currentMaxDepth;
 
 public:
   // CREATORS
@@ -145,6 +229,9 @@ public:
     // Copy constructor not provided
 
   // ACCESSORS
+  u_int64_t currentMaxDepth() const;
+    // Return the size in bytes of the maximum sized key in tree
+
   void statistics(TreeStats *stats) const;
     // Compute tree statistics setting result into specified 'stats'.
 
@@ -183,12 +270,12 @@ private:
     u_int16_t *lastMatchIndex, Node256 **lastMatch);
     // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
     // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
-    // 'size>0', and 'lastMatchIndex, lastMatch' are defined only when
+    // 'size>0', and 'lastMatchIndex, lastMatch, depth' are defined only when
     // 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size' is set
     // to the last byte matched in key, and '*lastMatch' points to the node in
     // which the last byte match was found. Note that in the special case the
-    // prefix already exists in the tree, but the node containing the last
-    // byte of 'key' is not tagged terminal, it is so tagged and 'e_EXISTS' is
+    // prefix already exists in the tree, but the node containing the last byte
+    // of 'key' is not tagged terminal, it is so tagged and 'e_EXISTS' is
     // returned.
 };
 
@@ -197,6 +284,7 @@ private:
 inline
 Tree::Tree(MemManager *memManager)
 : d_memManager(memManager)
+, d_currentMaxDepth(0)
 {
   assert(memManager!=0);
 }
@@ -204,6 +292,12 @@ Tree::Tree(MemManager *memManager)
 inline
 Tree::~Tree() {
   destroy();
+}
+
+// ACCESSORS
+inline
+u_int64_t Tree::currentMaxDepth() const {
+  return d_currentMaxDepth;
 }
 
 // MANIPULATORS

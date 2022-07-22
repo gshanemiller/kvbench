@@ -10,6 +10,28 @@ namespace Radix {
   const u_int64_t RadixTagClear = 0xFFFFFFFFFFFFFFFDUL;
 }
 
+std::ostream& Radix::TreeIterator::print(std::ostream& stream) const {
+  char buf[5];
+
+  stream << "key: '";
+
+  for (unsigned i=0; i<d_key.size(); ++i) {
+    if (isprint(d_key[i])) {
+      buf[0]=d_key[i];
+      buf[1]=0;
+    } else {
+      sprintf(buf, "0x%02x", d_key[i]);
+    }
+    stream << buf;
+  }
+
+  stream << "' isCompressed: "  << isCompressed()
+         << " isTerminal: "     << isTerminal()
+         << " isLeafNode: "     << isLeaf()
+         << std::endl;
+  return stream;
+}
+
 int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
   assert(key!=0);
   assert(size>0);
@@ -51,7 +73,7 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
     Node256  *ptr;    // as pointer
     u_int64_t val;    // as u_int64_t
   } node;
-
+  
   node.ptr = &d_root;
   Node256 *pNode = &d_root; // raw parent of node
 
@@ -131,6 +153,10 @@ int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
     // Insert last char & return OK
     assert(lastMatchIndex+1==size);
     lastMatch->d_children[byte] = RadixLeafNode;
+  }
+
+  if (size>d_currentMaxDepth) {
+    d_currentMaxDepth = size;
   }
 
   return Radix::e_OK;

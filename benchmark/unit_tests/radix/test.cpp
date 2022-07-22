@@ -33,7 +33,7 @@
 //
 // Unlike ART Radix objects don't change types through over (under) flow at runtime. Pointers, however, do change:
 // In these life-cycle charts think of a Node256 object (root or inner node) and consider the ptr value in it from
-// the ith child:
+// to the ith child:
 //                            parent
 //                              |
 //                     Node256  V
@@ -59,7 +59,7 @@
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | m         | A Radix inner node            | m    -> unchanged                                                |             |
 // |           |                               | m+1  -> m was compressed                                         |             |
-// |           |                               | m+2  -> m became a terminal node                                 |             |
+// |           |                               | m+2  -> m became a terminal node                                 | 2           |
 // |           |                               | m+3  -> m became terminal node and compressed                    |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | m + 1     | A Radix inner node that's     | m+1  -> unchanged                                                |             |
@@ -130,6 +130,7 @@ TEST(radix, case0a) {
     EXPECT_EQ(stats.d_leafCount, 1);
     EXPECT_EQ(stats.d_emptyChildCount, 255);
     EXPECT_EQ(stats.d_maxDepth, 1);
+    EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
     Radix::MemManagerStats mstats;
     mem.statistics(&mstats);
@@ -176,7 +177,7 @@ TEST(radix, case0b) {
   EXPECT_EQ(stats.d_leafCount, Radix::k_MAX_CHILDREN256);
   EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 1);
-  stats.print(std::cout);
+  EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
   Radix::MemManagerStats mstats;
   mem.statistics(&mstats);
@@ -186,7 +187,6 @@ TEST(radix, case0b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
   EXPECT_EQ(mstats.d_requestedBytes, 0);
   EXPECT_EQ(mstats.d_freedBytes, 0);
-  mstats.print(std::cout);
 
   tree.destroy();
   mem.statistics(&mstats);
@@ -196,7 +196,6 @@ TEST(radix, case0b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
   EXPECT_EQ(mstats.d_requestedBytes, 0);
   EXPECT_EQ(mstats.d_freedBytes, 0);
-  mstats.print(std::cout);
 }
 
 // Case 1a: Update a Node256 child pointer from 0xff to bonafide Node256
@@ -226,8 +225,6 @@ TEST(radix, case1a) {
     rc = tree.insert(key);
     EXPECT_TRUE(rc==Radix::e_OK);
 
-    tree.dotGraph(std::cout);
-    
     rc = tree.find(key);
     EXPECT_TRUE(rc==Radix::e_EXISTS);
 
@@ -244,15 +241,13 @@ TEST(radix, case1a) {
     rc = tree.find(key1);
     EXPECT_TRUE(rc==Radix::e_EXISTS);
 
-    tree.dotGraph(std::cout);
-
     tree.statistics(&stats);
     EXPECT_EQ(stats.d_innerNodeCount, 1);
     EXPECT_EQ(stats.d_leafCount, 1);
     // root + 1 inner node each of which has 255 empty slots, 1 used slot
     EXPECT_EQ(stats.d_emptyChildCount, 2*Radix::k_MAX_CHILDREN256-2);
     EXPECT_EQ(stats.d_maxDepth, 2);
-    stats.print(std::cout);
+    EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
     Radix::MemManagerStats mstats;
     mem.statistics(&mstats);
@@ -262,7 +257,6 @@ TEST(radix, case1a) {
     EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 0);
-    mstats.print(std::cout);
 
     tree.destroy();
     mem.statistics(&mstats);
@@ -272,7 +266,6 @@ TEST(radix, case1a) {
     EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, mem.sizeOfUncompressedNode256());
-    mstats.print(std::cout);
   }
 }
 
@@ -317,7 +310,7 @@ TEST(radix, case1b) {
   // with 256 children each and, of those, 255 empty 1 full.
   EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
   EXPECT_EQ(stats.d_maxDepth, 2);
-  stats.print(std::cout);
+  EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
   Radix::MemManagerStats mstats;
   mem.statistics(&mstats);
@@ -327,7 +320,6 @@ TEST(radix, case1b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
   EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
   EXPECT_EQ(mstats.d_freedBytes, 0);
-  mstats.print(std::cout);
 
   tree.destroy();
   mem.statistics(&mstats);
@@ -337,5 +329,18 @@ TEST(radix, case1b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
   EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
   EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
-  mstats.print(std::cout);
+}
+
+// Case 2a: Update a Node256 child pointer from 0xff to bonafide Node256
+//          one leaf at a time
+//
+//  Before                  After
+// +--------+ 'o'           +--------+ 'o'    'p'
+// |  root  | -> 0xff  |->  |  root  | -> m+2 -> 0xff
+// +--------+               +--------+
+//
+// Key 'o' in tree. Upon adding 'op' pointer to 0xff must be replaced with m+2
+// so it can point to leaf node 'p' without losing 'o' as a valid key
+TEST(radix, case2a) {
+  return;
 }
