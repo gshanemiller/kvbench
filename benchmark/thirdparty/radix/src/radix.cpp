@@ -7,7 +7,6 @@
 namespace Radix {
   static Node256 *RadixLeafNode = reinterpret_cast<Node256*>(k_IS_LEAF_NODE);
   const u_int64_t RadixTermMask = Radix::k_IS_TERMINAL_NODE;
-  const u_int64_t RadixNodeMask = 0xFFFFFFFFFFFFFF00UL;
   const u_int64_t RadixTagClear = 0xFFFFFFFFFFFFFFFDUL;
 }
 
@@ -356,4 +355,6 @@ begin:
     stack.pop();
     goto begin;
   }
+
+  memset(d_root.d_children, 0, sizeof(d_root));
 }

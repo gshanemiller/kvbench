@@ -120,22 +120,23 @@ void MemManager::statistics(MemManagerStats *stats) {
 }
 
 // MANIPULATORS
-inline
-Node256 *MemManager::mallocNode256() {
-  d_stats.d_requestedBytes += sizeOfUncompressedNode256();
-  d_stats.d_currentSizeBytes += sizeOfUncompressedNode256();
-  if (d_stats.d_currentSizeBytes > d_stats.d_maximumSizeBytes) {
-    d_stats.d_maximumSizeBytes = d_stats.d_currentSizeBytes;
-  }
-  ++d_stats.d_allocCount;
-
-  // Ask for 'sz' bytes on 2-byte alignment
-  return (Node256*)mi_malloc_aligned(sizeOfUncompressedNode256(), 2);
+inline                                                                                                                  
+Node256 *MemManager::mallocNode256() {                                                                    
+  d_stats.d_requestedBytes += sizeOfUncompressedNode256();                                                              
+  d_stats.d_currentSizeBytes += sizeOfUncompressedNode256();                                                            
+  if (d_stats.d_currentSizeBytes > d_stats.d_maximumSizeBytes) {                                                        
+    d_stats.d_maximumSizeBytes = d_stats.d_currentSizeBytes;                                                            
+  }                                                                                                                     
+  ++d_stats.d_allocCount;                                                                                               
+                                                                                                                        
+  // Ask for zeroed 'sizeOfUncompressedNode256()' bytes on 2-byte alignment                                                    
+  return (Node256*)mi_zalloc_aligned(sizeOfUncompressedNode256(), 2);
 }
 
 inline
 void MemManager::freeNode256(const Node256 *node) {
   d_stats.d_currentSizeBytes -= sizeOfUncompressedNode256();
+  d_stats.d_freedBytes += sizeOfUncompressedNode256();
   ++d_stats.d_freeCount;
   mi_free((void*)node);
 }

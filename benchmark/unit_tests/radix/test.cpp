@@ -176,6 +176,7 @@ TEST(radix, case0b) {
   EXPECT_EQ(stats.d_leafCount, Radix::k_MAX_CHILDREN256);
   EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 1);
+  stats.print(std::cout);
 
   Radix::MemManagerStats mstats;
   mem.statistics(&mstats);
@@ -185,8 +186,16 @@ TEST(radix, case0b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
   EXPECT_EQ(mstats.d_requestedBytes, 0);
   EXPECT_EQ(mstats.d_freedBytes, 0);
+  mstats.print(std::cout);
 
-  stats.print(std::cout);
+  tree.destroy();
+  mem.statistics(&mstats);
+  EXPECT_EQ(mstats.d_allocCount, 0);
+  EXPECT_EQ(mstats.d_freeCount, 0);
+  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
+  EXPECT_EQ(mstats.d_requestedBytes, 0);
+  EXPECT_EQ(mstats.d_freedBytes, 0);
   mstats.print(std::cout);
 }
 
@@ -216,6 +225,8 @@ TEST(radix, case1a) {
     
     rc = tree.insert(key);
     EXPECT_TRUE(rc==Radix::e_OK);
+
+    tree.dotGraph(std::cout);
     
     rc = tree.find(key);
     EXPECT_TRUE(rc==Radix::e_EXISTS);
@@ -232,6 +243,8 @@ TEST(radix, case1a) {
     
     rc = tree.find(key1);
     EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    tree.dotGraph(std::cout);
 
     tree.statistics(&stats);
     EXPECT_EQ(stats.d_innerNodeCount, 1);
@@ -250,5 +263,79 @@ TEST(radix, case1a) {
     EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 0);
     mstats.print(std::cout);
+
+    tree.destroy();
+    mem.statistics(&mstats);
+    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_freeCount, 1);
+    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_freedBytes, mem.sizeOfUncompressedNode256());
+    mstats.print(std::cout);
   }
+}
+
+// Redo case 1a except all word done to same tree
+TEST(radix, case1b) {
+  Radix::MemManager mem;
+  Radix::Tree tree(&mem);
+  u_int8_t byte[2];
+
+  for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
+    byte[0] = i;
+    Benchmark::Slice<unsigned char> key(byte+0, 1);
+
+    int rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    // Now add key {<i>,'T'} so that <i> is a prefix of {<i>,'T'} 
+    byte[1] = 'T';
+    Benchmark::Slice<unsigned char> key1(byte+0, 2);
+
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key1);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+  }
+
+  Radix::TreeStats stats;
+  tree.statistics(&stats);
+  EXPECT_EQ(stats.d_innerNodeCount, 256);
+  EXPECT_EQ(stats.d_leafCount, 256);
+  // We have 1 root but all its children are full. Each child of root is an inner node
+  // with 256 children each and, of those, 255 empty 1 full.
+  EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
+  EXPECT_EQ(stats.d_maxDepth, 2);
+  stats.print(std::cout);
+
+  Radix::MemManagerStats mstats;
+  mem.statistics(&mstats);
+  EXPECT_EQ(mstats.d_allocCount, 256);
+  EXPECT_EQ(mstats.d_freeCount, 0);
+  EXPECT_EQ(mstats.d_currentSizeBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_freedBytes, 0);
+  mstats.print(std::cout);
+
+  tree.destroy();
+  mem.statistics(&mstats);
+  EXPECT_EQ(mstats.d_allocCount, 256);
+  EXPECT_EQ(mstats.d_freeCount, 256);
+  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
+  mstats.print(std::cout);
 }
