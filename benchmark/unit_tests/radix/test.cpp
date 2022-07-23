@@ -53,9 +53,10 @@
 // |           |                               | m    -> add Node256 inner node 'm' under 'N'                     |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | 0xff      | Radix Leaf node. This special | 0xff -> unchanged                                                |             |
-// |           | value reserved for pointer to | m    -> a new key is being added in which the edge from N to     | 1           |
+// |           | value reserved for pointer to | m   ->  a new key is being added in which the edge from N to     | 1           |
 // |           | leaf nodes                    |         N.child[i] is a prefix of a new, longer key. Therefore   |             |
 // |           |                               |         N.child[i] must now point to a newly allocated Node256   |             |
+// |           |                               |         Usually m immediately becomes m+1, m+2 after allocation  |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | m         | A Radix inner node            | m    -> unchanged                                                |             |
 // |           |                               | m+1  -> m was compressed                                         |             |
@@ -63,7 +64,7 @@
 // |           |                               | m+3  -> m became terminal node and compressed                    |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | m + 1     | A Radix inner node that's     | m+1  -> unchanged                                                |             |
-// |           | been compressed               | m+3  -> node became terminal node for shorter key                |             |
+// |           | been compressed               | m+3  -> terminal node for shorter key                            |             |
 // +-----------+-------------------------------+------------------------------------------------------------------+-------------+
 // | m + 2     | A Radix inner node that's     | m+2  -> unchanged                                                |             |
 // |           | also the terminal byte of a   | m+3  -> node compression occurred                                |             |
@@ -104,6 +105,8 @@ const std::size_t NUM_REFERENCE_VALUES = sizeof REFERENCE_VALUES / sizeof *REFER
 // +--------+       +--------+
 // |  root  |  |->  |  root  | -> 0xff
 // +--------+       +--------+
+//
+// Test: On empty tree, add a key of size 1
 //
 TEST(radix, case0a) {
   u_int8_t byte; 
@@ -214,12 +217,13 @@ TEST(radix, case0b) {
 //          one leaf at a time
 //
 //  Before                  After
-// +--------+ 'o'           +--------+ 'o'    'p'
+// +--------+ 'o'           +--------+ 'o'    'T'
 // |  root  | -> 0xff  |->  |  root  | -> m+2 -> 0xff
 // +--------+               +--------+
 //
-// Key 'o' in tree. Upon adding 'op' pointer to 0xff must be replaced with m+2
-// so it can point to leaf node 'p' without losing 'o' as a valid key
+// Test: on empty tree add 'o'. Then add key 'oT' pointer to 0xff must be replaced with m+2
+// so it can point to leaf node 'T' without losing 'o' as a valid key
+//
 TEST(radix, case1a) {
   u_int8_t byte[2];
   Radix::TreeStats stats;
@@ -287,7 +291,7 @@ TEST(radix, case1a) {
   }
 }
 
-// Redo case 1a except all word done to same tree
+// Redo case 1a except all work done to same tree
 TEST(radix, case1b) {
   Radix::MemManager mem;
   Radix::Tree tree(&mem);
@@ -355,16 +359,206 @@ TEST(radix, case1b) {
   EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
 }
 
-// Case 2a: Update a Node256 child pointer from 0xff to bonafide Node256
-//          one leaf at a time
+// Case 2a: Update a Node256 from 'm' to 'm+2'
 //
 //  Before                  After
-// +--------+ 'o'           +--------+ 'o'    'p'
-// |  root  | -> 0xff  |->  |  root  | -> m+2 -> 0xff
-// +--------+               +--------+
+// +--------+ 'P'   'o'          +--------+ 'P'     'o'
+// |  root  | -> m  -> 0xff  |-> |  root  | ->  m+2 -> 0xff
+// +--------+                    +--------+
 //
-// Key 'o' in tree. Upon adding 'op' pointer to 0xff must be replaced with m+2
-// so it can point to leaf node 'p' without losing 'o' as a valid key
+// Test: On empty tree add key 'Po'. Then add key 'P'.
+//
 TEST(radix, case2a) {
-  return;
+  u_int8_t byte[2];
+  Radix::TreeStats stats;
+
+  for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
+    byte[0] = i;
+    byte[1] = 'o';
+    Benchmark::Slice<unsigned char> key(byte+0, 2);
+
+    Radix::MemManager mem;
+    Radix::Tree tree(&mem);
+
+    int rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key);
+    EXPECT_TRUE(rc==Radix::e_OK);
+
+    rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    // Now add key '<i>' which is a prefix if key
+    Benchmark::Slice<unsigned char> key1(byte+0, 1);
+
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key1);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    tree.statistics(&stats);
+    EXPECT_EQ(stats.d_innerNodeCount, 1);
+    EXPECT_EQ(stats.d_leafCount, 1);
+    // root + 1 inner node each of which has 255 empty slots, 1 used slot
+    EXPECT_EQ(stats.d_emptyChildCount, 2*Radix::k_MAX_CHILDREN256-2);
+    EXPECT_EQ(stats.d_maxDepth, 2);
+    EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
+
+    Radix::MemManagerStats mstats;
+    mem.statistics(&mstats);
+    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_freeCount, 0);
+    EXPECT_EQ(mstats.d_currentSizeBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_freedBytes, 0);
+
+    Radix::TreeIterator iter = tree.begin();
+    while (!iter.end()) {
+      iter.print(std::cout);
+      iter.next();
+    }
+
+    tree.destroy();
+    mem.statistics(&mstats);
+    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_freeCount, 1);
+    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_freedBytes, mem.sizeOfUncompressedNode256());
+  }
+}
+
+// Redo case 2a except all work done to same tree
+TEST(radix, case2b) {
+  Radix::MemManager mem;
+  Radix::Tree tree(&mem);
+  u_int8_t byte[2];
+
+  for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
+    byte[0] = i;
+    byte[1] = 'o'
+    Benchmark::Slice<unsigned char> key(byte+0, 1);
+
+    int rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+    // Now add key '<i>' so it's a prefix of key
+    byte[1] = 'T';
+    Benchmark::Slice<unsigned char> key1(byte+0, 1);
+
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+    rc = tree.insert(key1);
+    EXPECT_TRUE(rc==Radix::e_OK);
+    
+    rc = tree.find(key1);
+    EXPECT_TRUE(rc==Radix::e_EXISTS);
+  }
+
+  Radix::TreeStats stats;
+  tree.statistics(&stats);
+  EXPECT_EQ(stats.d_innerNodeCount, 256);
+  EXPECT_EQ(stats.d_leafCount, 256);
+  // We have 1 root but all its children are full. Each child of root is an inner node
+  // with 256 children each and, of those, 255 empty 1 full.
+  EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
+  EXPECT_EQ(stats.d_maxDepth, 2);
+  EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
+
+  Radix::MemManagerStats mstats;
+  mem.statistics(&mstats);
+  EXPECT_EQ(mstats.d_allocCount, 256);
+  EXPECT_EQ(mstats.d_freeCount, 0);
+  EXPECT_EQ(mstats.d_currentSizeBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_freedBytes, 0);
+
+  Radix::TreeIterator iter = tree.begin();
+  while (!iter.end()) {
+    iter.print(std::cout);
+    iter.next();
+  }
+
+  tree.destroy();
+  mem.statistics(&mstats);
+  EXPECT_EQ(mstats.d_allocCount, 256);
+  EXPECT_EQ(mstats.d_freeCount, 256);
+  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
+}
+
+TEST(radix, multiInsertPermuations) {
+  std::vector<unsigned> perm;
+  for (unsigned i=0; i<NUM_REFERENCE_VALUES; ++i) {
+    perm.push_back(i);
+  }
+
+  do {
+    Radix::MemManager mem;
+    Radix::Tree tree(&mem);
+
+    for (unsigned i=0; i<perm.size(); ++i) {
+      Benchmark::Slice<unsigned char> key(REFERENCE_VALUES[perm[i]].d_data, REFERENCE_VALUES[perm[i]].d_size);
+
+      int rc = tree.find(key);
+      EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
+    
+      rc = tree.insert(key);
+      EXPECT_TRUE(rc==Radix::e_OK);
+    
+      rc = tree.find(key);
+      EXPECT_TRUE(rc==Radix::e_EXISTS);
+    }
+
+    Radix::TreeStats stats;
+    tree.statistics(&stats);
+    EXPECT_EQ(stats.d_innerNodeCount, 256);
+    EXPECT_EQ(stats.d_leafCount, 256);
+    // We have 1 root but all its children are full. Each child of root is an inner node
+    // with 256 children each and, of those, 255 empty 1 full.
+    EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
+    EXPECT_EQ(stats.d_maxDepth, 2);
+    EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
+
+    Radix::MemManagerStats mstats;
+    mem.statistics(&mstats);
+    EXPECT_EQ(mstats.d_allocCount, 256);
+    EXPECT_EQ(mstats.d_freeCount, 0);
+    EXPECT_EQ(mstats.d_currentSizeBytes, 256*mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_freedBytes, 0);
+
+    Radix::TreeIterator iter = tree.begin();
+    while (!iter.end()) {
+      iter.print(std::cout);
+      iter.next();
+    }
+
+    tree.destroy();
+    mem.statistics(&mstats);
+    EXPECT_EQ(mstats.d_allocCount, 256);
+    EXPECT_EQ(mstats.d_freeCount, 256);
+    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
+  } while(std::next_permutation(perm.begin(), perm.end()));
 }
