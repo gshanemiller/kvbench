@@ -160,7 +160,8 @@ class TreeIterator {
   std::stack<Radix::TreeIterState> d_stack;        // stack to revisit parents
   u_int64_t                        d_attributes;   // current key attributes
   u_int16_t                        d_index;        // current index on current node's d_children attribute
-  u_int16_t                        d_keySize;      // size in bytes of current key
+  u_int16_t                        d_depth;        // size-1 in bytes of current key
+  const u_int16_t                  d_maxDepth;     // maximum length of key (for debugging)
   bool                             d_end;          // true when no more keys
 
   union {                                                                                                               
@@ -224,7 +225,7 @@ const u_int8_t *TreeIterator::key() const {
 inline
 u_int16_t TreeIterator::keySize() const {
   assert(!d_end);
-  return d_keySize+1;
+  return d_depth+1;
 }
 
 inline

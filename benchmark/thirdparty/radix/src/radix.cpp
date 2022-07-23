@@ -8,14 +8,15 @@ namespace Radix {
   const u_int64_t RadixTagClear = 0xFFFFFFFFFFFFFFFDUL;
 }
 
-Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256& root, u_int64_t maxDepth)                                   
+Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256& root, u_int64_t maxDepth)
 : d_memManager(memManager)                                                                                              
 , d_root(root)                                                                                                          
 , d_rawNode(&d_root)                                                                                                    
 , d_key(0)                                                                                                              
 , d_attributes(0)                                                                                                       
 , d_index(0)                                                                                                            
-, d_keySize(0)                                                                                                          
+, d_depth(0)                                                                                                          
+, d_maxDepth((u_int16_t)maxDepth)
 , d_end(false)                                                                                                          
 {                                                                                                                       
   assert(d_memManager!=0);                                                                                              
@@ -66,32 +67,36 @@ begin:
     }
 
     if (d_memNode.ptr->d_children[d_index]==RadixLeafNode) {
-      d_key[d_keySize]=(u_int8_t)d_index;
       d_attributes = 0xffUL;
+      d_key[d_depth] = (u_int8_t)(d_index);
       ++d_index;
       return;
     }
 
     d_nodeHelper.ptr = d_memNode.ptr->d_children[d_index];
     if (d_nodeHelper.val & RadixTermMask) {
-      d_key[d_keySize]=(u_int8_t)d_index;
-      d_attributes = 0xffUL;
       d_attributes = d_nodeHelper.val & (k_IS_CHILDREN_COMPRESSED | k_IS_TERMINAL_NODE);
+      d_key[d_depth] = (u_int8_t)(d_index);
       ++d_index;
       return;
     }
 
     // otherwise Inner node so recurse w/ stack
-    d_stack.push(Radix::TreeIterState(d_rawNode, d_index, d_keySize));
+    assert(d_key);
+    assert(d_depth<d_maxDepth);
+    d_key[d_depth] = (u_int8_t)(d_index);
+    d_stack.push(Radix::TreeIterState(d_rawNode, d_index, d_depth));
     d_rawNode = d_memNode.ptr = d_memNode.ptr->d_children[d_index];
     d_memNode.val &= RadixTagClear;
-    d_index = 0xffff; // increments to back to 0
-    ++d_keySize;
+    d_index = 0;
+    d_depth++;
+    goto begin;
   }
 
   if (!d_stack.empty()) {
     Radix::TreeIterState state = d_stack.top();
     d_index = state.d_index+1;
+    d_depth = state.d_depth;
     d_rawNode = d_memNode.ptr = state.d_node;
     d_memNode.val &= RadixTagClear;
     d_stack.pop();

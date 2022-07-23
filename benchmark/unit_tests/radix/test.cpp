@@ -270,6 +270,12 @@ TEST(radix, case1a) {
     EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 0);
 
+    Radix::TreeIterator iter = tree.begin();
+    while (!iter.end()) {
+      iter.print(std::cout);
+      iter.next();
+    }
+
     tree.destroy();
     mem.statistics(&mstats);
     EXPECT_EQ(mstats.d_allocCount, 1);
@@ -332,6 +338,12 @@ TEST(radix, case1b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
   EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
   EXPECT_EQ(mstats.d_freedBytes, 0);
+
+  Radix::TreeIterator iter = tree.begin();
+  while (!iter.end()) {
+    iter.print(std::cout);
+    iter.next();
+  }
 
   tree.destroy();
   mem.statistics(&mstats);
