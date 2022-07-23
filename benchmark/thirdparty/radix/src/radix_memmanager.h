@@ -5,6 +5,7 @@
 #include <mimalloc.h>
 
 #include <iostream>
+#include <assert.h>
 
 namespace Radix {
 
@@ -99,7 +100,13 @@ public:
     // Allocate 'Node256' object
 
   void freeNode256(const Node256 *node);
-    // Deallocate specified 'node'
+    // Deallocate specified 'node' previously obtained by 'mallocNode256()'
+
+  u_int8_t *mallocKeySpace(u_int64_t size);
+    // Allocate specified 'size' bytes to hold a Radix tree key. Behavior is defined when 'size>0'
+
+  void freeKeySpace(const u_int8_t *ptr);
+    // Free key space memory previously obtained by 'mallocKeySpace()'
  
   MemManager& operator=(const MemManager& rhs) = delete;
     // Assignment operator not provided
@@ -139,6 +146,17 @@ void MemManager::freeNode256(const Node256 *node) {
   d_stats.d_freedBytes += sizeOfUncompressedNode256();
   ++d_stats.d_freeCount;
   mi_free((void*)node);
+}
+
+inline
+u_int8_t *MemManager::mallocKeySpace(u_int64_t size) {
+  assert(size>0);
+  return (u_int8_t*)mi_zalloc_aligned(size, 2);
+}
+  
+inline
+void MemManager::freeKeySpace(const u_int8_t *ptr) {
+  mi_free((void*)ptr);
 }
 
 } // nsmaespace Radix

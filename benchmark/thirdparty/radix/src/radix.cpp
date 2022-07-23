@@ -2,27 +2,52 @@
 #include <radix_memmanager.h>
 #include <radix_enums.h>
 
-#include <stack>
-
 namespace Radix {
   static Node256 *RadixLeafNode = reinterpret_cast<Node256*>(k_IS_LEAF_NODE);
   const u_int64_t RadixTermMask = Radix::k_IS_TERMINAL_NODE;
   const u_int64_t RadixTagClear = 0xFFFFFFFFFFFFFFFDUL;
 }
 
+Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256& root, u_int64_t maxDepth)                                   
+: d_memManager(memManager)                                                                                              
+, d_root(root)                                                                                                          
+, d_rawNode(&d_root)                                                                                                    
+, d_key(0)                                                                                                              
+, d_attributes(0)                                                                                                       
+, d_index(0)                                                                                                            
+, d_keySize(0)                                                                                                          
+, d_end(false)                                                                                                          
+{                                                                                                                       
+  assert(d_memManager!=0);                                                                                              
+  if (maxDepth>0) {                                                                                                     
+    d_memNode.ptr = d_rawNode;                                                                                          
+    d_key = d_memManager->mallocKeySpace(maxDepth);                                                                   
+    next();                                                                                                             
+  } else {                                                                                                              
+    d_end = true;                                                                                                       
+  }                                                                                                                     
+}                                                                                                                       
+                                                                                                                        
+Radix::TreeIterator::~TreeIterator() {                                                                                         
+  if (d_key) {                                                                                                          
+    d_memManager->freeKeySpace(d_key);                                                                                  
+    d_key = 0;                                                                                                          
+  }                                                                                                                     
+}     
+
 std::ostream& Radix::TreeIterator::print(std::ostream& stream) const {
-  char buf[5];
+  assert(!d_end);
 
   stream << "key: '";
 
-  for (unsigned i=0; i<d_key.size(); ++i) {
-    if (isprint(d_key[i])) {
-      buf[0]=d_key[i];
-      buf[1]=0;
-    } else {
+  for (unsigned i=0; i<keySize(); ++i) {
+    if (!isprint(d_key[i])) {
+      char buf[5];
       sprintf(buf, "0x%02x", d_key[i]);
+      stream << buf;
+    } else {
+      stream << d_key[i];
     }
-    stream << buf;
   }
 
   stream << "' isCompressed: "  << isCompressed()
@@ -30,6 +55,50 @@ std::ostream& Radix::TreeIterator::print(std::ostream& stream) const {
          << " isLeafNode: "     << isLeaf()
          << std::endl;
   return stream;
+}
+
+void Radix::TreeIterator::next() {
+begin:
+  while (d_index<Radix::k_MAX_CHILDREN256) {
+    if (d_memNode.ptr->d_children[d_index]==0) {
+      ++d_index;
+      continue;
+    }
+
+    if (d_memNode.ptr->d_children[d_index]==RadixLeafNode) {
+      d_key[d_keySize]=(u_int8_t)d_index;
+      d_attributes = 0xffUL;
+      ++d_index;
+      return;
+    }
+
+    d_nodeHelper.ptr = d_memNode.ptr->d_children[d_index];
+    if (d_nodeHelper.val & RadixTermMask) {
+      d_key[d_keySize]=(u_int8_t)d_index;
+      d_attributes = 0xffUL;
+      d_attributes = d_nodeHelper.val & (k_IS_CHILDREN_COMPRESSED | k_IS_TERMINAL_NODE);
+      ++d_index;
+      return;
+    }
+
+    // otherwise Inner node so recurse w/ stack
+    d_stack.push(Radix::TreeIterState(d_rawNode, d_index, d_keySize));
+    d_rawNode = d_memNode.ptr = d_memNode.ptr->d_children[d_index];
+    d_memNode.val &= RadixTagClear;
+    d_index = 0xffff; // increments to back to 0
+    ++d_keySize;
+  }
+
+  if (!d_stack.empty()) {
+    Radix::TreeIterState state = d_stack.top();
+    d_index = state.d_index+1;
+    d_rawNode = d_memNode.ptr = state.d_node;
+    d_memNode.val &= RadixTagClear;
+    d_stack.pop();
+    goto begin;
+  }
+
+  d_end = true;
 }
 
 int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
@@ -284,7 +353,6 @@ begin:
       continue;
     }
 
-
     // otherwise Inner node
     if (isprint(i)) {
       buf[0] = char(i);
@@ -382,5 +450,6 @@ begin:
     goto begin;
   }
 
+  // To avoid double delete on stale pointers
   memset(d_root.d_children, 0, sizeof(d_root));
 }

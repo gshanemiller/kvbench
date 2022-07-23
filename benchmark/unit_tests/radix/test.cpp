@@ -140,6 +140,12 @@ TEST(radix, case0a) {
     EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
     EXPECT_EQ(mstats.d_requestedBytes, 0);
     EXPECT_EQ(mstats.d_freedBytes, 0);
+
+    Radix::TreeIterator iter = tree.begin();
+    while (!iter.end()) {
+      iter.print(std::cout);
+      iter.next();
+    }
   }
 }
 
@@ -187,6 +193,12 @@ TEST(radix, case0b) {
   EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
   EXPECT_EQ(mstats.d_requestedBytes, 0);
   EXPECT_EQ(mstats.d_freedBytes, 0);
+
+  Radix::TreeIterator iter = tree.begin();
+  while (!iter.end()) {
+    iter.print(std::cout);
+    iter.next();
+  }
 
   tree.destroy();
   mem.statistics(&mstats);

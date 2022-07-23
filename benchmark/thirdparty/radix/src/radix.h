@@ -10,7 +10,7 @@
 //  Radix::TreeIterator: Pre-order traversal of tree key-by-key
 //
 
-#include <string>
+#include <stack>
 #include <iostream>
 
 #include <assert.h>
@@ -127,27 +127,65 @@ void TreeStats::reset(void) {
   d_totalUncompressedSizeBytes = 0;
 }
 
+struct TreeIterState {
+  Node256  *d_node;
+  u_int16_t d_index;
+  u_int16_t d_depth;
+
+  TreeIterState() = delete;
+    // Default constructor not provided
+
+  TreeIterState(Node256 *node, u_int16_t index, u_int16_t depth);
+    // Construct TreeIterState with specified arguments
+};
+
+// INLINE DEFINITIONS
+// CREATORS
+
+inline
+TreeIterState::TreeIterState(Node256 *node, u_int16_t index, u_int16_t depth)
+: d_node(node)
+, d_index(index)
+, d_depth(depth)
+{
+  assert(node!=0);
+}
+
 class TreeIterator {
   // DATA
-  Node256& d_root;
-  std::basic_string<u_int8_t> d_key;
-  u_int16_t d_attributes;
-  bool d_end;
+  MemManager                      *d_memManager;   // for key allocation management
+  Node256&                         d_root;         // reference to tree's root
+  Node256                         *d_rawNode;      // current node
+  u_int8_t                        *d_key;          // holds key (owned)
+  std::stack<Radix::TreeIterState> d_stack;        // stack to revisit parents
+  u_int64_t                        d_attributes;   // current key attributes
+  u_int16_t                        d_index;        // current index on current node's d_children attribute
+  u_int16_t                        d_keySize;      // size in bytes of current key
+  bool                             d_end;          // true when no more keys
+
+  union {                                                                                                               
+    Node256  *ptr;    // as pointer                                                                                     
+    u_int64_t val;    // as u_int64_t                                                                                   
+  } d_memNode, d_nodeHelper; 
 
 public:
   // CREATORS
-  TreeIterator(Node256& root, u_int64_t maxDepth);
-    // Create a TreeIterator on specified 'root' holding keys of at most 'ccurrentMaxDepth' bytes
+  TreeIterator(MemManager *memManager, Node256& root, u_int64_t maxDepth);
+    // Create a TreeIterator on specified 'root' holding keys of at most 'currentMaxDepth' bytes. Specified
+    // 'memManager' is used to allocate keyspace
 
   TreeIterator(const TreeIterator& other) = delete;
     // Copy constructor not provided
 
-  ~TreeIterator() = default;
+  ~TreeIterator();
     // Destory this object
 
   // ACCESSORS
-  const std::basic_string<u_int8_t>& key() const;
+  const u_int8_t *key() const;
     // Return the current key. Behavior is defined provided 'end()==false'
+
+  u_int16_t keySize() const;
+    // Return the size of the current key in bytes. Behavior is defined provided 'end()==false'
 
   bool isCompressed() const;
     // Return 'true' if current node is compressed. Behavior is defined provided 'end()==false'
@@ -163,7 +201,8 @@ public:
 
   // MANIPULATORS
   void next();
-    // Advance to the next key. Behavior is defined provided 'end()==false'
+    // Advance to the next key or set 'end()==true' if no more keys. Caller must ensure 'end()==false' after
+    // call returns before invoking accessors
 
   TreeIterator& operator=(const TreeIterator& rhs) = delete;
     // Assignment operator not provided
@@ -175,37 +214,34 @@ public:
 };
 
 // INLINE DEFINITIONS
-// CREATORS
-
-inline
-TreeIterator::TreeIterator(Node256& root, u_int64_t maxDepth)
-: d_root(root)
-, d_attributes(0)
-, d_end(false)
-{
-  if (maxDepth>0) {
-    d_key.reserve(maxDepth);
-  }
-}
-
 // ACCESSORS
 inline
-const std::basic_string<u_int8_t>& TreeIterator::key() const {
+const u_int8_t *TreeIterator::key() const {
+  assert(!d_end);
   return d_key;
 }
 
 inline
+u_int16_t TreeIterator::keySize() const {
+  assert(!d_end);
+  return d_keySize+1;
+}
+
+inline
 bool TreeIterator::isCompressed() const {
+  assert(!d_end);
   return (d_attributes & k_IS_CHILDREN_COMPRESSED) && d_attributes!=k_IS_LEAF_NODE;
 }
 
 inline
 bool TreeIterator::isTerminal() const {
+  assert(!d_end);
   return (d_attributes & k_IS_TERMINAL_NODE) || d_attributes==k_IS_LEAF_NODE;
 }
 
 inline
 bool TreeIterator::isLeaf() const {
+  assert(!d_end);
   return d_attributes == k_IS_LEAF_NODE;
 }
 
@@ -250,7 +286,8 @@ public:
     // otherwise.
 
   TreeIterator begin() const;
-    // Return a tree iterator on this tree
+    // Return a in-order key iterator on this tree. It's behavior is defined
+    // provided 'insert/delete' not run while in scope.
 
   // MANIUPLATORS
   int insert(const Benchmark::Slice<u_int8_t> key);
@@ -312,37 +349,13 @@ u_int64_t Tree::currentMaxDepth() const {
 
 inline
 TreeIterator Tree::begin() const {
-  return TreeIterator(const_cast<Node256&>(d_root), currentMaxDepth());
+  return TreeIterator(const_cast<MemManager*>(d_memManager), const_cast<Node256&>(d_root), currentMaxDepth());
 }
 
 // MANIPULATORS
 inline
 int Tree::find(const Benchmark::Slice<u_int8_t> key) const {
   return findHelper(key.data(), key.size());
-}
-
-struct TreeIterState {
-  Node256  *d_node;
-  u_int16_t d_index;
-  u_int16_t d_depth;
-
-  TreeIterState() = delete;
-    // Default constructor not provided
-
-  TreeIterState(Node256 *node, u_int16_t index, u_int16_t depth);
-    // Construct TreeIterState with specified arguments
-};
-
-// INLINE DEFINITIONS
-// CREATORS
-
-inline
-TreeIterState::TreeIterState(Node256 *node, u_int16_t index, u_int16_t depth)
-: d_node(node)
-, d_index(index)
-, d_depth(depth)
-{
-  assert(node!=0);
 }
 
 } // namespace Radix
