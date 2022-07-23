@@ -6,6 +6,7 @@ namespace Radix {
   static Node256 *RadixLeafNode = reinterpret_cast<Node256*>(k_IS_LEAF_NODE);
   const u_int64_t RadixTermMask = Radix::k_IS_TERMINAL_NODE;
   const u_int64_t RadixTagClear = 0xFFFFFFFFFFFFFFFDUL;
+  const u_int64_t RadixNoTag    = 0xFFFFFFFFFFFFFF00UL;
 }
 
 Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256& root, u_int64_t maxDepth)
@@ -18,6 +19,7 @@ Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256&
 , d_depth(0)                                                                                                          
 , d_maxDepth((u_int16_t)maxDepth)
 , d_end(false)                                                                                                          
+, d_jump(false)
 {                                                                                                                       
   assert(d_memManager!=0);                                                                                              
   if (maxDepth>0) {                                                                                                     
@@ -59,6 +61,11 @@ std::ostream& Radix::TreeIterator::print(std::ostream& stream) const {
 }
 
 void Radix::TreeIterator::next() {
+  // When resuming from line 87
+  if (d_jump) {
+    d_jump = false;
+    goto jump;
+  }
 begin:
   while (d_index<Radix::k_MAX_CHILDREN256) {
     if (d_memNode.ptr->d_children[d_index]==0) {
@@ -77,11 +84,12 @@ begin:
     if (d_nodeHelper.val & RadixTermMask) {
       d_attributes = d_nodeHelper.val & (k_IS_CHILDREN_COMPRESSED | k_IS_TERMINAL_NODE);
       d_key[d_depth] = (u_int8_t)(d_index);
-      ++d_index;
+      d_jump = true;
       return;
     }
 
     // otherwise Inner node so recurse w/ stack
+jump:
     assert(d_key);
     assert(d_depth<d_maxDepth);
     d_key[d_depth] = (u_int8_t)(d_index);
@@ -170,8 +178,9 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
         // was not found so insert will have work to do. But in order
         // to do that, lastMatch has to be promoted to a Node256, and
         // the pointer to it needs to be updated. Leafs have no children
-        *lastMatch = d_memManager->mallocNode256();
-        pNode->d_children[key[i]] = *lastMatch;
+        *lastMatch = node.ptr = d_memManager->mallocNode256();
+        node.val |= RadixTermMask;
+        pNode->d_children[key[i]] = node.ptr;
         return e_NOT_FOUND;
       } else {
         *lastMatch = childNode;
@@ -443,7 +452,11 @@ begin:
   }
 
   if (rawNode!=&d_root) {
-    d_memManager->freeNode256(rawNode);
+    // Don't free pointers with tags on them that
+    // memory allocator won't recognize
+    memNode.ptr = rawNode;
+    memNode.val &= RadixNoTag;
+    d_memManager->freeNode256(memNode.ptr);
   }
 
   if (!stack.empty()) {

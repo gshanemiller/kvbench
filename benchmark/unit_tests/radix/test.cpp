@@ -87,14 +87,33 @@ static const struct {
 } REFERENCE_VALUES[] = {
   //line      size data
   //----      ---- ----------------------------
+/*
   { __LINE__,   1,  {0}                                                 },
   { __LINE__,   2,  {0, 0}                                              },
   { __LINE__,   1,  {'A'}                                               },
   { __LINE__,   2,  {'A', 0}                                            },
+  { __LINE__,   1,  {'P'}                                               },
+  { __LINE__,   2,  {'P', 0}                                            },
+  { __LINE__,   2,  {'P', 'r'}                                          },
+  { __LINE__,   3,  {'P', 'r', 0}                                       },
   { __LINE__,   3,  {'P', 'r', 'o'}                                     },
   { __LINE__,   4,  {'P', 'r', 'o', 0}                                  },
+  { __LINE__,   3,  {'P', 'r', 'a' }                                    },
+  { __LINE__,   4,  {'P', 'r', 'a', 0}                                  },
   { __LINE__,   7,  {'P', 'r', 'o', 'j', 'e', 'c', 't'}                 },
   { __LINE__,   8,  {'P', 'r', 'o', 'j', 'e', 'c', 't', '0'}            },
+*/
+  { __LINE__,   1,  {'A'}                                               },
+  { __LINE__,   1,  {'P'}                                               },
+  { __LINE__,   1,  {'Z'}                                               },
+
+  { __LINE__,   2,  {'A', 'o'}                                          },
+  { __LINE__,   2,  {'A', 'a'}                                          },
+  { __LINE__,   2,  {'A', 'z'}                                          },
+
+  { __LINE__,   3,  {'A', 'o', 'o'}                                     },
+  { __LINE__,   3,  {'A', 'o', 'a'}                                     },
+  { __LINE__,   3,  {'A', 'o', 'z'}                                     },
 };
 
 const std::size_t NUM_REFERENCE_VALUES = sizeof REFERENCE_VALUES / sizeof *REFERENCE_VALUES;
@@ -259,7 +278,7 @@ TEST(radix, case1a) {
 
     tree.statistics(&stats);
     EXPECT_EQ(stats.d_innerNodeCount, 1);
-    EXPECT_EQ(stats.d_leafCount, 1);
+    EXPECT_EQ(stats.d_leafCount, 2);
     // root + 1 inner node each of which has 255 empty slots, 1 used slot
     EXPECT_EQ(stats.d_emptyChildCount, 2*Radix::k_MAX_CHILDREN256-2);
     EXPECT_EQ(stats.d_maxDepth, 2);
@@ -327,7 +346,7 @@ TEST(radix, case1b) {
   Radix::TreeStats stats;
   tree.statistics(&stats);
   EXPECT_EQ(stats.d_innerNodeCount, 256);
-  EXPECT_EQ(stats.d_leafCount, 256);
+  EXPECT_EQ(stats.d_leafCount, 512);
   // We have 1 root but all its children are full. Each child of root is an inner node
   // with 256 children each and, of those, 255 empty 1 full.
   EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
@@ -403,7 +422,7 @@ TEST(radix, case2a) {
 
     tree.statistics(&stats);
     EXPECT_EQ(stats.d_innerNodeCount, 1);
-    EXPECT_EQ(stats.d_leafCount, 1);
+    EXPECT_EQ(stats.d_leafCount, 2);
     // root + 1 inner node each of which has 255 empty slots, 1 used slot
     EXPECT_EQ(stats.d_emptyChildCount, 2*Radix::k_MAX_CHILDREN256-2);
     EXPECT_EQ(stats.d_maxDepth, 2);
@@ -443,8 +462,8 @@ TEST(radix, case2b) {
 
   for (unsigned i=0; i<Radix::k_MAX_CHILDREN256; ++i) {
     byte[0] = i;
-    byte[1] = 'o'
-    Benchmark::Slice<unsigned char> key(byte+0, 1);
+    byte[1] = 'o';
+    Benchmark::Slice<unsigned char> key(byte+0, 2);
 
     int rc = tree.find(key);
     EXPECT_TRUE(rc==Radix::e_NOT_FOUND);
@@ -456,7 +475,6 @@ TEST(radix, case2b) {
     EXPECT_TRUE(rc==Radix::e_EXISTS);
 
     // Now add key '<i>' so it's a prefix of key
-    byte[1] = 'T';
     Benchmark::Slice<unsigned char> key1(byte+0, 1);
 
     rc = tree.find(key1);
@@ -472,7 +490,7 @@ TEST(radix, case2b) {
   Radix::TreeStats stats;
   tree.statistics(&stats);
   EXPECT_EQ(stats.d_innerNodeCount, 256);
-  EXPECT_EQ(stats.d_leafCount, 256);
+  EXPECT_EQ(stats.d_leafCount, 512);
   // We have 1 root but all its children are full. Each child of root is an inner node
   // with 256 children each and, of those, 255 empty 1 full.
   EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
@@ -510,9 +528,13 @@ TEST(radix, multiInsertPermuations) {
     perm.push_back(i);
   }
 
+  unsigned permutation = 0;
+
   do {
     Radix::MemManager mem;
     Radix::Tree tree(&mem);
+
+    printf("permutation %u\n", ++permutation);
 
     for (unsigned i=0; i<perm.size(); ++i) {
       Benchmark::Slice<unsigned char> key(REFERENCE_VALUES[perm[i]].d_data, REFERENCE_VALUES[perm[i]].d_size);
@@ -525,10 +547,20 @@ TEST(radix, multiInsertPermuations) {
     
       rc = tree.find(key);
       EXPECT_TRUE(rc==Radix::e_EXISTS);
+
+      printf("  key %u ...\n", perm[i]);
+
+      // All previous keys should still be found
+      for (unsigned j=0; j<i; j++) {
+        Benchmark::Slice<unsigned char> key(REFERENCE_VALUES[perm[j]].d_data, REFERENCE_VALUES[perm[j]].d_size);
+        int rc = tree.find(key);
+        EXPECT_TRUE(rc==Radix::e_EXISTS);
+      }
     }
 
     Radix::TreeStats stats;
     tree.statistics(&stats);
+/*
     EXPECT_EQ(stats.d_innerNodeCount, 256);
     EXPECT_EQ(stats.d_leafCount, 256);
     // We have 1 root but all its children are full. Each child of root is an inner node
@@ -536,15 +568,18 @@ TEST(radix, multiInsertPermuations) {
     EXPECT_EQ(stats.d_emptyChildCount, Radix::k_MAX_CHILDREN256*Radix::k_MAX_CHILDREN256-Radix::k_MAX_CHILDREN256);
     EXPECT_EQ(stats.d_maxDepth, 2);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
+*/
 
     Radix::MemManagerStats mstats;
     mem.statistics(&mstats);
+/*
     EXPECT_EQ(mstats.d_allocCount, 256);
     EXPECT_EQ(mstats.d_freeCount, 0);
     EXPECT_EQ(mstats.d_currentSizeBytes, 256*mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 0);
+*/
 
     Radix::TreeIterator iter = tree.begin();
     while (!iter.end()) {
@@ -554,11 +589,13 @@ TEST(radix, multiInsertPermuations) {
 
     tree.destroy();
     mem.statistics(&mstats);
+/*
     EXPECT_EQ(mstats.d_allocCount, 256);
     EXPECT_EQ(mstats.d_freeCount, 256);
     EXPECT_EQ(mstats.d_currentSizeBytes, 0);
     EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
+*/
   } while(std::next_permutation(perm.begin(), perm.end()));
 }

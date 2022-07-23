@@ -163,6 +163,7 @@ class TreeIterator {
   u_int16_t                        d_depth;        // size-1 in bytes of current key
   const u_int16_t                  d_maxDepth;     // maximum length of key (for debugging)
   bool                             d_end;          // true when no more keys
+  bool                             d_jump;         // true when need to resume from a innerNode that's also terminal
 
   union {                                                                                                               
     Node256  *ptr;    // as pointer                                                                                     
