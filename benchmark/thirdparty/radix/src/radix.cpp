@@ -154,7 +154,7 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
   union {
     Node256  *ptr;    // as pointer
     u_int64_t val;    // as u_int64_t
-  } node;
+  } node, nodeHelper;
   
   node.ptr = &d_root;
   Node256 *pNode = &d_root; // raw parent of node
@@ -177,13 +177,12 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
         // Last byte matched ends on leaf node. However the whole key
         // was not found so insert will have work to do. But in order
         // to do that, lastMatch has to be promoted to a Node256, and
-        // the pointer to it needs to be updated. Leafs have no children
-        *lastMatch = node.ptr = d_memManager->mallocNode256();
-        node.val |= RadixTermMask;
-        pNode->d_children[key[i]] = node.ptr;
+        // the pointer to it needs to be updated.
+        *lastMatch = nodeHelper.ptr = d_memManager->mallocNode256();
+        nodeHelper.val |= RadixTermMask;
+        node.ptr->d_children[key[i]] = nodeHelper.ptr;
         return e_NOT_FOUND;
       } else {
-        *lastMatch = childNode;
         return e_EXISTS;
       }
     }
