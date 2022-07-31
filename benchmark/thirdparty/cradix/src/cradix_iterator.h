@@ -1,41 +1,52 @@
 #pragma once
 
-#include <cradix_enums.h>
-#include <cradix_IterState.h>
+#include <cradix_constants.h>
+#include <cradix_node256.h>
+#include <cradix_iterstate.h>
+
+#include <iostream>
 
 #include <assert.h>
+
+#include <stack>
 
 namespace CRadix {
 
 class Iterator {
   // DATA
-  Node256&                         d_root;         // reference to tree's root
-  Node256                         *d_rawNode;      // current node
-  u_int8_t                        *d_key;          // current key (owned)
-  std::stack<Radix::TreeIterState> d_stack;        // stack to revisit parents
-  u_int64_t                        d_attributes;   // current key attributes
-  u_int16_t                        d_index;        // current index on current node's d_children attribute
-  u_int16_t                        d_depth;        // size-1 in bytes of current key
-  const u_int16_t                  d_maxDepth;     // maximum length of key (for debugging)
-  bool                             d_end;          // true when no more keys
-  bool                             d_jump;         // true when need to resume from a innerNode that's also terminal
+  u_int8_t             *d_basePtr;      // point to start of memory containing root
+  u_int8_t             *d_key;          // current key (owned)
+  u_int32_t             d_root;         // offset to tree's root
+  u_int32_t             d_childNode;    // offset to child from d_memNode.ptr
+  std::stack<IterState> d_stack;        // stack to revisit parents
+  u_int32_t             d_attributes;   // current key attributes
+  u_int16_t             d_index;        // current index on current node's children offset array
+  u_int16_t             d_maxIndex;     // the maximum valid index on current node's children offet array
+  u_int16_t             d_depth;        // size of current key minus 1 in bytes of current key
+  const u_int16_t       d_maxDepth;     // maximum length of key
+  bool                  d_end;          // true when no more keys
+  bool                  d_jump;         // true when resuming from terminal inner node
 
   union {                                                                                                               
-    Node256  *ptr;    // as pointer                                                                                     
-    u_int64_t val;    // as u_int64_t                                                                                   
-  } d_memNode, d_nodeHelper; 
+    Node256  *ptr;        // as Node256 pointer
+    u_int8_t *uint8Ptr;   // as u_int8_t pointer
+    u_int64_t val;        // as u_int64_t
+  } d_memNode; 
 
 public:
   // CREATORS
-  Iterator(MemManager *memManager, Node256& root, u_int64_t maxDepth);
-    // Create a Iterator on specified 'root' holding keys of at most 'currentMaxDepth' bytes. Specified
-    // 'memManager' is used to allocate keyspace
+  Iterator(u_int32_t root, u_int64_t maxDepth, const u_int8_t *basePtr, u_int8_t *keySpace);
+    // Create a Iterator on specified 'root' holding keys of at most 'maxDepth' bytes where specified 'keySpace' is 
+    // memory sufficient to hold the current key. 'keySpace' becomes owned by this object and freed in its destructor.
+    // Specified 'basePtr' points to the start of the memory managed by the root's memory manager when it was 
+    // constructed. Behavior is defined provided there's at least 'maxDepth' bytes of valid, contiguous writeable bytes
+    // in range '[keySpace, keySpace+maxDepth)'.
 
   Iterator(const Iterator& other) = delete;
     // Copy constructor not provided
 
   ~Iterator();
-    // Destory this object
+    // Destroy this object freeing memory for current key
 
   // ACCESSORS
   const u_int8_t *key() const;
@@ -43,9 +54,6 @@ public:
 
   u_int16_t keySize() const;
     // Return the size of the current key in bytes. Behavior is defined provided 'end()==false'
-
-  bool isCompressed() const;
-    // Return 'true' if current node is compressed. Behavior is defined provided 'end()==false'
 
   bool isTerminal() const;
     // Return 'true' if current node is a terminal node or leaf node. Behavior is defined provided 'end()==false'
@@ -71,6 +79,74 @@ public:
 };
 
 // INLINE DEFINITIONS
+// CREATORS
+
+inline
+Iterator::Iterator(u_int32_t root, u_int64_t maxDepth, const u_int8_t *basePtr, u_int8_t *keySpace)
+: d_basePtr(const_cast<u_int8_t*>(basePtr))
+, d_key(keySpace)
+, d_root(root)
+, d_childNode(root)
+, d_attributes(0)
+, d_index(0)
+, d_maxIndex(0)
+, d_depth(0)
+, d_maxDepth((u_int16_t)maxDepth)
+, d_end(false)
+, d_jump(false)
+{                                                                                                                       
+  assert(d_basePtr);
+  assert(d_key);
+  assert(d_root);
+  // Root cannot be a leaf
+  assert((d_root & k_NODE256_IS_LEAF) == 0);
+  // Root cannot be a terminal node
+  assert((d_root & k_NODE256_IS_TERMINAL) == 0);
+
+  // Set up a valid Node256 pointer from root offset
+  d_memNode.uint8Ptr = d_basePtr; 
+  d_memNode.val += d_root;
+
+  if (maxDepth>0) {
+    d_index = d_memNode.ptr->minIndex();
+    d_maxIndex = d_memNode.ptr->maxIndex();
+    next();
+  } else {
+    d_end = true;
+  }
+}
+
+inline
+Iterator::~Iterator() {                                                                                         
+  if (d_key) {                                                                                                          
+    free(d_key);                                                                                  
+    d_key = 0;                                                                                                          
+  }                                                                                                                     
+}     
+
+inline
+std::ostream& Iterator::print(std::ostream& stream) const {
+  assert(!d_end);
+
+  stream << "key: '";
+
+  for (unsigned i=0; i<keySize(); ++i) {
+    if (!isprint(d_key[i])) {
+      char buf[5];
+      sprintf(buf, "0x%02x", d_key[i]);
+      stream << buf;
+    } else {
+      stream << d_key[i];
+    }
+  }
+
+  stream << "isTerminal: "  << isTerminal()
+         << " isLeafNode: " << isLeaf()
+         << std::endl;
+
+  return stream;
+}
+
 // ACCESSORS
 inline
 const u_int8_t *Iterator::key() const {
@@ -85,21 +161,15 @@ u_int16_t Iterator::keySize() const {
 }
 
 inline
-bool Iterator::isCompressed() const {
-  assert(!d_end);
-  return (d_attributes & k_IS_CHILDREN_COMPRESSED) && d_attributes!=k_IS_LEAF_NODE;
-}
-
-inline
 bool Iterator::isTerminal() const {
   assert(!d_end);
-  return (d_attributes & k_IS_TERMINAL_NODE) || d_attributes==k_IS_LEAF_NODE;
+  return (d_attributes & k_NODE256_IS_TERMINAL) || d_attributes==k_NODE256_IS_LEAF;
 }
 
 inline
 bool Iterator::isLeaf() const {
   assert(!d_end);
-  return d_attributes == k_IS_LEAF_NODE;
+  return d_attributes == k_NODE256_IS_LEAF;
 }
 
 inline

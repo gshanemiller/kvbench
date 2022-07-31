@@ -1,5 +1,5 @@
 #include <cradix_tree.h>
-#include <cradix_constants.h>
+#include <cradix_node256.h>
 #include <cradix_memmanager.h>
 
 Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256& root, u_int64_t maxDepth)

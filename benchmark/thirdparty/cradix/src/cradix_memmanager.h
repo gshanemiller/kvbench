@@ -53,8 +53,13 @@ struct MemManager {
     // Destroy this object freeing any owned memory allocated
 
   // ACCESSORS
+  const u_int8_t *basePtr() const;
+    // Return a non-modifiable pointer to the start of memory provided at
+    // construction time. Note: required for 'Tree', 'TreeIterator' objects
+
   Node256 *ptr(u_int32_t offset) const;
     // Convert specified 'offset' into a memory pointer to a Node256 object.
+    // Behavior is defined provided 'offset>=k_MEMMANAGER_MIN_OFFSET'
 
   void statistics(MemStats *stats) const;
     // Write into specified 'stats' statistics summarizing memory activity
@@ -165,6 +170,11 @@ MemManager::~MemManager() {
 }
 
 // ACCESSORS
+inline
+const u_int8_t *MemManager::basePtr() const {
+  return d_basePtr;
+}
+
 inline
 Node256* MemManager::ptr(u_int32_t offset) const {
   assert(offset>=k_MEMMANAGER_MIN_OFFSET);
