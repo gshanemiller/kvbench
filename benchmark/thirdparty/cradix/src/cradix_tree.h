@@ -6,28 +6,30 @@
 
 #include <cradix_constants.h>
 #include <cradix_iterator.h>
+#include <cradix_treestats.h>
 
 #include <benchmark_slice.h>
 
 namespace CRadix {
 
-struct Node256;
 struct MemManager;
 
 class Tree {
   // DATA
-  MemManager *d_memManager;
-  Node256    *d_root;
-  u_int64_t   d_currentMaxDepth;
+  MemManager *d_memManager;             // to manage memory
+  u_int32_t   d_root;                   // root node offset
+  u_int16_t   d_currentMaxDepth;        // max depth of tree
 
 public:
   // CREATORS
   Tree() = delete;
     // Default constructor not provided
 
-  Tree(MemManager *memManager);
+  Tree(MemManager *memManager, u_int16_t minIndex, u_int16_t maxIndex);
     // Create empty Compressed Radix tree using specified 'memManager' for
-    // memory management.
+    // memory management. Memory is reserved in the root node to hold children
+    // offset pointers for key values '[minIndex, maxIndex]'. Behavior is
+    // defined provided '0<=minIndex<=maxIndex<k_MAX_CHILDREN'.
 
   ~Tree();
     // Destroy this tree deallocating all its memory 
@@ -50,8 +52,8 @@ public:
     // otherwise.
 
   Iterator begin() const;
-    // Return a in-order key iterator on this tree. It's behavior is defined
-    // provided 'insert/remove' not run while in scope.
+    // Return a in-order read-only key iterator on this tree. It's behavior is
+    // defined provided 'insert/remove' not run while in scope.
 
   // MANIUPLATORS
   int insert(const Benchmark::Slice<u_int8_t> key);
@@ -64,7 +66,7 @@ public:
     // if key was not found.
 
   void destroy();
-    // Deallocate all memory leaving tree empty
+    // Destory this object and deallocate all memory leaving tree empty
 
   Tree& operator=(const Tree& rhs) = delete;
     // Assignment operator not provided
@@ -78,28 +80,17 @@ private:
 
   // PRIVATE MANIPULATORS
   int insertHelper(const u_int8_t *key, const u_int16_t size,
-    u_int16_t *lastMatchIndex, Node256 **lastMatch);
+    u_int16_t *lastMatchIndex, u_int32_t *lastMatch);
     // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
     // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
-    // 'size>0'. lastMatchIndex, lastMatch, depth' are defined only when
+    // 'size>0'. 'lastMatchIndex, lastMatch, depth' are defined only when
     // 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size' is set
-    // to the last byte matched in key, and '*lastMatch' points to the node in
-    // which the last byte match was found. Note that in the special case the
-    // prefix already exists in the tree, but the node containing the last byte
-    // of 'key' is not tagged terminal, it is so tagged and 'e_EXISTS' is
-    // returned.
+    // to the last byte matched in key, and '*lastMatch' points to the node
+    // offset in which the last byte match was found.
 };
 
 // INLINE DEFINITIONS
 // CREATORS
-inline
-Tree::Tree(MemManager *memManager)
-: d_memManager(memManager)
-, d_currentMaxDepth(0)
-{
-  assert(memManager!=0);
-}
-
 inline
 Tree::~Tree() {
   destroy();
@@ -109,11 +100,6 @@ Tree::~Tree() {
 inline
 u_int64_t Tree::currentMaxDepth() const {
   return d_currentMaxDepth;
-}
-
-inline
-Iterator Tree::begin() const {
-  return Iterator(const_cast<MemManager*>(d_memManager), const_cast<Node256&>(d_root), currentMaxDepth());
 }
 
 // MANIPULATORS

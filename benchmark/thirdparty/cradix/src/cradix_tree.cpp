@@ -2,178 +2,105 @@
 #include <cradix_node256.h>
 #include <cradix_memmanager.h>
 
-Radix::TreeIterator::TreeIterator(Radix::MemManager *memManager, Radix::Node256& root, u_int64_t maxDepth)
-: d_memManager(memManager)                                                                                              
-, d_root(root)                                                                                                          
-, d_rawNode(&d_root)                                                                                                    
-, d_key(0)                                                                                                              
-, d_attributes(0)                                                                                                       
-, d_index(0)                                                                                                            
-, d_depth(0)                                                                                                          
-, d_maxDepth((u_int16_t)maxDepth)
-, d_end(false)                                                                                                          
-, d_jump(false)
-{                                                                                                                       
-  assert(d_memManager!=0);                                                                                              
-  if (maxDepth>0) {                                                                                                     
-    d_memNode.ptr = d_rawNode;                                                                                          
-    d_key = d_memManager->mallocKeySpace(maxDepth);                                                                   
-    next();                                                                                                             
-  } else {                                                                                                              
-    d_end = true;                                                                                                       
-  }                                                                                                                     
-}                                                                                                                       
-                                                                                                                        
-Radix::TreeIterator::~TreeIterator() {                                                                                         
-  if (d_key) {                                                                                                          
-    d_memManager->freeKeySpace(d_key);                                                                                  
-    d_key = 0;                                                                                                          
-  }                                                                                                                     
-}     
-
-std::ostream& Radix::TreeIterator::print(std::ostream& stream) const {
-  assert(!d_end);
-
-  stream << "key: '";
-
-  for (unsigned i=0; i<keySize(); ++i) {
-    if (!isprint(d_key[i])) {
-      char buf[5];
-      sprintf(buf, "0x%02x", d_key[i]);
-      stream << buf;
-    } else {
-      stream << d_key[i];
-    }
-  }
-
-  stream << "' isCompressed: "  << isCompressed()
-         << " isTerminal: "     << isTerminal()
-         << " isLeafNode: "     << isLeaf()
-         << std::endl;
-  return stream;
+CRadix::Tree::Tree(MemManager *memManager, u_int16_t minIndex, u_int16_t maxIndex)
+: d_memManager(memManager)
+, d_currentMaxDepth(0)
+, d_root(0)
+{
+  assert(d_memManager!=0);
+  assert(minIndex<=maxIndex);
+  assert(maxIndex<k_MAX_CHILDREN);
+  d_root = d_memManager->newRoot(minIndex, maxIndex);
+  assert(d_root);
 }
 
-void Radix::TreeIterator::next() {
-  // When resuming from line 87
-  if (d_jump) {
-    d_jump = false;
-    goto jump;
-  }
-begin:
-  while (d_index<Radix::k_MAX_CHILDREN256) {
-    if (d_memNode.ptr->d_children[d_index]==0) {
-      ++d_index;
-      continue;
-    }
-
-    if (d_memNode.ptr->d_children[d_index]==RadixLeafNode) {
-      d_attributes = 0xffUL;
-      d_key[d_depth] = (u_int8_t)(d_index);
-      ++d_index;
-      return;
-    }
-
-    d_nodeHelper.ptr = d_memNode.ptr->d_children[d_index];
-    if (d_nodeHelper.val & RadixTermMask) {
-      d_attributes = d_nodeHelper.val & (k_IS_CHILDREN_COMPRESSED | k_IS_TERMINAL_NODE);
-      d_key[d_depth] = (u_int8_t)(d_index);
-      d_jump = true;
-      return;
-    }
-
-    // otherwise Inner node so recurse w/ stack
-jump:
-    assert(d_key);
-    assert(d_depth<d_maxDepth);
-    d_key[d_depth] = (u_int8_t)(d_index);
-    d_stack.push(Radix::TreeIterState(d_rawNode, d_index, d_depth));
-    d_rawNode = d_memNode.ptr = d_memNode.ptr->d_children[d_index];
-    d_memNode.val &= RadixTagClear;
-    d_index = 0;
-    d_depth++;
-    goto begin;
-  }
-
-  if (!d_stack.empty()) {
-    Radix::TreeIterState state = d_stack.top();
-    d_index = state.d_index+1;
-    d_depth = state.d_depth;
-    d_rawNode = d_memNode.ptr = state.d_node;
-    d_memNode.val &= RadixTagClear;
-    d_stack.pop();
-    goto begin;
-  }
-
-  d_end = true;
+inline
+CRadix::Iterator CRadix::Tree::begin() const {
+  return Iterator(d_root, currentMaxDepth(), d_memManager->basePtr(), (u_int8_t*)malloc(currentMaxDepth()));
 }
 
-int Radix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
+int CRadix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
   assert(key!=0);
   assert(size>0);
-
-  Node256* node = const_cast<Node256*>(&d_root);
-
-  union {
-    Node256  *ptr;    // as pointer
-    u_int64_t val;    // as u_int64_t
-  } childNode;
 
   bool childWasTerminal(false);
 
-  for (u_int16_t i=0; i<size; ++i) {
-    childNode.ptr = node->d_children[key[i]];
-    if (childNode.ptr>RadixLeafNode) {
-      childWasTerminal = childNode.val & RadixTermMask;
-      childNode.val &= RadixTagClear;
-      node = childNode.ptr; 
-    } else if (childNode.ptr==0) {
-      return e_NOT_FOUND;
-    } else if (childNode.ptr==RadixLeafNode) {
+  union {
+    Node256  *ptr;        // as Node256 pointer
+    u_int8_t *uint8Ptr;   // as u_int8_t pointer
+    u_int64_t val;        // as u_int64_t
+  } node;
+
+  node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr());
+  node.val     += d_root;
+
+  u_int32_t childOffset(0);
+
+  for (u_int32_t i=0; i<size; ++i) {
+    childOffset = node.ptr->tryOffset(key[i]);
+    
+    if (childOffset>=k_MEMMANAGER_MIN_OFFSET) {
+      childWasTerminal = childOffset & k_NODE256_IS_TERMINAL;
+      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+(childOffset&k_NODE256_CLR_TERMINAL_MASK));
+    } else if (childOffset==k_NODE256_IS_LEAF) {
       return ((i+1U)==size) ? e_EXISTS : e_NOT_FOUND;
+    } else {
+      assert(childOffset==0);
+      return e_NOT_FOUND;
     }
   }
 
-  return (childNode.ptr==RadixLeafNode || childWasTerminal) ? e_EXISTS : e_NOT_FOUND;
+  return (childOffset==k_NODE256_IS_LEAF || childWasTerminal) ? e_EXISTS : e_NOT_FOUND;
 }
 
-int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
-  u_int16_t *lastMatchIndex, Node256 **lastMatch) {
+int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
+  u_int16_t *lastMatchIndex, u_int32_t *lastMatch) {
   assert(key!=0);
   assert(size>0);
-  assert(index!=0);
+  assert(lastMatchIndex!=0);
   assert(lastMatch!=0);
-  assert(*lastMatch!=0);
 
+  // We're tracking 3 nodes connected by two edges: pOffset -> offset -> childOffset
+  u_int32_t offset = d_root;
+  u_int32_t pOffset = d_root; // becomes parent of offet for i>=1
+  u_int32_t childOffset = 0;
+
+  // Helper struct to convert offsets to Node256*
   union {
-    Node256  *ptr;    // as pointer
-    u_int64_t val;    // as u_int64_t
-  } node, nodeHelper;
-  
-  node.ptr = &d_root;
-  Node256 *pNode = &d_root; // raw parent of node
+    Node256  *ptr;            // as Node256 pointer
+    u_int8_t *uint8Ptr;       // as u_int8_t pointer
+    u_int64_t val;            // as u_int64_t
+  } node;
 
-  for (u_int16_t i=0; i<size; ++i) {
-    // Follow edge @ key[i] from node to child
-    Node256 *childNode = node.ptr->d_children[key[i]];
-    if (childNode>RadixLeafNode) {
-      pNode = node.ptr;
-      node.ptr = childNode;
-      node.val &= RadixTagClear;
-    } else if (childNode==0) {
+  node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+d_root);
+
+  for (u_int32_t i=0; i<size; ++i) {
+    u_int32_t childOffset = node.ptr->tryOffset(key[i]);
+    if (childOffset>=k_MEMMANAGER_MIN_OFFSET) {
+      pOffset = offset;
+      offset = childOffset;
+      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+(childOffset&k_NODE256_CLR_TERMINAL_MASK));
+    } else if (offset==0) {
+      assert(i<size);
+      assert(offset);
       *lastMatchIndex = i;
-      *lastMatch = node.ptr;
+      *lastMatch = offset;
       return e_NOT_FOUND;
     } else {
-      assert(childNode==RadixLeafNode);
+      assert(childOffset==k_NODE256_IS_LEAF);
       *lastMatchIndex = i+1;
       if (*lastMatchIndex!=size) {
         // Last byte matched ends on leaf node. However the whole key
         // was not found so insert will have work to do. But in order
         // to do that, lastMatch has to be promoted to a Node256, and
-        // the pointer to it needs to be updated.
-        *lastMatch = nodeHelper.ptr = d_memManager->mallocNode256();
-        nodeHelper.val |= RadixTermMask;
-        node.ptr->d_children[key[i]] = nodeHelper.ptr;
+        // the pointer to it needs to be updated. When creating this
+        // new node, we reserve space and set key[*lastMatchIndex] to 0.
+        // This is done, because on return, key[*lastMatchIndex] will
+        // be immediately modified to have a new, decendent node in order
+        // to complete insertion. We also mark this new node terminal
+        // (it was a leaf implying terminal).
+        *lastMatch = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, key[*lastMatchIndex], 0);
+        node.ptr->setOffset(key[i], (*lastMatch|k_NODE256_IS_TERMINAL));
         return e_NOT_FOUND;
       } else {
         return e_EXISTS;
@@ -181,28 +108,28 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
     }
   }
 
-  assert(pNode);
+  assert(pOffset);
 
-  // Edge from pNode to node refers to last byte in the key. So there's a
-  // definite match. To get here pNode must be a inner node since all other
+  // Edge from pOffset to offset refers to last byte in the key. So there's a
+  // definite match. To get here pOffset must be a inner node since all other
   // cases must have already returned from loop above. The remaining issue
-  // is to ensure the link/pointer from pNode to node is marked terminal.
+  // is to ensure the link/pointer from pOffset to offset is marked terminal.
   // We'll reuse node union to so mark it
-
-  node.ptr = pNode->d_children[key[size-1]];
-  node.val |= RadixTermMask;
-  pNode->d_children[key[size-1]] = node.ptr;
+  assert(pOffset>=k_MEMMANAGER_MIN_OFFSET);
+  node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+pOffset);
+  offset = node.ptr->offset(key[size-1]);
+  node.ptr->setOffset(key[size-1], (offset|k_NODE256_IS_TERMINAL));
 
   return e_OK;
 }
 
-int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
+int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   int rc;
   const u_int16_t size = key.size();
   const u_int8_t *keyPtr = key.data();
 
   // Search for key
-  Node256 *lastMatch(0);
+  u_int32_t lastMatch(0);
   u_int16_t lastMatchIndex(0);
   if ((rc = insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch)) != e_NOT_FOUND) {
     return rc;
@@ -210,42 +137,80 @@ int Radix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
 
   // Not found so have a inner child node in tree where last match found
   assert(lastMatchIndex<size-1);
-  assert(lastMatch!=0);
-  assert(lastMatch!=RadixLeafNode);
+  assert(lastMatch!=k_NODE256_IS_LEAF);
+  assert(lastMatch>=k_MEMMANAGER_MIN_OFFSET);
+  assert((lastMatch & k_NODE256_IS_TERMINAL)==0);
+  assert(lastMatchIndex<size);
 
+  // Helper struct to convert offsets to Node256*
+  union {
+    Node256  *ptr;            // as Node256 pointer
+    u_int8_t *uint8Ptr;       // as u_int8_t pointer
+    u_int64_t val;            // as u_int64_t
+  } node;
+
+  u_int32_t newOffset;
+  int32_t oldMin, oldMax, newMin, newMax, delta;
   u_int8_t byte(keyPtr[lastMatchIndex]);
+
+  node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+lastMatch);
 
   if (lastMatchIndex+1==size) {
     // Insert last char & return OK
-    lastMatch->d_children[byte] = RadixLeafNode;
+    if (!node.ptr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
+      newOffset = d_memManager->copyAllocateNode256(lastMatch, newMax-newMin+1);
+      if (lastMatch==d_root) {
+        d_root=newOffset;
+      }
+      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+newOffset);
+    }
+    // this edge takes us to last byte in key
+    node.ptr->setOffset(byte, k_NODE256_IS_LEAF);
   } else {
+    // It's a linked list of new nodes from here on down
     assert(lastMatchIndex+1<size);
+    // Unroll the first iteration since lastMatch could be d_root
+    if (!node.ptr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
+      newOffset = d_memManager->copyAllocateNode256(lastMatch, newMax-newMin+1);
+      if (lastMatch==d_root) {
+        d_root=newOffset;
+      }
+      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+newOffset);
+    }
+    newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
+    node.ptr->setOffset(byte, newOffset);
+    node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+newOffset);
+    byte = keyPtr[++lastMatchIndex];
+
     while (lastMatchIndex < size-1) {
-      lastMatch->d_children[byte] = d_memManager->mallocNode256();
-      lastMatch = lastMatch->d_children[byte];
+      newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
+      node.ptr->setOffset(byte, newOffset);
+      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+newOffset);
       byte = keyPtr[++lastMatchIndex];
     }
+
     // Insert last char & return OK
     assert(lastMatchIndex+1==size);
-    lastMatch->d_children[byte] = RadixLeafNode;
+    node.ptr->setOffset(byte, k_NODE256_IS_LEAF);
   }
 
   if (size>d_currentMaxDepth) {
     d_currentMaxDepth = size;
   }
 
-  return Radix::e_OK;
+  return CRadix::e_OK;
 }
 
-void Radix::Tree::statistics(TreeStats *stats) const {
+void CRadix::Tree::statistics(TreeStats *stats) const {
   assert(stats);
   stats->reset();
 
+/*
   u_int16_t i(0);
   u_int16_t depth(0);
-  std::stack<Radix::TreeIterState> stack;
+  std::stack<CRadix::IterState> stack;
 
-  Radix::Node256 *rawNode = const_cast<Radix::Node256*>(&d_root);
+  CRadix::Node256 *rawNode = const_cast<CRadix::Node256*>(&d_root);
 
   union {
     Node256  *ptr;    // as pointer
@@ -259,7 +224,7 @@ void Radix::Tree::statistics(TreeStats *stats) const {
   // On entry to loop rawNode & memNode point
   // to root there are no tags to worry about
 begin:
-  for (; i<Radix::k_MAX_CHILDREN256; ++i) {
+  for (; i<CRadix::k_MAX_CHILDREN; ++i) {
     if (memNode.ptr->d_children[i]==RadixLeafNode) {
       ++stats->d_leafCount;
       if ((depth+1U)>stats->d_maxDepth) {
@@ -285,7 +250,7 @@ begin:
     stats->d_totalSizeBytes += sizeof(Node256); // inner node
     
     // Recurse w/ stack
-    stack.push(Radix::TreeIterState(rawNode, i, depth));
+    stack.push(CRadix::IterState(rawNode, i, depth));
     rawNode = memNode.ptr = memNode.ptr->d_children[i];
     memNode.val &= RadixTagClear;
     i = 0xffff; // increments to back to 0
@@ -293,7 +258,7 @@ begin:
   }
 
   if (!stack.empty()) {
-    Radix::TreeIterState state = stack.top();
+    CRadix::IterState state = stack.top();
     i = state.d_index+1;
     rawNode = memNode.ptr = state.d_node;
     memNode.val &= RadixTagClear;
@@ -301,15 +266,17 @@ begin:
     stack.pop();
     goto begin;
   }
+*/
 }
 
-void Radix::Tree::dotGraph(std::ostream& stream) const {
+void CRadix::Tree::dotGraph(std::ostream& stream) const {
   char buf[16];
   u_int16_t i(0);
   u_int16_t depth(0);
-  std::stack<Radix::TreeIterState> stack;
+  std::stack<CRadix::IterState> stack;
 
-  Radix::Node256 *rawNode = const_cast<Radix::Node256*>(&d_root);
+/*
+  CRadix::Node256 *rawNode = const_cast<CRadix::Node256*>(&d_root);
 
   union {
     Node256  *ptr;    // as pointer
@@ -324,7 +291,7 @@ void Radix::Tree::dotGraph(std::ostream& stream) const {
   // On entry to loop rawNode & memNode point
   // to root there are no tags to worry about
 begin:
-  for (; i<Radix::k_MAX_CHILDREN256; ++i) {
+  for (; i<CRadix::k_MAX_CHILDREN; ++i) {
     if (memNode.ptr->d_children[i]==RadixLeafNode) {
       // The leaf node
       if (isprint(i)) {
@@ -392,14 +359,14 @@ begin:
            << std::endl;
 
     // Recurse w/ stack
-    stack.push(Radix::TreeIterState(rawNode, i, depth));
+    stack.push(CRadix::IterState(rawNode, i, depth));
     rawNode = memNode.ptr = memNode.ptr->d_children[i];
     memNode.val &= RadixTagClear;
     i = 0xffff; // increments to back to 0
   }
 
   if (!stack.empty()) {
-    Radix::TreeIterState state = stack.top();
+    CRadix::IterState state = stack.top();
     i = state.d_index+1;
     rawNode = memNode.ptr = state.d_node;
     memNode.val &= RadixTagClear;
@@ -409,13 +376,15 @@ begin:
   }
 
   stream << "}" << std::endl;
+*/
 }
 
-void Radix::Tree::destroy() {
+void CRadix::Tree::destroy() {
   u_int16_t i(0);
-  std::stack<Radix::TreeIterState> stack;
+  std::stack<CRadix::IterState> stack;
 
-  Radix::Node256 *rawNode = const_cast<Radix::Node256*>(&d_root);
+/*
+  CRadix::Node256 *rawNode = const_cast<CRadix::Node256*>(&d_root);
 
   union {
     Node256  *ptr;    // as pointer
@@ -425,7 +394,7 @@ void Radix::Tree::destroy() {
   memNode.ptr = rawNode;
 
 begin:
-  for (; i<Radix::k_MAX_CHILDREN256; ++i) {
+  for (; i<CRadix::k_MAX_CHILDREN; ++i) {
     // Easy case
     if (memNode.ptr->d_children[i]==RadixLeafNode) {
       continue;
@@ -437,10 +406,10 @@ begin:
     }
 
     // Inner node, recurse w/ stack
-    stack.push(Radix::TreeIterState(rawNode, i, 0));
+    stack.push(CRadix::IterState(rawNode, i, 0));
     rawNode = memNode.ptr = memNode.ptr->d_children[i];
     memNode.val &= RadixTagClear;
-    i = 0xffff; // increments to back to 0
+    i = 0xffff; // increments/wraps to back to 0
   }
 
   if (rawNode!=&d_root) {
@@ -452,7 +421,7 @@ begin:
   }
 
   if (!stack.empty()) {
-    Radix::TreeIterState state = stack.top();
+    CRadix::IterState state = stack.top();
     i = state.d_index+1;
     rawNode = memNode.ptr = state.d_node;
     memNode.val &= RadixTagClear;
@@ -462,4 +431,5 @@ begin:
 
   // To avoid double delete on stale pointers
   memset(d_root.d_children, 0, sizeof(d_root));
+*/
 }

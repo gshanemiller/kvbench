@@ -19,8 +19,10 @@ enum {
 const u_int32_t k_MAX_CHILDREN = 256;
 const u_int32_t k_NODE256_IS_DEAD = 0x1000000U;   // bit-24
 
+const u_int64_t k_MEMMANAGER_MIN_ALIGN  = 4;
 const u_int64_t k_MEMMANAGER_MIN_OFFSET = 8;
 const u_int64_t k_MEMMANAGER_MIN_MEMORY = 1024;
+const u_int32_t k_MEMMANAGER_DEFAULT_CAPACITY = 4;
 const u_int64_t k_MEMMANAGER_MAX_MEMORY = 0x100000000UL;
 
 const u_int32_t k_NODE256_IS_LEAF = 0x01;
