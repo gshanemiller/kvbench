@@ -25,11 +25,9 @@ public:
   Tree() = delete;
     // Default constructor not provided
 
-  Tree(MemManager *memManager, u_int16_t minIndex, u_int16_t maxIndex);
+  Tree(MemManager *memManager);
     // Create empty Compressed Radix tree using specified 'memManager' for
-    // memory management. Memory is reserved in the root node to hold children
-    // offset pointers for key values '[minIndex, maxIndex]'. Behavior is
-    // defined provided '0<=minIndex<=maxIndex<k_MAX_CHILDREN'.
+    // memory management
 
   ~Tree();
     // Destroy this tree deallocating all its memory 

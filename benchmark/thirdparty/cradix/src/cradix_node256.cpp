@@ -1,4 +1,5 @@
 #include <cradix_node256.h> 
+#include <string.h>
 
 bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset) {
   assert(!isDead());

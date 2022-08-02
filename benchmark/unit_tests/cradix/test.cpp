@@ -1,6 +1,6 @@
 #include <benchmark_slice.h>
-#include <radix.h>
-#include <radix_memmanager.h>
+#include <cradix_tree.h>
+#include <cradix_memmanager.h>
 #include <gtest/gtest.h>
 #include <algorithm>
 
@@ -41,12 +41,12 @@ TEST(cradix, case0a) {
   u_int8_t byte; 
   // CRadix::TreeStats stats;
 
-  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN256; ++i) {
+  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN; ++i) {
     byte = i;
     Benchmark::Slice<unsigned char> key(&byte, 1);
 
     CRadix::MemManager mem(0x100000, 4);;
-    CRadix::Tree tree(&mem, 0U, 255L);
+    CRadix::Tree tree(&mem);
 
     int rc = tree.find(key);
     EXPECT_TRUE(rc==CRadix::e_NOT_FOUND);
@@ -73,14 +73,14 @@ TEST(cradix, case0a) {
     EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
     EXPECT_EQ(mstats.d_requestedBytes, 0);
     EXPECT_EQ(mstats.d_freedBytes, 0);
+*/
 
-    CRadix::TreeIterator iter = tree.begin();
+    CRadix::Iterator iter = tree.begin();
     while (!iter.end()) {
       iter.print(std::cout);
       iter.next();
     }
   }
-*/
 }
 
 /*
@@ -91,7 +91,7 @@ TEST(cradix, case0b) {
   CRadix::Tree tree(&mem);
   CRadix::TreeStats stats;
 
-  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN256; ++i) {
+  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN; ++i) {
     byte = i;
     Benchmark::Slice<unsigned char> key(&byte, 1);
 
@@ -115,7 +115,7 @@ TEST(cradix, case0b) {
 
   tree.statistics(&stats);
   EXPECT_EQ(stats.d_innerNodeCount, 0);
-  EXPECT_EQ(stats.d_leafCount, CRadix::k_MAX_CHILDREN256);
+  EXPECT_EQ(stats.d_leafCount, CRadix::k_MAX_CHILDREN);
   EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 1);
   EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
@@ -160,7 +160,7 @@ TEST(cradix, case1a) {
   u_int8_t byte[2];
   CRadix::TreeStats stats;
 
-  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN256; ++i) {
+  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN; ++i) {
     byte[0] = i;
     Benchmark::Slice<unsigned char> key(byte+0, 1);
 
@@ -193,7 +193,7 @@ TEST(cradix, case1a) {
     EXPECT_EQ(stats.d_innerNodeCount, 1);
     EXPECT_EQ(stats.d_leafCount, 2);
     // root + 1 inner node each of which has 255 empty slots, 1 used slot
-    EXPECT_EQ(stats.d_emptyChildCount, 2*CRadix::k_MAX_CHILDREN256-2);
+    EXPECT_EQ(stats.d_emptyChildCount, 2*CRadix::k_MAX_CHILDREN-2);
     EXPECT_EQ(stats.d_maxDepth, 2);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
@@ -229,7 +229,7 @@ TEST(cradix, case1b) {
   CRadix::Tree tree(&mem);
   u_int8_t byte[2];
 
-  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN256; ++i) {
+  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN; ++i) {
     byte[0] = i;
     Benchmark::Slice<unsigned char> key(byte+0, 1);
 
@@ -262,7 +262,7 @@ TEST(cradix, case1b) {
   EXPECT_EQ(stats.d_leafCount, 512);
   // We have 1 root but all its children are full. Each child of root is an inner node
   // with 256 children each and, of those, 255 empty 1 full.
-  EXPECT_EQ(stats.d_emptyChildCount, CRadix::k_MAX_CHILDREN256*CRadix::k_MAX_CHILDREN256-CRadix::k_MAX_CHILDREN256);
+  EXPECT_EQ(stats.d_emptyChildCount, CRadix::k_MAX_CHILDREN*CRadix::k_MAX_CHILDREN-CRadix::k_MAX_CHILDREN);
   EXPECT_EQ(stats.d_maxDepth, 2);
   EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
@@ -304,7 +304,7 @@ TEST(cradix, case2a) {
   u_int8_t byte[2];
   CRadix::TreeStats stats;
 
-  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN256; ++i) {
+  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN; ++i) {
     byte[0] = i;
     byte[1] = 'o';
     Benchmark::Slice<unsigned char> key(byte+0, 2);
@@ -337,7 +337,7 @@ TEST(cradix, case2a) {
     EXPECT_EQ(stats.d_innerNodeCount, 1);
     EXPECT_EQ(stats.d_leafCount, 2);
     // root + 1 inner node each of which has 255 empty slots, 1 used slot
-    EXPECT_EQ(stats.d_emptyChildCount, 2*CRadix::k_MAX_CHILDREN256-2);
+    EXPECT_EQ(stats.d_emptyChildCount, 2*CRadix::k_MAX_CHILDREN-2);
     EXPECT_EQ(stats.d_maxDepth, 2);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
@@ -373,7 +373,7 @@ TEST(cradix, case2b) {
   CRadix::Tree tree(&mem);
   u_int8_t byte[2];
 
-  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN256; ++i) {
+  for (unsigned i=0; i<CRadix::k_MAX_CHILDREN; ++i) {
     byte[0] = i;
     byte[1] = 'o';
     Benchmark::Slice<unsigned char> key(byte+0, 2);
@@ -406,7 +406,7 @@ TEST(cradix, case2b) {
   EXPECT_EQ(stats.d_leafCount, 512);
   // We have 1 root but all its children are full. Each child of root is an inner node
   // with 256 children each and, of those, 255 empty 1 full.
-  EXPECT_EQ(stats.d_emptyChildCount, CRadix::k_MAX_CHILDREN256*CRadix::k_MAX_CHILDREN256-CRadix::k_MAX_CHILDREN256);
+  EXPECT_EQ(stats.d_emptyChildCount, CRadix::k_MAX_CHILDREN*CRadix::k_MAX_CHILDREN-CRadix::k_MAX_CHILDREN);
   EXPECT_EQ(stats.d_maxDepth, 2);
   EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
 
@@ -470,12 +470,12 @@ TEST(cradix, multiInsertPermuations) {
     EXPECT_EQ(stats.d_innerNodeCount, 5);
     EXPECT_EQ(stats.d_leafCount, 10); // should be 7?
     u_int64_t expectedEmptyChildCount =
-        (CRadix::k_MAX_CHILDREN256 - 3)    // root
-      + (CRadix::k_MAX_CHILDREN256 - 1)    // 'P'
-      + (CRadix::k_MAX_CHILDREN256 - 1)    // 'i'
-      + (CRadix::k_MAX_CHILDREN256 - 1)    // 'Z'
-      + (CRadix::k_MAX_CHILDREN256 - 3)    // 'A'
-      + (CRadix::k_MAX_CHILDREN256 - 3);   // 'o'
+        (CRadix::k_MAX_CHILDREN - 3)    // root
+      + (CRadix::k_MAX_CHILDREN - 1)    // 'P'
+      + (CRadix::k_MAX_CHILDREN - 1)    // 'i'
+      + (CRadix::k_MAX_CHILDREN - 1)    // 'Z'
+      + (CRadix::k_MAX_CHILDREN - 3)    // 'A'
+      + (CRadix::k_MAX_CHILDREN - 3);   // 'o'
     EXPECT_EQ(stats.d_emptyChildCount, expectedEmptyChildCount);
     EXPECT_EQ(stats.d_maxDepth, 4);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());

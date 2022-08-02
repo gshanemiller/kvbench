@@ -2,7 +2,7 @@
 #include <cradix_node256.h>
 #include <cradix_memmanager.h>
 
-CRadix::Tree::Tree(MemManager *memManager, u_int16_t minIndex, u_int16_t maxIndex)
+CRadix::Tree::Tree(MemManager *memManager)
 : d_memManager(memManager)
 , d_currentMaxDepth(0)
 , d_root(0)
@@ -10,11 +10,10 @@ CRadix::Tree::Tree(MemManager *memManager, u_int16_t minIndex, u_int16_t maxInde
   assert(d_memManager!=0);
   assert(minIndex<=maxIndex);
   assert(maxIndex<k_MAX_CHILDREN);
-  d_root = d_memManager->newRoot(minIndex, maxIndex);
+  d_root = d_memManager->newRoot();
   assert(d_root);
 }
 
-inline
 CRadix::Iterator CRadix::Tree::begin() const {
   return Iterator(d_root, currentMaxDepth(), d_memManager->basePtr(), (u_int8_t*)malloc(currentMaxDepth()));
 }
@@ -80,7 +79,7 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
       pOffset = offset;
       offset = childOffset;
       node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+(childOffset&k_NODE256_CLR_TERMINAL_MASK));
-    } else if (offset==0) {
+    } else if (childOffset==0) {
       assert(i<size);
       assert(offset);
       *lastMatchIndex = i;

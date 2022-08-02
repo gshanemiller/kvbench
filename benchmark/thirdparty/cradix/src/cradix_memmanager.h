@@ -90,10 +90,9 @@ struct MemManager {
     // is larger than old object's capacity and less than or equal to k_MAX_CHILDREN.
     // If there's no enough free memory 0 is returned.
 
-  u_int32_t newRoot(u_int32_t minIndex, u_int32_t maxIndex);
+  u_int32_t newRoot();
     // Allocate memory and construct the root of a CRadix tree object holding
-    // zero offset values for all children in the range '[minIndex, maxIndex]'.
-    // Behavior is defined provided '0<=minIndex<=maxIndex<k_MAX_CHILDREN'.
+    // zero offset values for all children in the range '[0, k_MAX_CHILDREN)'.
     // If there's no enough free memory 0 is returned.
 };
 
@@ -243,12 +242,9 @@ u_int32_t MemManager::copyAllocateNode256(const u_int32_t object, u_int32_t newC
 }
 
 inline
-u_int32_t MemManager::newRoot(u_int32_t minIndex, u_int32_t maxIndex) {
-  assert(minIndex<=maxIndex);
-  assert(maxIndex<k_MAX_CHILDREN);
-
+u_int32_t MemManager::newRoot() {
   // Memory request in bytes
-  u_int64_t sz = sizeof(Node256)+((maxIndex-minIndex+1)<<2);
+  u_int64_t sz = sizeof(Node256)+(256<<2);
 
   // Make sure we have memory
   if ((d_offset+sz)>d_size) {
@@ -257,8 +253,8 @@ u_int32_t MemManager::newRoot(u_int32_t minIndex, u_int32_t maxIndex) {
 
   // Construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256(maxIndex-minIndex+1, minIndex, 0);
-  for (u_int16_t i = minIndex; i<=maxIndex; ++i) {
+  Node256 *ptr = new(d_basePtr+d_offset) Node256(k_MAX_CHILDREN, 0, 0);
+  for (u_int16_t i = 0; i<k_MAX_CHILDREN; ++i) {
     ptr->setOffset(i, 0);
   }
 

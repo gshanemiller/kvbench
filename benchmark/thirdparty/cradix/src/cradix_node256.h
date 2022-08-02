@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <assert.h>
 #include <sys/types.h>
 
 #include <cradix_constants.h>
@@ -24,13 +25,14 @@ struct Node256 {
   u_int32_t     d_offset[]; // array of offset integers for i in [min,max]
 
   // CREATORS
-  Node256() = delete;
-    // Default constructor not provided
+  Node256();
+    // Create Node256 with full capacity setting all offsets 0. Node that this method is
+    // intended for root not creation only
 
   explicit Node256(const u_int32_t index, const u_int32_t offset, const u_int32_t capacity);
     // Create Node256 with specified 'capacity' setting min/max to specified 'index' such that
     // on return 'offset[index]==offset'. Behavior is defined provided 'index<k_MAX_CHILDREN',
-    // '1<=capacity<k_MAX_CHILDREN' 
+    // '1<=capacity<=k_MAX_CHILDREN' 
 
   ~Node256() = default;
     // Destroy this object. Note that this method does not cleanup memory. To reclaim memory
@@ -117,10 +119,16 @@ struct Node256 {
 // CREATORS
 
 inline
+Node256::Node256() {
+  d_udata = 0 | (k_MAX_CHILDREN-1) | ((k_MAX_CHILDREN-)<<16);
+
+}
+
+inline
 Node256::Node256(const u_int32_t index, const u_int32_t offset, const u_int32_t capacity)
 {
   assert(index<k_MAX_CHILDREN);
-  assert(capacity>0&&capacity<k_MAX_CHILDREN);
+  assert(capacity>0&&capacity<=k_MAX_CHILDREN);
   d_udata = index | (index<<8) | ((capacity-1)<<16);
   d_offset[0] = offset;
 }
@@ -228,6 +236,7 @@ void Node256::setOffset(const u_int32_t i, u_int32_t offset) {
 }
 
 // ASPECTS
+inline
 std::ostream& Node256::statistics(std::ostream& stream) const {
   stream  << "minIndex: "           << minIndex()
           << " maxIndex: "          << maxIndex()
@@ -242,6 +251,7 @@ std::ostream& Node256::statistics(std::ostream& stream) const {
   return stream;
 }
 
+inline
 std::ostream& Node256::print(std::ostream& stream) const {
   for (u_int32_t i = minIndex(); i<=maxIndex(); ++i) {
     stream << "[" << i << "] = " << d_offset[i-minIndex()];
