@@ -20,13 +20,7 @@ struct MemManager {
   u_int64_t   d_alignment;        // alignment in bytes of all addresses returned
   u_int64_t   d_alignMask;        // bit mask used to check for correct alignment
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
-  u_int64_t   d_allocCount;       // number of Node256s allocated
-  u_int64_t   d_deadCount;        // number of Node255s marked dead
-  u_int64_t   d_currentSizeBytes; // current amount of allocated memory
-  u_int64_t   d_maximumSizeBytes; // max 'currentSizeBytes' seen so far
-  u_int64_t   d_requestedBytes;   // sum of sizes to all malloc calls
-  u_int64_t   d_freeBytes;        // sum of sizes to all free calls
-  u_int64_t   d_deadBytes;        // total freed memory not yet reclaimed
+  MemStats    d_stats;            // runtime memory statistics
 #endif
   bool        d_owned;            // true if memory freed in destructor
 
@@ -63,13 +57,6 @@ struct MemManager {
   void statistics(MemStats *stats) const;
     // Write into specified 'stats' statistics summarizing memory activity
 
-  u_int64_t size() const;
-    // Return 'size' in bytes specified at construction time
-
-  u_int64_t freeMemory() const;
-    // Return the size in bytes of free memory. This does not include freed
-    // memory not yet reclaimed.
-
   // MANIPULATORS
   Node256 *ptr(u_int32_t offset);
     // Convert specified 'offset' into a memory pointer to a Node256 object.
@@ -85,9 +72,9 @@ struct MemManager {
     
   u_int32_t copyAllocateNode256(const u_int32_t oldObject, u_int32_t newCapacity);
     // Allocate memory with specified 'newCapacity' then copy-construct 'oldObject'
-    // into it. The memory at 'oldObject' is freed (marked dead). The offset to
-    // the new object is returned. Behavior is defined provided 'newCapacity'
-    // is larger than old object's capacity and less than or equal to k_MAX_CHILDREN.
+    // into it. The memory at 'oldObject' is marked dead. The offset to the new
+    // object is returned. Behavior is defined provided 'newCapacity' is larger
+    // than old object's capacity and less than or equal to k_MAX_CHILDREN.
     // If there's no enough free memory 0 is returned.
 
   u_int32_t newRoot();
@@ -106,15 +93,6 @@ MemManager::MemManager(u_int8_t *ptr, u_int64_t size, u_int64_t alignment)
 , d_offset(0)
 , d_alignment(alignment)
 , d_alignMask(alignment-1UL)
-#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
-, d_allocCount(0)
-, d_deadCount(0)
-, d_currentSizeBytes(0)
-, d_maximumSizeBytes(0)
-, d_requestedBytes(0)
-, d_freeBytes(0)
-, d_deadBytes(0)
-#endif
 , d_owned(false)
 {
   assert(ptr);
@@ -132,6 +110,11 @@ MemManager::MemManager(u_int8_t *ptr, u_int64_t size, u_int64_t alignment)
   assert(d_offset);
   assert(d_offset>=k_MEMMANAGER_MIN_OFFSET);
   assert(((d_baseVal+d_offset) & d_alignMask)==0);
+  assert((d_offset&k_NODE256_IS_LEAF)==0);
+  assert((d_offset&k_NODE256_IS_TERMINAL)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_LEAF)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_TERMINAL)==0);
+  assert(d_offset<=d_size);
 }
 
 inline
@@ -141,15 +124,6 @@ MemManager::MemManager(u_int64_t size, u_int64_t alignment)
 , d_offset(0)
 , d_alignment(alignment)
 , d_alignMask(alignment-1UL)
-#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
-, d_allocCount(0)
-, d_deadCount(0)
-, d_currentSizeBytes(0)
-, d_maximumSizeBytes(0)
-, d_requestedBytes(0)
-, d_freeBytes(0)
-, d_deadBytes(0)
-#endif
 , d_owned(true)
 {
   assert(d_size>=k_MEMMANAGER_MIN_MEMORY);
@@ -169,6 +143,11 @@ MemManager::MemManager(u_int64_t size, u_int64_t alignment)
   assert(d_offset);
   assert(d_offset>=k_MEMMANAGER_MIN_OFFSET);
   assert(((d_baseVal+d_offset) & d_alignMask)==0);
+  assert((d_offset&k_NODE256_IS_LEAF)==0);
+  assert((d_offset&k_NODE256_IS_TERMINAL)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_LEAF)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_TERMINAL)==0);
+  assert(d_offset<=d_size);
 }
 
 inline
@@ -186,13 +165,9 @@ const u_int8_t *MemManager::basePtr() const {
 }
 
 inline
-u_int64_t MemManager::size() const {
-  return d_size;
-}
-
-inline
-u_int64_t MemManager::freeMemory() const {
-  return d_size - d_offset;
+void MemManager::statistics(MemStats *stats) const {                                                            
+  *stats = d_stats;
+  stats->d_sizeBytes = d_size;
 }
 
 // MANIUPULATORS
@@ -215,9 +190,19 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
     return 0;
   }
 
+#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
+  ++d_stats.d_allocCount;
+  d_stats.d_currentSizeBytes += sz;
+  d_stats.d_requestedBytes += sz;
+  if (d_stats.d_currentSizeBytes>d_stats.d_maximumSizeBytes) {
+    d_stats.d_maximumSizeBytes = d_stats.d_maximumSizeBytes;
+  } 
+#endif
+
   // Construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256(capacity, index, offset);
+  Node256 *ptr = new(d_basePtr+d_offset) Node256(index, offset, capacity);
+  printf("**************************************************************** newNode: %u, %p\n", ret, (void*)ptr);
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
@@ -229,34 +214,51 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
     }
   }  
 
-  assert(((d_baseVal+d_offset) & d_alignMask)==0);
+  assert((d_offset&d_alignMask)==0);
+  assert((d_offset&k_NODE256_IS_LEAF)==0);
+  assert((d_offset&k_NODE256_IS_TERMINAL)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_LEAF)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_TERMINAL)==0);
   assert(d_offset<=d_size);
 
   return ret;
 }
 
 inline
-u_int32_t MemManager::copyAllocateNode256(const u_int32_t object, u_int32_t newCapacity) {
-  assert(object>=k_MEMMANAGER_MIN_OFFSET);
-  return 0;
-}
+u_int32_t MemManager::copyAllocateNode256(const u_int32_t oldObject, u_int32_t newCapacity) {
+  assert(oldObject>=k_MEMMANAGER_MIN_OFFSET);
+  assert(newCapacity>0 && newCapacity<=k_MAX_CHILDREN);
 
-inline
-u_int32_t MemManager::newRoot() {
+  Node256 *oldNode = ptr(oldObject & k_NODE256_NO_TAG_MASK);
+  assert(newCapacity>oldNode->capacity());
+
+#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
+  ++d_stats.d_deadCount;
+  d_stats.d_deadBytes += sizeof(Node256)+(oldNode->capacity()<<2);
+#endif
+
   // Memory request in bytes
-  u_int64_t sz = sizeof(Node256)+(256<<2);
+  u_int64_t sz = sizeof(Node256)+(newCapacity<<2);
 
   // Make sure we have memory
   if ((d_offset+sz)>d_size) {
     return 0;
   }
+  oldNode->markDead();
 
-  // Construct the memory
+#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
+  ++d_stats.d_allocCount;
+  d_stats.d_currentSizeBytes += sz;
+  d_stats.d_requestedBytes += sz;
+  if (d_stats.d_currentSizeBytes>d_stats.d_maximumSizeBytes) {
+    d_stats.d_maximumSizeBytes = d_stats.d_maximumSizeBytes;
+  } 
+#endif
+
+  // Copy-construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256(k_MAX_CHILDREN, 0, 0);
-  for (u_int16_t i = 0; i<k_MAX_CHILDREN; ++i) {
-    ptr->setOffset(i, 0);
-  }
+  Node256 *ptr = new(d_basePtr+d_offset) Node256(newCapacity, oldNode);
+  printf("**************************************************************** newNode: %u, %p, oldNode %u\n", ret, (void*)ptr, oldObject);
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
@@ -268,7 +270,55 @@ u_int32_t MemManager::newRoot() {
     }
   }  
 
-  assert(((d_baseVal+d_offset) & d_alignMask)==0);
+  assert((d_offset&d_alignMask)==0);
+  assert((d_offset&k_NODE256_IS_LEAF)==0);
+  assert((d_offset&k_NODE256_IS_TERMINAL)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_LEAF)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_TERMINAL)==0);
+  assert(d_offset<=d_size);
+
+  return ret;
+}
+
+inline
+u_int32_t MemManager::newRoot() {
+  // Memory request in bytes
+  u_int64_t sz = sizeof(Node256)+(k_MAX_CHILDREN<<2);
+
+  // Make sure we have memory
+  if ((d_offset+sz)>d_size) {
+    return 0;
+  }
+
+#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
+  ++d_stats.d_allocCount;
+  d_stats.d_currentSizeBytes += sz;
+  d_stats.d_requestedBytes += sz;
+  if (d_stats.d_currentSizeBytes>d_stats.d_maximumSizeBytes) {
+    d_stats.d_maximumSizeBytes = d_stats.d_maximumSizeBytes;
+  } 
+#endif
+
+  // Construct the memory
+  const u_int32_t ret = d_offset;
+  Node256 *ptr = new(d_basePtr+d_offset) Node256;
+  printf("**************************************************************** root: %u, %p\n", ret, (void*)ptr);
+
+  // Adjust d_offset to next 'alignment' boundary
+  d_offset += sz;
+  u_int64_t rem = d_offset & d_alignMask;
+  if (rem) {
+    d_offset += (d_alignment - rem);
+    if (d_offset>d_size) {
+      d_offset = d_size;
+    }
+  }  
+
+  assert((d_offset&d_alignMask)==0);
+  assert((d_offset&k_NODE256_IS_LEAF)==0);
+  assert((d_offset&k_NODE256_IS_TERMINAL)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_LEAF)==0);
+  assert(((d_baseVal+d_offset) & k_NODE256_IS_TERMINAL)==0);
   assert(d_offset<=d_size);
 
   return ret;

@@ -4,12 +4,10 @@
 
 CRadix::Tree::Tree(MemManager *memManager)
 : d_memManager(memManager)
-, d_currentMaxDepth(0)
 , d_root(0)
+, d_currentMaxDepth(0)
 {
   assert(d_memManager!=0);
-  assert(minIndex<=maxIndex);
-  assert(maxIndex<k_MAX_CHILDREN);
   d_root = d_memManager->newRoot();
   assert(d_root);
 }
@@ -135,11 +133,9 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   }
 
   // Not found so have a inner child node in tree where last match found
-  assert(lastMatchIndex<size-1);
+  assert(lastMatchIndex<size);
   assert(lastMatch!=k_NODE256_IS_LEAF);
   assert(lastMatch>=k_MEMMANAGER_MIN_OFFSET);
-  assert((lastMatch & k_NODE256_IS_TERMINAL)==0);
-  assert(lastMatchIndex<size);
 
   // Helper struct to convert offsets to Node256*
   union {
@@ -168,19 +164,6 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   } else {
     // It's a linked list of new nodes from here on down
     assert(lastMatchIndex+1<size);
-    // Unroll the first iteration since lastMatch could be d_root
-    if (!node.ptr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
-      newOffset = d_memManager->copyAllocateNode256(lastMatch, newMax-newMin+1);
-      if (lastMatch==d_root) {
-        d_root=newOffset;
-      }
-      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+newOffset);
-    }
-    newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
-    node.ptr->setOffset(byte, newOffset);
-    node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+newOffset);
-    byte = keyPtr[++lastMatchIndex];
-
     while (lastMatchIndex < size-1) {
       newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
       node.ptr->setOffset(byte, newOffset);

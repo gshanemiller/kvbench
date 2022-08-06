@@ -14,24 +14,20 @@ namespace CRadix {
 
 class Iterator {
   // DATA
+  std::stack<IterState> d_stack;        // stack to revisit parents
   u_int8_t             *d_basePtr;      // point to start of memory containing root
   u_int8_t             *d_key;          // current key (owned)
+  Node256              *d_nodePtr;      // d_node as valid pointer
   u_int32_t             d_root;         // offset to tree's root
-  u_int32_t             d_childNode;    // offset to child from d_memNode.ptr
-  std::stack<IterState> d_stack;        // stack to revisit parents
+  u_int32_t             d_node;         // offset to current node
+  u_int32_t             d_childNode;    // offset of current child of node
   u_int32_t             d_attributes;   // current key attributes
   u_int16_t             d_index;        // current index on current node's children offset array
   u_int16_t             d_maxIndex;     // the maximum valid index on current node's children offet array
-  u_int16_t             d_depth;        // size of current key minus 1 in bytes of current key
+  u_int16_t             d_depth;        // current tree depth & size of current key minus 1 in bytes
   const u_int16_t       d_maxDepth;     // maximum length of key
   bool                  d_end;          // true when no more keys
   bool                  d_jump;         // true when resuming from terminal inner node
-
-  union {                                                                                                               
-    Node256  *ptr;        // as Node256 pointer
-    u_int8_t *uint8Ptr;   // as u_int8_t pointer
-    u_int64_t val;        // as u_int64_t
-  } d_memNode; 
 
 public:
   // CREATORS
@@ -85,7 +81,9 @@ inline
 Iterator::Iterator(u_int32_t root, u_int64_t maxDepth, const u_int8_t *basePtr, u_int8_t *keySpace)
 : d_basePtr(const_cast<u_int8_t*>(basePtr))
 , d_key(keySpace)
+, d_nodePtr(0)
 , d_root(root)
+, d_node(root)
 , d_childNode(root)
 , d_attributes(0)
 , d_index(0)
@@ -102,14 +100,13 @@ Iterator::Iterator(u_int32_t root, u_int64_t maxDepth, const u_int8_t *basePtr, 
   assert((d_root & k_NODE256_IS_LEAF) == 0);
   // Root cannot be a terminal node
   assert((d_root & k_NODE256_IS_TERMINAL) == 0);
-
   // Set up a valid Node256 pointer from root offset
-  d_memNode.uint8Ptr = d_basePtr; 
-  d_memNode.val += d_root;
+  d_nodePtr = (Node256*)(d_basePtr+d_root); 
+  assert(d_nodePtr);
 
   if (maxDepth>0) {
-    d_index = d_memNode.ptr->minIndex();
-    d_maxIndex = d_memNode.ptr->maxIndex();
+    d_index = d_nodePtr->minIndex();
+    d_maxIndex = d_nodePtr->maxIndex();
     next();
   } else {
     d_end = true;
@@ -140,7 +137,7 @@ std::ostream& Iterator::print(std::ostream& stream) const {
     }
   }
 
-  stream << "isTerminal: "  << isTerminal()
+  stream << "' isTerminal: "  << isTerminal()
          << " isLeafNode: " << isLeaf()
          << std::endl;
 

@@ -39,11 +39,11 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
       memmove(d_offset+delta, d_offset, (size()-delta+1)<<2);
       // assign newMin
       d_offset[0] = offset;
-      printf("case 1: set %u to %u\n", 0, offset);
       // And out old min
       d_udata &= 0xFFFFFF00;
       // Or in new min
       d_udata |= index;
+      puts("case 1");
     } else  {
       assert(newMax>oldMax);
       assert((int32_t)index==newMax);
@@ -51,18 +51,18 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
       // Append 0s e.g. null
       memset(d_offset+maxIndex()-minIndex()+1, 0, (delta-1)<<2);
       // assign newMax
-      printf("case 2: set %u to %u\n", index-minIndex(), offset);
       d_offset[index-minIndex()] = offset;
       // And out old max
       d_udata &= 0xFFFF00FF;
       // Shift in new max
       d_udata |= (index<<8);
+      puts("case 2");
     } 
   } else {
     // case 3
     assert(index>=minIndex()&&index<=maxIndex());
-    printf("alt case 3: set %u to %u\n", index-minIndex(), offset);
     d_offset[index-minIndex()] = offset;
+    puts("case 3");
     return true;
   }
 

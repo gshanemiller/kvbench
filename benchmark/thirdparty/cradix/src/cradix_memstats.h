@@ -7,7 +7,8 @@ namespace CRadix {
 struct MemStats {
   // DATA
   u_int64_t d_allocCount;           // number of Node256s allocated
-  u_int64_t d_freeCount;            // number of Node255s freed
+  u_int64_t d_deadCount;            // number of Node255s marked dead not reclaimed
+  u_int64_t d_freeCount;            // number of Node256s reclaimed after marked dead
   u_int64_t d_currentSizeBytes;     // current amount of allocated memory
   u_int64_t d_maximumSizeBytes;     // max 'currentSizeBytes' seen so far
   u_int64_t d_requestedBytes;       // sum of sizes to all malloc calls
@@ -43,6 +44,7 @@ struct MemStats {
 inline
 MemStats::MemStats()
 : d_allocCount(0)
+, d_deadCount(0)
 , d_freeCount(0)
 , d_currentSizeBytes(0)
 , d_maximumSizeBytes(0)
@@ -57,6 +59,7 @@ MemStats::MemStats()
 inline
 void MemStats::reset() {
   d_allocCount =
+  d_deadCount =
   d_freeCount =
   d_currentSizeBytes =
   d_maximumSizeBytes =
@@ -70,6 +73,7 @@ void MemStats::reset() {
 inline
 std::ostream& MemStats::print(std::ostream& stream) const {
   stream << "allocCount: "        << d_allocCount
+         << " deadCount: "        << d_deadCount
          << " freeCount: "        << d_freeCount
          << " currentSizeBytes: " << d_currentSizeBytes
          << " maximumSizeBytes: " << d_maximumSizeBytes

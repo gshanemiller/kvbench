@@ -38,6 +38,11 @@ struct Node256 {
     // Destroy this object. Note that this method does not cleanup memory. To reclaim memory
     // held in a CRadix tree by its internal nodes run 'Tree::destroy'
 
+  Node256(u_int32_t newCapacity, const Node256 *oldNode);
+    // Copy-construct this object from 'oldNode' where this object has 'newCapacity'.
+    // Behavior is defined provided 'newCapacity>oldNode->capacity()' and 'newCapacity'
+    // is less than '<=k_MAX_CHILDREN'
+
   Node256(const Node256& other) = delete;
     // Copy constuctor not provided
 
@@ -102,6 +107,9 @@ struct Node256 {
     // if memory reallocation is required. Behavior is defined provided 'i<k_MAX_CHILDREN' and
     // 'isDead()==false'.
 
+  void markDead();
+    // Mark this object dead and eligble for reclaimation
+
   const Node256& operator=(const Node256& rhs) = delete;
     // Copy constructor not provided
 
@@ -112,7 +120,8 @@ struct Node256 {
 
   std::ostream& print(std::ostream& stream) const;
     // Print into specified 'stream' a human readable list of the offsets for each index
-    // this node holds returning stream
+    // this node holds returning stream. Note that only dead or non-zero offsets are
+    // dumped.
 };
 
 // INLINE DEFINITIONS
@@ -120,8 +129,10 @@ struct Node256 {
 
 inline
 Node256::Node256() {
-  d_udata = 0 | (k_MAX_CHILDREN-1) | ((k_MAX_CHILDREN-)<<16);
-
+  d_udata = 0 | (k_MAX_CHILDREN-1)<<8;
+  for (u_int32_t i=0; i<=maxIndex(); ++i) {
+    d_offset[i] = 0; 
+  }
 }
 
 inline
@@ -131,6 +142,14 @@ Node256::Node256(const u_int32_t index, const u_int32_t offset, const u_int32_t 
   assert(capacity>0&&capacity<=k_MAX_CHILDREN);
   d_udata = index | (index<<8) | ((capacity-1)<<16);
   d_offset[0] = offset;
+}
+
+inline
+Node256::Node256(u_int32_t newCapacity, const Node256 *oldNode) {
+  assert(newCapacity>0&&newCapacity<=k_MAX_CHILDREN);
+  assert(newCapacity>oldNode->capacity());
+  d_udata = oldNode->minIndex() | (oldNode->maxIndex()<<8) | ((newCapacity)<<16);
+  memcpy(d_offset, oldNode->d_offset, oldNode->capacity()<<2);
 }
 
 // ACCESSORS
@@ -233,6 +252,12 @@ void Node256::setOffset(const u_int32_t i, u_int32_t offset) {
   assert(!isDead());
   assert(i>=minIndex()&&i<=maxIndex());
   d_offset[i-minIndex()] = offset;
+  printf("**************************************************************** setOffset %p: [%u]==%u\n", (void*)this, i, offset);
+}
+
+inline
+void Node256::markDead() {
+  d_udata |= k_NODE256_IS_DEAD;
 }
 
 // ASPECTS
@@ -254,11 +279,13 @@ std::ostream& Node256::statistics(std::ostream& stream) const {
 inline
 std::ostream& Node256::print(std::ostream& stream) const {
   for (u_int32_t i = minIndex(); i<=maxIndex(); ++i) {
-    stream << "[" << i << "] = " << d_offset[i-minIndex()];
-    if (isDead()) {
-      stream << " (dead)";
+    if (d_offset[i-minIndex()]!=0 || isDead()) {
+      stream << "[" << i << "] = " << d_offset[i-minIndex()];
+      if (isDead()) {
+        stream << " (dead)";
+      }
+      stream << std::endl;
     }
-    stream << std::endl;
   }
   return stream;
 }

@@ -28,4 +28,4 @@ target_include_directories(${UNIT_TEST_TASK} PUBLIC ../../thirdparty/cradix/src)
 
 target_link_directories(${UNIT_TEST_TASK} PUBLIC /usr/local/lib)
 
-target_link_libraries(${UNIT_TEST_TASK} gtest gtest_main)
+target_link_libraries(${UNIT_TEST_TASK})
