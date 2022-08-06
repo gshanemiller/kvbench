@@ -70,11 +70,11 @@ struct MemManager {
     // Node256's constructor and must satisfy its contract. If there's not
     // enough free memory 0 is returned.
     
-  u_int32_t copyAllocateNode256(const u_int32_t oldObject, u_int32_t newCapacity);
-    // Allocate memory with specified 'newCapacity' then copy-construct 'oldObject'
-    // into it. The memory at 'oldObject' is marked dead. The offset to the new
-    // object is returned. Behavior is defined provided 'newCapacity' is larger
-    // than old object's capacity and less than or equal to k_MAX_CHILDREN.
+  u_int32_t copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_int32_t oldObject);
+    // Allocate memory with capacity of 'newMax-newMin-1' offsets then copy-construct
+    // 'oldObject' into it. The memory at 'oldObject' is marked dead. The offset
+    // to the new object is returned. Behavior is defined provided 'newMin, newMax'
+    // and implied new capacity satisfiy the contract for Node256's copy-creator.
     // If there's no enough free memory 0 is returned.
 
   u_int32_t newRoot();
@@ -225,12 +225,11 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
 }
 
 inline
-u_int32_t MemManager::copyAllocateNode256(const u_int32_t oldObject, u_int32_t newCapacity) {
+u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_int32_t oldObject) {
   assert(oldObject>=k_MEMMANAGER_MIN_OFFSET);
-  assert(newCapacity>0 && newCapacity<=k_MAX_CHILDREN);
+  assert(newMax>newMin);
 
   Node256 *oldNode = ptr(oldObject & k_NODE256_NO_TAG_MASK);
-  assert(newCapacity>oldNode->capacity());
 
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
   ++d_stats.d_deadCount;
@@ -238,12 +237,14 @@ u_int32_t MemManager::copyAllocateNode256(const u_int32_t oldObject, u_int32_t n
 #endif
 
   // Memory request in bytes
-  u_int64_t sz = sizeof(Node256)+(newCapacity<<2);
+  u_int64_t sz = sizeof(Node256)+((newMax-newMin+1)<<2);
 
   // Make sure we have memory
   if ((d_offset+sz)>d_size) {
     return 0;
   }
+
+  // Mark old memory dead
   oldNode->markDead();
 
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
@@ -257,7 +258,7 @@ u_int32_t MemManager::copyAllocateNode256(const u_int32_t oldObject, u_int32_t n
 
   // Copy-construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256(newCapacity, oldNode);
+  Node256 *ptr = new(d_basePtr+d_offset) Node256(newMin, newMax, oldNode);
   printf("**************************************************************** newNode: %u, %p, oldNode %u\n", ret, (void*)ptr, oldObject);
 
   // Adjust d_offset to next 'alignment' boundary

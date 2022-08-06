@@ -38,19 +38,23 @@ struct Node256 {
     // Destroy this object. Note that this method does not cleanup memory. To reclaim memory
     // held in a CRadix tree by its internal nodes run 'Tree::destroy'
 
-  Node256(u_int32_t newCapacity, const Node256 *oldNode);
-    // Copy-construct this object from 'oldNode' where this object has 'newCapacity'.
-    // Behavior is defined provided 'newCapacity>oldNode->capacity()' and 'newCapacity'
-    // is less than '<=k_MAX_CHILDREN'
+  Node256(u_int32_t newMin, u_int32_t newMax, const Node256 *oldNode);
+    // Copy-create a Node256 from 'oldNode' where new object has span 'newMin, newMax'
+    // with imputed new capacity 'newMax-newMin+1'. Behavior is defined provided all
+    // of the following are met:
+    // * '0<=newMin<newMax<k_MAX_CHILDREN'
+    // * '(newMin<oldNode->minIndex()   && newMax==oldNode->maxIndex())' ||
+    //   '(newMin== oldNode->minIndex() && newMax>oldNode->maxIndex())'
+    // * '!oldNode->isDead()'
+    // Offsets in the this' span not in oldNode are preset 0
 
   Node256(const Node256& other) = delete;
-    // Copy constuctor not provided
+    // Default-copy-constuctor not provided
 
   // ACCESSORS
   u_int32_t tryOffset(const u_int32_t index) const;
-    // Return the offset at specified 'index' or 0 if 'index' is invalid. Behavior is defined
-    // provided 'i<k_MAX_CHILDREN' and 'isDead()==false'. Note that 0 is returned if 'index'
-    // does not satisfy ''minIndex()<=index<=maxIndex()'.
+    // Return the offset at specified 'index' or 0 if 'minIndex()<=index<=maxIndex()'
+    // is not true. Behavior is defined provided 'i<k_MAX_CHILDREN'.
  
   u_int32_t offset(const u_int32_t index) const;
     // Return the offset at specified 'index'. Behavior is defined provided 'minIndex()<=i<=maxIndex()'
@@ -145,11 +149,43 @@ Node256::Node256(const u_int32_t index, const u_int32_t offset, const u_int32_t 
 }
 
 inline
-Node256::Node256(u_int32_t newCapacity, const Node256 *oldNode) {
-  assert(newCapacity>0&&newCapacity<=k_MAX_CHILDREN);
-  assert(newCapacity>oldNode->capacity());
-  d_udata = oldNode->minIndex() | (oldNode->maxIndex()<<8) | ((newCapacity)<<16);
-  memcpy(d_offset, oldNode->d_offset, oldNode->capacity()<<2);
+Node256::Node256(u_int32_t newMin, u_int32_t newMax, const Node256 *oldNode) {
+  assert(oldNode);
+  assert(!oldNode->isDead());
+  assert(newMin<k_MAX_CHILDREN);
+  assert(newMax<k_MAX_CHILDREN);
+  assert(newMax>newMin);
+  assert(newMin<=newMax && newMax<k_MAX_CHILDREN);
+  assert((newMin==oldNode->minIndex() && newMax>oldNode->maxIndex()) ||
+         (newMin<oldNode->minIndex()  && newMax==oldNode->maxIndex()));
+
+  d_udata = newMin | (newMax<<8) | ((newMax-newMin+1)<<16);
+
+  // At this point before memory initialization starts:
+  //
+  // oldNode has d_offset memory layout
+  //     d_offset: [ 0/minIndex: offset0, ..., N/maxIndex: offset-n ]
+  // this    has d_offset memory layout
+  //     d_offset: [ 0/newMin: <un-init>, ...<un-init>,...,  M/newMax: <un-init>]
+  //
+  // such that oldNode's span fits inside this' span. In practice only one
+  // of newMin or newMax is different from oldMin, oldMax. Both extremes will
+  // not change at the same time.
+  //
+  // Case1: newMin < oldNode->minIndex() && newMax=oldNode->maxIndex():
+  //    oldMin: 10      oldMax: 15
+  //    newMin: 0       newMax: 15
+  // The old span [10-15] starts at 10-0=10 in the new span
+  //
+  // Case2: newMax > oldNode->maxIndex() && newMin==oldNode->minIndex():
+  //    oldMin: 10      oldMax: 15
+  //    newMin: 10      newMax: 115
+  // The old span [10-15] starts at 10-10=0 in the new span
+
+  // Initialize everything 0 in new span
+  memset(d_offset, 0, (newMax-newMin+1)<<2);
+  // Copy the old span into this' d_offset in the correct place
+  memcpy(d_offset+oldNode->minIndex()-newMin, oldNode->d_offset, oldNode->capacity()<<2);
 }
 
 // ACCESSORS
