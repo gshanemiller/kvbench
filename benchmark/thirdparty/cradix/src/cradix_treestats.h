@@ -9,9 +9,9 @@ struct TreeStats {
   // DATA
   u_int64_t d_innerNodeCount;
   u_int64_t d_leafCount;
+  u_int64_t d_terminalCount;
   u_int64_t d_emptyChildCount;
   u_int64_t d_maxDepth;
-  u_int64_t d_totalSizeBytes;
   u_int64_t d_totalCompressedSizeBytes;
   u_int64_t d_totalUncompressedSizeBytes;
 
@@ -56,13 +56,13 @@ std::ostream& TreeStats::print(std::ostream& stream) const {
             static_cast<double>(d_totalUncompressedSizeBytes);
   }
 
-  double bytesPerInnerNode = static_cast<double>(d_totalSizeBytes)/static_cast<double>(d_innerNodeCount);
+  double bytesPerInnerNode = static_cast<double>(d_totalCompressedSizeBytes)/static_cast<double>(d_innerNodeCount);
 
   stream  << "innerNodeCount: "               << d_innerNodeCount
           << " leafCount: "                   << d_leafCount
+          << " terminalCount: "               << d_terminalCount
           << " emptyChildCount: "             << d_emptyChildCount
           << " maxDepth: "                    << d_maxDepth
-          << " totalSizeBytes: "              << d_totalSizeBytes
           << " totalCompressedSizeBytes: "    << d_totalCompressedSizeBytes
           << " totalUncompressedSizeBytes: "  << d_totalUncompressedSizeBytes
           << " compressionRatio: "            << ratio
@@ -75,9 +75,9 @@ inline
 void TreeStats::reset(void) {
   d_innerNodeCount = 0;
   d_leafCount = 0;
+  d_terminalCount = 0;
   d_emptyChildCount = 0;
   d_maxDepth = 0;
-  d_totalSizeBytes = 0;
   d_totalCompressedSizeBytes = 0;
   d_totalUncompressedSizeBytes = 0;
 }

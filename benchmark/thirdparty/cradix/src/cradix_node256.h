@@ -95,11 +95,11 @@ struct Node256 {
     // multiplied by 'sizeof(void*)' which would be the textbook way to model k_MAX_CHILDREN pointers to
     // children
 
-  u_int64_t compressedSizeBytes() const;
+  u_int64_t sizeBytes() const;
     // Return the actual (compressed) size of this node in bytes
 
   double compressionRatio() const;
-    // Return the ratio of 'compressedSizeBytes() / uncompressedSizeBytes()'
+    // Return the ratio of 'sizeBytes() / uncompressedSizeBytes()'
 
   // MANIPULATORS
   void setOffset(const u_int32_t i, u_int32_t offset);
@@ -254,14 +254,14 @@ u_int64_t Node256::uncompressedSizeBytes() const {
 }
 
 inline
-u_int64_t Node256::compressedSizeBytes() const {
+u_int64_t Node256::sizeBytes() const {
   // NB: sizeof does not include d_offset memory
   return (capacity()<<2) + sizeof(Node256);
 }
 
 inline
 double Node256::compressionRatio() const {
-  return static_cast<double>(compressedSizeBytes()) /
+  return static_cast<double>(sizeBytes()) /
          static_cast<double>(uncompressedSizeBytes());
 }
 
@@ -304,7 +304,7 @@ std::ostream& Node256::statistics(std::ostream& stream) const {
           << " size: "              << size()
           << " capacity: "          << capacity()
           << " spareCapacity: "     << spareCapacity()
-          << " compressedSize: "    << compressedSizeBytes() 
+          << " compressedSize: "    << sizeBytes() 
           << " uncompressedSize: "  << uncompressedSizeBytes()
           << " compressionRatio: "  << compressionRatio()
           << " isDead: " << isDead()
