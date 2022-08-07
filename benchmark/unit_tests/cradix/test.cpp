@@ -522,6 +522,8 @@ void test_cradix_multiInsertPermuations() {
       int rc = tree.find(key);
       assert(rc==CRadix::e_NOT_FOUND);
     
+      printf("inserting key %u\n", perm[i]);
+
       rc = tree.insert(key);
       assert(rc==CRadix::e_OK);
     
