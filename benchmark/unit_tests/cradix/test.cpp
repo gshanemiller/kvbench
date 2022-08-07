@@ -508,13 +508,9 @@ void test_cradix_multiInsertPermuations() {
     perm.push_back(i);
   }
 
-  u_int32_t permutation(0);
-
   do {
     CRadix::MemManager mem(0x100000, 4);;
     CRadix::Tree tree(&mem);
-
-    printf("permuatation %u\n", permutation);
 
     for (unsigned i=0; i<perm.size(); ++i) {
       Benchmark::Slice<unsigned char> key(REFERENCE_VALUES[perm[i]].d_data, REFERENCE_VALUES[perm[i]].d_size);
@@ -522,8 +518,6 @@ void test_cradix_multiInsertPermuations() {
       int rc = tree.find(key);
       assert(rc==CRadix::e_NOT_FOUND);
     
-      printf("inserting key %u\n", perm[i]);
-
       rc = tree.insert(key);
       assert(rc==CRadix::e_OK);
     
@@ -537,11 +531,13 @@ void test_cradix_multiInsertPermuations() {
         assert(rc==CRadix::e_EXISTS);
       }
 
+/*
       CRadix::Iterator iter = tree.begin();
       while (!iter.end()) {
         iter.print(std::cout);
         iter.next();
       }
+*/
     }
 
     CRadix::TreeStats stats;
@@ -585,7 +581,6 @@ void test_cradix_multiInsertPermuations() {
     EXPECT_EQ(mstats.d_requestedBytes, 5*mem.sizeOfUncompressedNode256());
     EXPECT_EQ(mstats.d_freedBytes, 5*mem.sizeOfUncompressedNode256());
 */
-    ++permutation;
   } while(std::next_permutation(perm.begin(), perm.end()));
 }
 

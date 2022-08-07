@@ -187,13 +187,6 @@ Node256::Node256(u_int32_t newMin, u_int32_t newMax, const Node256 *oldNode) {
   memset(d_offset, 0, (newMax-newMin+1)<<2);
   // Copy the old span into this' d_offset in the correct place
   memcpy(d_offset+oldNode->minIndex()-newMin, oldNode->d_offset, oldNode->size()<<2);
-
-  printf("copy-construct details: OLD:\n");
-  oldNode->statistics(std::cout);
-  oldNode->print(std::cout);
-  printf("copy-construct details: NEW:\n");
-  this->statistics(std::cout);
-  this->print(std::cout);
 }
 
 // ACCESSORS
@@ -296,8 +289,6 @@ void Node256::setOffset(const u_int32_t i, u_int32_t offset) {
   assert(!isDead());
   assert(i>=minIndex()&&i<=maxIndex());
   d_offset[i-minIndex()] = offset;
-  printf("**************************************************************** setOffset %p: [%u]==%u\n", (void*)this, i, offset);
-  print(std::cout);
 }
 
 inline

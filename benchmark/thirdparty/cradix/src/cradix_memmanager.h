@@ -202,7 +202,6 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
   // Construct the memory
   const u_int32_t ret = d_offset;
   Node256 *ptr = new(d_basePtr+d_offset) Node256(index, offset, capacity);
-  printf("**************************************************************** newNode: %u, %p\n", ret, (void*)ptr);
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
@@ -251,7 +250,6 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
   // Copy-construct the memory
   const u_int32_t ret = d_offset;
   Node256 *ptr = new(d_basePtr+d_offset) Node256(newMin, newMax, oldNode);
-  printf("**************************************************************** newNode: %u, %p, oldNode %u\n", ret, (void*)ptr, oldObject);
 
   // Mark old memory dead
   oldNode->markDead();
@@ -259,11 +257,6 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
   ++d_stats.d_deadCount;
   d_stats.d_deadBytes += sizeof(Node256)+(oldNode->capacity()<<2);
 #endif
-
-  printf("**************************************************************** oldNode:\n");
-  oldNode->print(std::cout);
-  printf("**************************************************************** cpyNode:\n");
-  ptr->print(std::cout);
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
@@ -307,7 +300,6 @@ u_int32_t MemManager::newRoot() {
   // Construct the memory
   const u_int32_t ret = d_offset;
   Node256 *ptr = new(d_basePtr+d_offset) Node256;
-  printf("**************************************************************** root: %u, %p\n", ret, (void*)ptr);
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
