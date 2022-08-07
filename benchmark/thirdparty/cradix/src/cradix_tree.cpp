@@ -20,25 +20,16 @@ int CRadix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
   assert(key!=0);
   assert(size>0);
 
+  u_int8_t *basePtr = const_cast<u_int8_t *>(d_memManager->basePtr());                                                      
+  Node256 *node = (Node256*)(basePtr+d_root);
+  u_int32_t childOffset(0);
   bool childWasTerminal(false);
 
-  union {
-    Node256  *ptr;        // as Node256 pointer
-    u_int8_t *uint8Ptr;   // as u_int8_t pointer
-    u_int64_t val;        // as u_int64_t
-  } node;
-
-  node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr());
-  node.val     += d_root;
-
-  u_int32_t childOffset(0);
-
   for (u_int32_t i=0; i<size; ++i) {
-    childOffset = node.ptr->tryOffset(key[i]);
-    
+    childOffset = node->tryOffset(key[i]);
     if (childOffset>=k_MEMMANAGER_MIN_OFFSET) {
       childWasTerminal = childOffset & k_NODE256_IS_TERMINAL;
-      node.uint8Ptr = const_cast<u_int8_t *>(d_memManager->basePtr()+(childOffset&k_NODE256_CLR_TERMINAL_MASK));
+      node = (Node256*)(basePtr+(childOffset&k_NODE256_CLR_TERMINAL_MASK));
     } else if (childOffset==k_NODE256_IS_LEAF) {
       return ((i+1U)==size) ? e_EXISTS : e_NOT_FOUND;
     } else {
@@ -51,11 +42,12 @@ int CRadix::Tree::findHelper(const u_int8_t *key, const u_int16_t size) const {
 }
 
 int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
-  u_int16_t *lastMatchIndex, u_int32_t *lastMatch) {
+  u_int16_t *lastMatchIndex, u_int32_t *lastMatch, u_int32_t *lastMatchParent) {
   assert(key!=0);
   assert(size>0);
   assert(lastMatchIndex!=0);
   assert(lastMatch!=0);
+  assert(lastMatchParent!=0);
 
   // We're tracking 3 nodes connected by two edges: pOffset -> offset -> childOffset
   u_int32_t offset = d_root;
@@ -66,7 +58,7 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
   Node256  *offsetPtr = (Node256*)(basePtr+d_root);
 
   for (u_int32_t i=0; i<size; ++i) {
-    u_int32_t childOffset = offsetPtr->tryOffset(key[i]);
+    childOffset = offsetPtr->tryOffset(key[i]);
     if (childOffset>=k_MEMMANAGER_MIN_OFFSET) {
       pOffset = offset;
       offset = childOffset;
@@ -76,6 +68,7 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
       assert(offset);
       *lastMatchIndex = i;
       *lastMatch = offset;
+      *lastMatchParent = pOffset;
       return e_NOT_FOUND;
     } else {
       assert(childOffset==k_NODE256_IS_LEAF);
@@ -92,6 +85,7 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
         // (it was a leaf implying terminal).
         *lastMatch = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, key[*lastMatchIndex], 0);
         offsetPtr->setOffset(key[i], (*lastMatch|k_NODE256_IS_TERMINAL));
+        *lastMatchParent = pOffset;
         return e_NOT_FOUND;
       } else {
         return e_EXISTS;
@@ -116,55 +110,70 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
 
 int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   int rc;
+  u_int32_t lastMatch(0);
+  u_int32_t lastMatchParent(0);
+  u_int16_t lastMatchIndex(0);
   const u_int16_t size = key.size();
   const u_int8_t *keyPtr = key.data();
 
-  // Search for lowest place in tree with long existing key prefix
-  u_int32_t lastMatch(0);
-  u_int16_t lastMatchIndex(0);
-  if ((rc = insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch)) != e_NOT_FOUND) {
+  // Find node with longest preexisting prefix of key
+  if ((rc = insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch, &lastMatchParent)) != e_NOT_FOUND) {
     return rc;
   }
 
-  // Not found so have a inner child node in tree where last match found
+  // lastMatch is an existing node in tree s.t. it's the node where
+  // 'keyPtr[lastMatchIndex]' terminates. Since the full key was not
+  // found new children must be assigned to it in one of two variations:
+  //
+  // Case 1: there's only one more byte in key to add and therefore
+  //         lastMatch @ lastMatchIndex+1 must point to k_NODE256_IS_LEAF.
+  //
+  // Case 2: there's two or more bytes to add. This amounts to adding
+  //         a one-way linked list of children successively. The very
+  //         last byte will be like case 1 except on a different parent.
+  // 
+  // Either way an offset in lastMatch will have to be updated and in
+  // either case the index to be set may not be in node's span. That'll
+  // mean it need to be copy-reallocated. That will invalidate the pointer
+  // to it in lastMatch's parent. It's updated too. This updating business
+  // comes the minor issue that 'lastMatch, lastMatchParent' may have
+  // tagging bits on them. Those are masked out.
+
   assert(lastMatchIndex<size);
+  assert(lastMatch>0);
   assert(lastMatch!=k_NODE256_IS_LEAF);
   assert(lastMatch>=k_MEMMANAGER_MIN_OFFSET);
 
-  u_int32_t newOffset;
-  int32_t oldMin, oldMax, newMin, newMax, delta;
-  u_int8_t byte(keyPtr[lastMatchIndex]);
+  // Set up to finish insertion
   u_int8_t *basePtr = const_cast<u_int8_t *>(d_memManager->basePtr());
-  Node256 *lastMatchPtr = (Node256*)(basePtr+lastMatch);
+  Node256 *lastMatchPtr = (Node256*)(basePtr+(lastMatch&k_NODE256_NO_TAG_MASK));
+  int32_t oldMin, oldMax, newMin, newMax, delta, newOffset;
+  u_int8_t byte(keyPtr[lastMatchIndex]);
 
-/*
-  if (lastMatchIndex+1==size) {
-    // Insert last char & return OK
-    if (!lastMatchPtr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
-      newOffset = d_memManager->copyAllocateNode256(newMin, newMax, lastMatch);
-      lastMatchPtr = (Node256*)(basePtr+newOffset);
-    }
-    // this edge takes us to last byte in key
-    lastMatchPtr->setOffset(byte, k_NODE256_IS_LEAF);
-  } else {
-*/
-    // It's a linked list of new nodes from here on down
-    assert(lastMatchIndex+1<size);
-    while (lastMatchIndex < size-1) {
-      newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, byte, 0);
-      lastMatchPtr->setOffset(byte, newOffset);
-      lastMatchPtr = (Node256*)(basePtr+newOffset);
-      byte = keyPtr[++lastMatchIndex];
-    }
-    // Insert last char & return OK. However if the last byte in key
-    // is not within capacity range of lastMatchPtr/newOffset from above
-    // we'll need to copy allocate
-    assert(lastMatchIndex+1==size);
-    if (!lastMatchPtr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
-      newOffset = d_memManager->copyAllocateNode256(newMin, newMax, newOffset);
-      lastMatchPtr = (Node256*)(basePtr+newOffset);
-    }
-    lastMatchPtr->setOffset(byte, k_NODE256_IS_LEAF);
+  if (!lastMatchPtr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
+    // lastMatch doesn't have enough capacity: reallocate
+    newOffset = d_memManager->copyAllocateNode256(newMin, newMax, lastMatch&k_NODE256_NO_TAG_MASK);
+    // get a pointer to lastMatch's parent
+    Node256 *lastMatchParentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
+    // Ensure 'keyPtr[lastMatchIndex-1]' next line makes sense
+    assert(lastMatchIndex>0); 
+    // Double check parent really points to lastMatch
+    assert(lastMatchParentPtr->offset(keyPtr[lastMatchIndex-1])==lastMatch);
+    // update pointer in tree to new 'lastMatch' carrying forward any tags
+    lastMatchParentPtr->setOffset(keyPtr[lastMatchIndex-1], newOffset | (lastMatch&k_NODE256_ANY_TAG));
+    // update pointer to 'lastMatch' for code below
+    lastMatchPtr = (Node256*)(basePtr+newOffset);
+  }
+
+  // Case 2
+  while (lastMatchIndex < size-1) {
+    newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
+    lastMatchPtr->setOffset(byte, newOffset);
+    lastMatchPtr = (Node256*)(basePtr+newOffset);
+    byte = keyPtr[++lastMatchIndex];
+  }
+  // Termination of case 2 OR case 1
+  lastMatchPtr->setOffset(byte, k_NODE256_IS_LEAF);
 
   if (size>d_currentMaxDepth) {
     d_currentMaxDepth = size;

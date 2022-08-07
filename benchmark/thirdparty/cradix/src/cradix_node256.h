@@ -159,7 +159,8 @@ Node256::Node256(u_int32_t newMin, u_int32_t newMax, const Node256 *oldNode) {
   assert((newMin==oldNode->minIndex() && newMax>oldNode->maxIndex()) ||
          (newMin<oldNode->minIndex()  && newMax==oldNode->maxIndex()));
 
-  d_udata = newMin | (newMax<<8) | ((newMax-newMin+1)<<16);
+  // New spare capacity is 0: all capacity is used
+  d_udata = newMin | (newMax<<8);
 
   // At this point before memory initialization starts:
   //

@@ -78,13 +78,14 @@ private:
 
   // PRIVATE MANIPULATORS
   int insertHelper(const u_int8_t *key, const u_int16_t size,
-    u_int16_t *lastMatchIndex, u_int32_t *lastMatch);
+    u_int16_t *lastMatchIndex, u_int32_t *lastMatch, u_int32_t *lastMatchParent);
     // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
     // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
-    // 'size>0'. 'lastMatchIndex, lastMatch, depth' are defined only when
-    // 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size' is set
-    // to the last byte matched in key, and '*lastMatch' points to the node
-    // offset in which the last byte match was found.
+    // 'size>0'. 'lastMatchIndex, lastMatch, lastMatchParent' are defined only
+    // when 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size' is
+    // set to the last byte matched in key, '*lastMatch' points to the node
+    // offset in which 'key[*lastMatchIndex]' terminates. '*lastMatchParent' is
+    // 'lastMatch's parent.
 };
 
 // INLINE DEFINITIONS

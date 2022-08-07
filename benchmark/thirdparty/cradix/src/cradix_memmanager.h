@@ -244,9 +244,6 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
     return 0;
   }
 
-  // Mark old memory dead
-  oldNode->markDead();
-
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
   ++d_stats.d_allocCount;
   d_stats.d_currentSizeBytes += sz;
@@ -260,6 +257,9 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
   const u_int32_t ret = d_offset;
   Node256 *ptr = new(d_basePtr+d_offset) Node256(newMin, newMax, oldNode);
   printf("**************************************************************** newNode: %u, %p, oldNode %u\n", ret, (void*)ptr, oldObject);
+
+  // Mark old memory dead
+  oldNode->markDead();
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
