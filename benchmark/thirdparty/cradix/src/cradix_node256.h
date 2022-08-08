@@ -3,6 +3,7 @@
 #include <iostream>
 #include <assert.h>
 #include <sys/types.h>
+#include <string.h>
 
 #include <cradix_constants.h>
 

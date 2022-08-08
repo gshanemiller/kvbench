@@ -39,7 +39,7 @@ const u_int32_t bufferSize = 0x100000;
 //
 // Test: On empty tree, add a key of size 1
 //
-void test_cradix_case0a() {
+TEST(cradix, case0a) {
   u_int8_t byte; 
   CRadix::TreeStats stats;
 
@@ -84,7 +84,7 @@ void test_cradix_case0a() {
 }
 
 // Case 0b all leafs added to one tree
-void test_cradix_case0b() {
+TEST(cradix, case0b) {
   u_int8_t byte; 
   CRadix::MemManager mem(bufferSize, 4);
   CRadix::Tree tree(&mem);
@@ -146,7 +146,7 @@ void test_cradix_case0b() {
 // Test: on empty tree add 'o'. Then add key 'oT' pointer to 0xff must be replaced with m+2
 // so it can point to leaf node 'T' without losing 'o' as a valid key
 //
-void test_cradix_case1a() {
+TEST(cradix, case1a) {
   u_int8_t byte[2];
   CRadix::TreeStats stats;
 
@@ -204,7 +204,7 @@ void test_cradix_case1a() {
 }
 
 // Redo case 1a except all work done to same tree
-void test_cradix_case1b() {
+TEST (cradix, case1b) {
   CRadix::MemManager mem(bufferSize, 4);;
   CRadix::Tree tree(&mem);
   u_int8_t byte[2];
@@ -269,7 +269,7 @@ void test_cradix_case1b() {
 //
 // Test: On empty tree add key 'Po'. Then add key 'P'.
 //
-void test_cradix_case2a() {
+TEST(cradix, case2a) {
   u_int8_t byte[2];
   CRadix::TreeStats stats;
 
@@ -327,7 +327,7 @@ void test_cradix_case2a() {
 }
 
 // Redo case 2a except all work done to same tree
-void test_cradix_case2b() {
+TEST (cradix, case2b) {
   CRadix::MemManager mem(bufferSize, 4);;
   CRadix::Tree tree(&mem);
   u_int8_t byte[2];
@@ -383,7 +383,7 @@ void test_cradix_case2b() {
   EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
 }
 
-void test_cradix_multiInsertPermuations() {
+TEST (cradix, multiInsertPermuations) {
   std::vector<unsigned> perm;
   for (unsigned i=0; i<NUM_REFERENCE_VALUES; ++i) {
     perm.push_back(i);
@@ -439,15 +439,4 @@ void test_cradix_multiInsertPermuations() {
 */
     EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
   } while(std::next_permutation(perm.begin(), perm.end()));
-}
-
-int main(int argc, char **argv) {
-  test_cradix_case0a();
-  test_cradix_case0b();
-  test_cradix_case1a();
-  test_cradix_case1b();
-  test_cradix_case2a();
-  test_cradix_case2b();
-  test_cradix_multiInsertPermuations();
-  return 0;
 }
