@@ -1,7 +1,7 @@
 #include <benchmark_slice.h>
 #include <cradix_tree.h>
 #include <cradix_memmanager.h>
-// #include <gtest/gtest.h>
+#include <gtest/gtest.h>
 #include <algorithm>
 #include <vector>
 
@@ -29,8 +29,6 @@ static const struct {
 
 const std::size_t NUM_REFERENCE_VALUES = sizeof REFERENCE_VALUES / sizeof *REFERENCE_VALUES;
 const u_int32_t bufferSize = 0x100000;
-
-#define EXPECT_EQ(x,y) assert((x)==(y))
 
 // Case 0a one leaf at a time
 //
