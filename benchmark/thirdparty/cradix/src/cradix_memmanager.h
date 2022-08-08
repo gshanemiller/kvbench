@@ -195,13 +195,13 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
   d_stats.d_currentSizeBytes += sz;
   d_stats.d_requestedBytes += sz;
   if (d_stats.d_currentSizeBytes>d_stats.d_maximumSizeBytes) {
-    d_stats.d_maximumSizeBytes = d_stats.d_maximumSizeBytes;
+    d_stats.d_maximumSizeBytes = d_stats.d_currentSizeBytes;
   } 
 #endif
 
   // Construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256(index, offset, capacity);
+  new(d_basePtr+d_offset) Node256(index, offset, capacity);
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;
@@ -243,13 +243,13 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
   d_stats.d_currentSizeBytes += sz;
   d_stats.d_requestedBytes += sz;
   if (d_stats.d_currentSizeBytes>d_stats.d_maximumSizeBytes) {
-    d_stats.d_maximumSizeBytes = d_stats.d_maximumSizeBytes;
+    d_stats.d_maximumSizeBytes = d_stats.d_currentSizeBytes;
   } 
 #endif
 
   // Copy-construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256(newMin, newMax, oldNode);
+  new(d_basePtr+d_offset) Node256(newMin, newMax, oldNode);
 
   // Mark old memory dead
   oldNode->markDead();
@@ -293,13 +293,13 @@ u_int32_t MemManager::newRoot() {
   d_stats.d_currentSizeBytes += sz;
   d_stats.d_requestedBytes += sz;
   if (d_stats.d_currentSizeBytes>d_stats.d_maximumSizeBytes) {
-    d_stats.d_maximumSizeBytes = d_stats.d_maximumSizeBytes;
+    d_stats.d_maximumSizeBytes = d_stats.d_currentSizeBytes;
   } 
 #endif
 
   // Construct the memory
   const u_int32_t ret = d_offset;
-  Node256 *ptr = new(d_basePtr+d_offset) Node256;
+  new(d_basePtr+d_offset) Node256;
 
   // Adjust d_offset to next 'alignment' boundary
   d_offset += sz;

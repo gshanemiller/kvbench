@@ -28,6 +28,7 @@ static const struct {
 };
 
 const std::size_t NUM_REFERENCE_VALUES = sizeof REFERENCE_VALUES / sizeof *REFERENCE_VALUES;
+const u_int32_t bufferSize = 0x100000;
 
 #define EXPECT_EQ(x,y) assert((x)==(y))
 
@@ -48,7 +49,7 @@ void test_cradix_case0a() {
     byte = i;
     Benchmark::Slice<unsigned char> key(&byte, 1);
 
-    CRadix::MemManager mem(0x100000, 4);;
+    CRadix::MemManager mem(bufferSize, 4);;
     CRadix::Tree tree(&mem);
 
     int rc = tree.find(key);
@@ -61,39 +62,33 @@ void test_cradix_case0a() {
     assert(rc==CRadix::e_EXISTS);
 
     tree.statistics(&stats);
-    stats.print(std::cout);
-/*
     EXPECT_EQ(stats.d_innerNodeCount, 0);
     EXPECT_EQ(stats.d_leafCount, 1);
+    EXPECT_EQ(stats.d_terminalCount, 1);
     EXPECT_EQ(stats.d_emptyChildCount, 255);
     EXPECT_EQ(stats.d_maxDepth, 1);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+    EXPECT_EQ(stats.d_totalCompressedSizeBytes, 1028);
+    EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 2048);
 
     CRadix::MemStats mstats;
     mem.statistics(&mstats);
-    mstats.print(std::cout);
-/*
-    EXPECT_EQ(mstats.d_allocCount, 0);
+    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_deadCount, 0);
     EXPECT_EQ(mstats.d_freeCount, 0);
-    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-    EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
-    EXPECT_EQ(mstats.d_requestedBytes, 0);
+    EXPECT_EQ(mstats.d_currentSizeBytes, 1028);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 1028);
+    EXPECT_EQ(mstats.d_requestedBytes, 1028);
     EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
-
-    CRadix::Iterator iter = tree.begin();
-    while (!iter.end()) {
-      iter.print(std::cout);
-      iter.next();
-    }
+    EXPECT_EQ(mstats.d_deadBytes, 0);
+    EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
   }
 }
 
 // Case 0b all leafs added to one tree
 void test_cradix_case0b() {
   u_int8_t byte; 
-  CRadix::MemManager mem(0x100000, 4);
+  CRadix::MemManager mem(bufferSize, 4);
   CRadix::Tree tree(&mem);
   CRadix::TreeStats stats;
 
@@ -120,44 +115,26 @@ void test_cradix_case0b() {
   }
 
   tree.statistics(&stats);
-  stats.print(std::cout); 
-/*
   EXPECT_EQ(stats.d_innerNodeCount, 0);
-  EXPECT_EQ(stats.d_leafCount, CRadix::k_MAX_CHILDREN);
+  EXPECT_EQ(stats.d_leafCount, 256);
+  EXPECT_EQ(stats.d_terminalCount, 256);
   EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 1);
   EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+  EXPECT_EQ(stats.d_totalCompressedSizeBytes, 1028);
+  EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 2048);
 
   CRadix::MemStats mstats;
   mem.statistics(&mstats);
-  mstats.print(std::cout); 
-/*
-  EXPECT_EQ(mstats.d_allocCount, 0);
+  EXPECT_EQ(mstats.d_allocCount, 1);
+  EXPECT_EQ(mstats.d_deadCount, 0);
   EXPECT_EQ(mstats.d_freeCount, 0);
-  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-  EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
-  EXPECT_EQ(mstats.d_requestedBytes, 0);
+  EXPECT_EQ(mstats.d_currentSizeBytes, 1028);
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 1028);
+  EXPECT_EQ(mstats.d_requestedBytes, 1028);
   EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
-
-  CRadix::Iterator iter = tree.begin();
-  while (!iter.end()) {
-    iter.print(std::cout);
-    iter.next();
-  }
-
-  tree.destroy();
-  mem.statistics(&mstats);
-  mstats.print(std::cout); 
-/*
-  EXPECT_EQ(mstats.d_allocCount, 0);
-  EXPECT_EQ(mstats.d_freeCount, 0);
-  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-  EXPECT_EQ(mstats.d_maximumSizeBytes, 0);
-  EXPECT_EQ(mstats.d_requestedBytes, 0);
-  EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
+  EXPECT_EQ(mstats.d_deadBytes, 0);
+  EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
 }
 
 // Case 1a: Update a Node256 child pointer from 0xff to bonafide Node256
@@ -179,7 +156,7 @@ void test_cradix_case1a() {
     byte[0] = i;
     Benchmark::Slice<unsigned char> key(byte+0, 1);
 
-    CRadix::MemManager mem(0x100000, 4);;
+    CRadix::MemManager mem(bufferSize, 4);;
     CRadix::Tree tree(&mem);
 
     int rc = tree.find(key);
@@ -187,14 +164,6 @@ void test_cradix_case1a() {
     
     rc = tree.insert(key);
     assert(rc==CRadix::e_OK);
-
-  {
-    CRadix::Iterator iter = tree.begin();
-    while (!iter.end()) {
-      iter.print(std::cout);
-      iter.next();
-    }
-  }
 
     rc = tree.find(key);
     assert(rc==CRadix::e_EXISTS);
@@ -209,63 +178,36 @@ void test_cradix_case1a() {
     rc = tree.insert(key1);
     assert(rc==CRadix::e_OK);
 
-  {
-    CRadix::Iterator iter = tree.begin();
-    while (!iter.end()) {
-      iter.print(std::cout);
-      iter.next();
-    }
-  }
-    
     rc = tree.find(key1);
     assert(rc==CRadix::e_EXISTS);
 
     tree.statistics(&stats);
-    stats.print(std::cout); 
-/*
     EXPECT_EQ(stats.d_innerNodeCount, 1);
-    EXPECT_EQ(stats.d_leafCount, 2);
-    // root + 1 inner node each of which has 255 empty slots, 1 used slot
-    EXPECT_EQ(stats.d_emptyChildCount, 2*CRadix::k_MAX_CHILDREN-2);
+    EXPECT_EQ(stats.d_leafCount, 1);
+    EXPECT_EQ(stats.d_terminalCount, 2);
+    EXPECT_EQ(stats.d_emptyChildCount, 255);
     EXPECT_EQ(stats.d_maxDepth, 2);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+    EXPECT_EQ(stats.d_totalCompressedSizeBytes, 1048);
+    EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 4096);
 
     CRadix::MemStats mstats;
     mem.statistics(&mstats);
-    mstats.print(std::cout); 
-/*
-    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_allocCount, 2);
+    EXPECT_EQ(mstats.d_deadCount, 0);
     EXPECT_EQ(mstats.d_freeCount, 0);
-    EXPECT_EQ(mstats.d_currentSizeBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_currentSizeBytes, 1048);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 1048);
+    EXPECT_EQ(mstats.d_requestedBytes, 1048);
     EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
-
-    CRadix::Iterator iter = tree.begin();
-    while (!iter.end()) {
-      iter.print(std::cout);
-      iter.next();
-    }
-
-    tree.destroy();
-    mem.statistics(&mstats);
-    mstats.print(std::cout); 
-/*
-    EXPECT_EQ(mstats.d_allocCount, 1);
-    EXPECT_EQ(mstats.d_freeCount, 1);
-    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_freedBytes, mem.sizeOfUncompressedNode256());
-*/
+    EXPECT_EQ(mstats.d_deadBytes, 0);
+    EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
   }
 }
 
 // Redo case 1a except all work done to same tree
 void test_cradix_case1b() {
-  CRadix::MemManager mem(0x100000, 4);;
+  CRadix::MemManager mem(bufferSize, 4);;
   CRadix::Tree tree(&mem);
   u_int8_t byte[2];
 
@@ -297,47 +239,27 @@ void test_cradix_case1b() {
   }
 
   CRadix::TreeStats stats;
-  stats.print(std::cout); 
   tree.statistics(&stats);
-/*
   EXPECT_EQ(stats.d_innerNodeCount, 256);
-  EXPECT_EQ(stats.d_leafCount, 512);
-  // We have 1 root but all its children are full. Each child of root is an inner node
-  // with 256 children each and, of those, 255 empty 1 full.
-  EXPECT_EQ(stats.d_emptyChildCount, CRadix::k_MAX_CHILDREN*CRadix::k_MAX_CHILDREN-CRadix::k_MAX_CHILDREN);
+  EXPECT_EQ(stats.d_leafCount, 256);
+  EXPECT_EQ(stats.d_terminalCount, 512);
+  EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 2);
   EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+  EXPECT_EQ(stats.d_totalCompressedSizeBytes, 6148);
+  EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 526336);
 
   CRadix::MemStats mstats;
   mem.statistics(&mstats);
-  mstats.print(std::cout); 
-/*
-  EXPECT_EQ(mstats.d_allocCount, 256);
+  EXPECT_EQ(mstats.d_allocCount, 257);
+  EXPECT_EQ(mstats.d_deadCount, 0);
   EXPECT_EQ(mstats.d_freeCount, 0);
-  EXPECT_EQ(mstats.d_currentSizeBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_currentSizeBytes, 6148);
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 6148);
+  EXPECT_EQ(mstats.d_requestedBytes, 6148);
   EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
-
-  CRadix::Iterator iter = tree.begin();
-  while (!iter.end()) {
-    iter.print(std::cout);
-    iter.next();
-  }
-
-  tree.destroy();
-  mem.statistics(&mstats);
-  mstats.print(std::cout); 
-/*
-  EXPECT_EQ(mstats.d_allocCount, 256);
-  EXPECT_EQ(mstats.d_freeCount, 256);
-  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
-*/
+  EXPECT_EQ(mstats.d_deadBytes, 0);
+  EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
 }
 
 // Case 2a: Update a Node256 from 'm' to 'm+2'
@@ -358,7 +280,7 @@ void test_cradix_case2a() {
     byte[1] = 'o';
     Benchmark::Slice<unsigned char> key(byte+0, 2);
 
-    CRadix::MemManager mem(0x100000, 4);;
+    CRadix::MemManager mem(bufferSize, 4);;
     CRadix::Tree tree(&mem);
 
     int rc = tree.find(key);
@@ -383,51 +305,32 @@ void test_cradix_case2a() {
     assert(rc==CRadix::e_EXISTS);
 
     tree.statistics(&stats);
-    stats.print(std::cout); 
-/*
     EXPECT_EQ(stats.d_innerNodeCount, 1);
-    EXPECT_EQ(stats.d_leafCount, 2);
-    // root + 1 inner node each of which has 255 empty slots, 1 used slot
-    EXPECT_EQ(stats.d_emptyChildCount, 2*CRadix::k_MAX_CHILDREN-2);
+    EXPECT_EQ(stats.d_leafCount, 1);
+    EXPECT_EQ(stats.d_terminalCount, 2);
+    EXPECT_EQ(stats.d_emptyChildCount, 255);
     EXPECT_EQ(stats.d_maxDepth, 2);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+    EXPECT_EQ(stats.d_totalCompressedSizeBytes, 1048);
+    EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 4096);
 
     CRadix::MemStats mstats;
     mem.statistics(&mstats);
-    mstats.print(std::cout); 
-/*
-    EXPECT_EQ(mstats.d_allocCount, 1);
+    EXPECT_EQ(mstats.d_allocCount, 2);
+    EXPECT_EQ(mstats.d_deadCount, 0);
     EXPECT_EQ(mstats.d_freeCount, 0);
-    EXPECT_EQ(mstats.d_currentSizeBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_currentSizeBytes, 1048);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 1048);
+    EXPECT_EQ(mstats.d_requestedBytes, 1048);
     EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
-
-    CRadix::Iterator iter = tree.begin();
-    while (!iter.end()) {
-      iter.print(std::cout);
-      iter.next();
-    }
-
-    tree.destroy();
-    mem.statistics(&mstats);
-    mstats.print(std::cout); 
-/*
-    EXPECT_EQ(mstats.d_allocCount, 1);
-    EXPECT_EQ(mstats.d_freeCount, 1);
-    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-    EXPECT_EQ(mstats.d_maximumSizeBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_requestedBytes, mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_freedBytes, mem.sizeOfUncompressedNode256());
-*/
+    EXPECT_EQ(mstats.d_deadBytes, 0);
+    EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
   }
 }
 
 // Redo case 2a except all work done to same tree
 void test_cradix_case2b() {
-  CRadix::MemManager mem(0x100000, 4);;
+  CRadix::MemManager mem(bufferSize, 4);;
   CRadix::Tree tree(&mem);
   u_int8_t byte[2];
 
@@ -460,46 +363,26 @@ void test_cradix_case2b() {
 
   CRadix::TreeStats stats;
   tree.statistics(&stats);
-  stats.print(std::cout); 
-/*
   EXPECT_EQ(stats.d_innerNodeCount, 256);
-  EXPECT_EQ(stats.d_leafCount, 512);
-  // We have 1 root but all its children are full. Each child of root is an inner node
-  // with 256 children each and, of those, 255 empty 1 full.
-  EXPECT_EQ(stats.d_emptyChildCount, CRadix::k_MAX_CHILDREN*CRadix::k_MAX_CHILDREN-CRadix::k_MAX_CHILDREN);
+  EXPECT_EQ(stats.d_leafCount, 256);
+  EXPECT_EQ(stats.d_terminalCount, 512);
+  EXPECT_EQ(stats.d_emptyChildCount, 0);
   EXPECT_EQ(stats.d_maxDepth, 2);
   EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+  EXPECT_EQ(stats.d_totalCompressedSizeBytes, 6148);
+  EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 526336);
 
   CRadix::MemStats mstats;
   mem.statistics(&mstats);
-  mstats.print(std::cout); 
-/*
-  EXPECT_EQ(mstats.d_allocCount, 256);
+  EXPECT_EQ(mstats.d_allocCount, 257);
+  EXPECT_EQ(mstats.d_deadCount, 0);
   EXPECT_EQ(mstats.d_freeCount, 0);
-  EXPECT_EQ(mstats.d_currentSizeBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
+  EXPECT_EQ(mstats.d_currentSizeBytes, 6148);
+  EXPECT_EQ(mstats.d_maximumSizeBytes, 6148);
+  EXPECT_EQ(mstats.d_requestedBytes, 6148);
   EXPECT_EQ(mstats.d_freedBytes, 0);
-*/
-
-  CRadix::Iterator iter = tree.begin();
-  while (!iter.end()) {
-    iter.print(std::cout);
-    iter.next();
-  }
-
-  tree.destroy();
-  mem.statistics(&mstats);
-  mstats.print(std::cout); 
-/*
-  EXPECT_EQ(mstats.d_allocCount, 256);
-  EXPECT_EQ(mstats.d_freeCount, 256);
-  EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-  EXPECT_EQ(mstats.d_maximumSizeBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_requestedBytes, 256*mem.sizeOfUncompressedNode256());
-  EXPECT_EQ(mstats.d_freedBytes, 256*mem.sizeOfUncompressedNode256());
-*/
+  EXPECT_EQ(mstats.d_deadBytes, 0);
+  EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
 }
 
 void test_cradix_multiInsertPermuations() {
@@ -509,7 +392,7 @@ void test_cradix_multiInsertPermuations() {
   }
 
   do {
-    CRadix::MemManager mem(0x100000, 4);;
+    CRadix::MemManager mem(bufferSize, 4);;
     CRadix::Tree tree(&mem);
 
     for (unsigned i=0; i<perm.size(); ++i) {
@@ -530,74 +413,43 @@ void test_cradix_multiInsertPermuations() {
         int rc = tree.find(key);
         assert(rc==CRadix::e_EXISTS);
       }
-
-/*
-      CRadix::Iterator iter = tree.begin();
-      while (!iter.end()) {
-        iter.print(std::cout);
-        iter.next();
-      }
-*/
     }
 
     CRadix::TreeStats stats;
     tree.statistics(&stats);
-    stats.print(std::cout);
-/*
     EXPECT_EQ(stats.d_innerNodeCount, 5);
-    EXPECT_EQ(stats.d_leafCount, 10); // should be 7?
-    u_int64_t expectedEmptyChildCount =
-        (CRadix::k_MAX_CHILDREN - 3)    // root
-      + (CRadix::k_MAX_CHILDREN - 1)    // 'P'
-      + (CRadix::k_MAX_CHILDREN - 1)    // 'i'
-      + (CRadix::k_MAX_CHILDREN - 1)    // 'Z'
-      + (CRadix::k_MAX_CHILDREN - 3)    // 'A'
-      + (CRadix::k_MAX_CHILDREN - 3);   // 'o'
-    EXPECT_EQ(stats.d_emptyChildCount, expectedEmptyChildCount);
+    EXPECT_EQ(stats.d_leafCount, 7);
+    EXPECT_EQ(stats.d_terminalCount, 10);
+    EXPECT_EQ(stats.d_emptyChildCount, 299);
     EXPECT_EQ(stats.d_maxDepth, 4);
     EXPECT_EQ(stats.d_maxDepth, tree.currentMaxDepth());
-*/
+    EXPECT_EQ(stats.d_totalCompressedSizeBytes, 1304);
+    EXPECT_EQ(stats.d_totalUncompressedSizeBytes, 12288);
 
     CRadix::MemStats mstats;
     mem.statistics(&mstats);
-    mstats.print(std::cout);
 /*
-    EXPECT_EQ(mstats.d_allocCount, 5);
+    EXPECT_EQ(mstats.d_allocCount, 10);
+    EXPECT_EQ(mstats.d_deadCount, 4);
     EXPECT_EQ(mstats.d_freeCount, 0);
-    EXPECT_EQ(mstats.d_currentSizeBytes, 5*mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_maximumSizeBytes, 5*mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_requestedBytes, 5*mem.sizeOfUncompressedNode256());
+    EXPECT_EQ(mstats.d_currentSizeBytes, 1472);
+    EXPECT_EQ(mstats.d_maximumSizeBytes, 1472);
+    EXPECT_EQ(mstats.d_requestedBytes, 1472);
     EXPECT_EQ(mstats.d_freedBytes, 0);
+    EXPECT_EQ(mstats.d_deadBytes, 168);
+    EXPECT_EQ((mstats.d_currentSizeBytes-mstats.d_deadBytes), stats.d_totalCompressedSizeBytes);
 */
-
-    tree.destroy();
-    mem.statistics(&mstats);
-    mstats.print(std::cout);
-/*
-    EXPECT_EQ(mstats.d_allocCount, 5);
-    EXPECT_EQ(mstats.d_freeCount, 5);
-    EXPECT_EQ(mstats.d_currentSizeBytes, 0);
-    EXPECT_EQ(mstats.d_maximumSizeBytes, 5*mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_requestedBytes, 5*mem.sizeOfUncompressedNode256());
-    EXPECT_EQ(mstats.d_freedBytes, 5*mem.sizeOfUncompressedNode256());
-*/
+    EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
   } while(std::next_permutation(perm.begin(), perm.end()));
 }
 
 int main(int argc, char **argv) {
-  printf("=======case0a============================\n");
   test_cradix_case0a();
-  printf("=======case0b============================\n\n");
   test_cradix_case0b();
-  printf("=======case1a============================\n\n");
   test_cradix_case1a();
-  printf("=======case1b============================\n\n");
   test_cradix_case1b();
-  printf("=======case2a============================\n\n");
   test_cradix_case2a();
-  printf("=======case2b============================\n\n");
   test_cradix_case2b();
-  printf("=========================================\n\n");
   test_cradix_multiInsertPermuations();
   return 0;
 }

@@ -7,7 +7,7 @@ namespace CRadix {
 struct MemStats {
   // DATA
   u_int64_t d_allocCount;           // number of Node256s allocated
-  u_int64_t d_deadCount;            // number of Node255s marked dead not reclaimed
+  u_int64_t d_deadCount;            // number of Node255s marked dead
   u_int64_t d_freeCount;            // number of Node256s reclaimed after marked dead
   u_int64_t d_currentSizeBytes;     // current amount of allocated memory
   u_int64_t d_maximumSizeBytes;     // max 'currentSizeBytes' seen so far

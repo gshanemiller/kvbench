@@ -222,8 +222,8 @@ begin:
     // Must be an inner node
     assert(childNode>=k_MEMMANAGER_MIN_OFFSET);
     ++stats->d_innerNodeCount;
-    stats->d_totalCompressedSizeBytes += nodePtr->sizeBytes();
-    stats->d_totalUncompressedSizeBytes += nodePtr->uncompressedSizeBytes();
+
+
     if ((depth+1U)>stats->d_maxDepth) {
       stats->d_maxDepth = depth+1;
     }
@@ -239,6 +239,9 @@ begin:
     // following childNode: reset
     node = childNode;
     nodePtr = (Node256*)(basePtr+(childNode&k_NODE256_NO_TAG_MASK));
+    // add memory for child here since have pointer to it now
+    stats->d_totalCompressedSizeBytes += nodePtr->sizeBytes();
+    stats->d_totalUncompressedSizeBytes += nodePtr->uncompressedSizeBytes();
     index = nodePtr->minIndex();
     maxIndex = nodePtr->maxIndex();
     depth++;
