@@ -5,6 +5,10 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
   assert(!isDead());
   assert(index<k_MAX_CHILDREN);
 
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
+  ++d_nodeStats.d_trySetOffsetCount;
+#endif
+
   int32_t oldMin, oldMax, delta;
   if (!canSetOffset((int32_t)index, oldMin, oldMax, newMin, newMax, delta)) {
     return false;
@@ -43,7 +47,10 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
       d_udata &= 0xFFFFFF00;
       // Or in new min
       d_udata |= index;
-      puts("case 1");
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
+      ++d_nodeStats.d_trySetOffsetCase1Count;
+      d_nodeStats.d_bytesCopied += (size()-delta+1)<<2;
+#endif
     } else  {
       assert(newMax>oldMax);
       assert((int32_t)index==newMax);
@@ -56,13 +63,18 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
       d_udata &= 0xFFFF00FF;
       // Shift in new max
       d_udata |= (index<<8);
-      puts("case 2");
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
+      ++d_nodeStats.d_trySetOffsetCase2Count;
+      d_nodeStats.d_bytesCopied += (delta-1)<<2;
+#endif
     } 
   } else {
     // case 3
     assert(index>=minIndex()&&index<=maxIndex());
     d_offset[index-minIndex()] = offset;
-    puts("case 3");
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
+      ++d_nodeStats.d_trySetOffsetCase3Count;
+#endif
     return true;
   }
 

@@ -87,17 +87,14 @@ private:
     // offset in which 'key[*lastMatchIndex]' terminates. 'lastMatchParent' is
     // 'lastMatch's parent.
 
-  u_int32_t reallocateAndLink(u_int8_t byte, int32_t min, int32_t max, u_int32_t child);
-    // Copy-reallocate the child node at specified 'byte' so it has sufficient
-    // capacity to hold its current entries plus all offsets in '[min, max]'
-    // returing the offset to the new node or 0 if there's no memory. Behavior
-    // is defined provided 'byte<k_MAX_CHILDREN', 'this->offset(byte)==child'.
-    // Note all of the following:
-    //
-    // * invoke this method on the parent of 'child'
-    // * memory at 'child' is marked dead by memory manager on return
-    // * 'min, max' are calculated for you. See example below
-    // * 'offset' contract requires 'this->minIndex()<=byte<=this->maxIndex()'
+  u_int32_t reallocateAndLink(Node256 *parentPtr, u_int8_t byte, int32_t min, int32_t max, u_int32_t child);
+    // Copy-reallocate the specified 'child' offset of 'parentPtr' node at
+    // specified 'byte' so it has sufficient capacity to hold its current
+    // entries plus all offsets in '[min, max]' returing the offset to the
+    // new node or 0 if there's no memory. Behavior is defined provided
+    // 'byte<k_MAX_CHILDREN', 'parentPtr->tryOffset(byte)==child'. Note that
+    // the memory at 'child' is marked dead by memory manager. Also note that
+    // 'min, max' are calculated by 'canSetOffset'. See example below.
     //
     // Typical call flow appears below in pseudo code matching this cartoon:
     // 
@@ -107,8 +104,8 @@ private:
     // +------------+      +-------+ min/max ['a', 'c']
     // offset('D')=1200
     //
-    // Now suppose we need to add 'z' to child. If there's not enough memory
-    // it has to be reallocated, and the pointer to it updated:
+    // Now suppose we need to add 'z' to child e.g. edge 'D'->'z'. If there's
+    // not enough memory it has to be reallocated, and the pointer to it updated:
     //
     // After:
     // +------------+      +-------+
@@ -127,10 +124,10 @@ private:
     //   # for us by trySetOffset. Here 'childOffset' is 'childPtr'
     //   # in its offset form. parentPtr is the pointer form of the
     //   # parent offset holding child:
-    //   u_int32_t newOffset = parentPtr->reallocateAndLink('D', min, max, childOffset);
+    //   u_int32_t newOffset = reallocateAndLink(parentPtr, 'D', min, max, childOffset);
     //   # make sure 0 not returned implies out of memory
     //   assert(newOffset!=0);
-    //   # convert offset to pointer. alternative: d_memManager->ptr(newOffset)
+    //   # convert newOffset to pointer. alternative: d_memManager->ptr(newOffset)
     //   childPtr = (Node256*)(d_memManager->basePtr()+newOffset);
     //   # make assignment as intended
     //   childPtr->setOffset('z', 555);
@@ -139,7 +136,7 @@ private:
     //   # true returned. assignment was done
     //   printf("offset @ 'z' set to 555");
     // }
-    //
+};
 
 // INLINE DEFINITIONS
 // CREATORS
@@ -158,18 +155,5 @@ inline
 int Tree::find(const Benchmark::Slice<u_int8_t> key) const {
   return findHelper(key.data(), key.size());
 }
-
-// MANIPULATORS
-inline
-u_int32_t Tree::reallocateAndLink(u_int8_t byte, int32_t min, int32_t max, u_int32_t child) {
-  assert(byte>=minIndex());
-  assert(byte<=minIndex());
-  assert(child!=0);
-  assert(offset(byte)==child);
-  u_int32_t newOffset = d_memManager->copyAllocateNode256(newMin, newMax, child&k_NODE256_NO_TAG_MASK);
-  assert(newOffset!=0);
-  setOffset(byte, newOffset | (child&k_NODE256_ANY_TAG));
-  return newOffset;
-}                                                                                                                       
 
 } // namespace Radix

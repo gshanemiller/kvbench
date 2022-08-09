@@ -6,8 +6,13 @@
 #include <string.h>
 
 #include <cradix_constants.h>
+#include <cradix_nodestats.h>
 
 namespace CRadix {
+
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+static NodeStats d_nodeStats;
+#endif
 
 // Class Node256: Compressed CRadix inner node
 //
@@ -192,12 +197,21 @@ Node256::Node256(u_int32_t newMin, u_int32_t newMax, const Node256 *oldNode) {
   memset(d_offset, 0, (newMax-newMin+1)<<2);
   // Copy the old span into this' d_offset in the correct place
   memcpy(d_offset+oldNode->minIndex()-newMin, oldNode->d_offset, oldNode->size()<<2);
+
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  ++d_nodeStats.d_copyAllocationCount;
+  d_nodeStats.d_bytesCopied += oldNode->size()<<2;
+  d_nodeStats.d_bytesCleared += (newMax-newMin+1)<<2;
+#endif
 }
 
 // ACCESSORS
 inline
 u_int32_t Node256::tryOffset(const u_int32_t index) const {
   assert(!isDead());
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  ++d_nodeStats.d_tryOffsetCount;
+#endif
   if (index>=minIndex() && index<=maxIndex()) {
     return d_offset[index-minIndex()];
   }
@@ -208,6 +222,9 @@ inline
 u_int32_t Node256::offset(const u_int32_t index) const {
   assert(!isDead());
   assert(index>=minIndex() && index<=maxIndex());
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  ++d_nodeStats.d_offsetCount;
+#endif
   return d_offset[index-minIndex()];
 }
 
@@ -275,6 +292,9 @@ inline
 bool Node256::canSetOffset(const int32_t i, int32_t& oldMin, int32_t& oldMax,
   int32_t& newMin, int32_t& newMax, int32_t& delta) const {
   assert(!isDead());
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  ++d_nodeStats.d_canSetOffsetCount;
+#endif
   oldMin = d_data & 0xff;
   oldMax = (d_data & 0xff00) >> 8;
   delta  = oldMax - oldMin;
@@ -284,6 +304,9 @@ bool Node256::canSetOffset(const int32_t i, int32_t& oldMin, int32_t& oldMax,
   newMax = oldMax - ((oldMax - i) & ((oldMax - i) >> ((sizeof(int32_t)<<3) - 1)));     
   delta = newMax - newMin - delta;
   // false implies memory re-allocation required
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
+  ++d_nodeStats.d_failedCanSetOffsetCount += !(delta <= spareCapacity());
+#endif                                                                                                                  
   return (delta <= spareCapacity());
 }
 
@@ -293,6 +316,9 @@ void Node256::setOffset(const u_int32_t i, u_int32_t offset) {
   // with certainty that specified index is valid
   assert(!isDead());
   assert(i>=minIndex()&&i<=maxIndex());
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  ++d_nodeStats.d_setOffsetCount;
+#endif
   d_offset[i-minIndex()] = offset;
 }
 
