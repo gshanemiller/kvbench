@@ -119,10 +119,15 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   const u_int16_t size = key.size();
   const u_int8_t *keyPtr = key.data();
 
-  // Find node with longest preexisting prefix of key
+  // Find node with longest pre-existing prefix in key
   if ((rc = insertHelper(keyPtr, size, &lastMatchIndex, &lastMatch, &lastMatchParent)) != e_NOT_FOUND) {
     return rc;
   }
+
+  assert(lastMatchIndex<size);
+  assert(lastMatch>0);
+  assert(lastMatch!=k_NODE256_IS_LEAF);
+  assert(lastMatch>=k_MEMMANAGER_MIN_OFFSET);
 
   // lastMatch is an existing node in tree s.t. it's the node where
   // 'keyPtr[lastMatchIndex]' terminates. Since the full key was not
@@ -142,11 +147,6 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   // comes the minor issue that 'lastMatch, lastMatchParent' may have
   // tagging bits on them. Those are masked out.
 
-  assert(lastMatchIndex<size);
-  assert(lastMatch>0);
-  assert(lastMatch!=k_NODE256_IS_LEAF);
-  assert(lastMatch>=k_MEMMANAGER_MIN_OFFSET);
-
   // Set up to finish insertion
   u_int8_t *basePtr = const_cast<u_int8_t *>(d_memManager->basePtr());
   Node256 *lastMatchPtr = (Node256*)(basePtr+(lastMatch&k_NODE256_NO_TAG_MASK));
@@ -158,18 +158,14 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   while (lastMatchIndex < size-1) {
     newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
     if (!lastMatchPtr->trySetOffset(byte, newOffset, newMin, newMax)) {
-      // lastMatch doesn't have enough capacity: reallocate
-      u_int32_t copyOffset = d_memManager->copyAllocateNode256(newMin, newMax, lastMatch&k_NODE256_NO_TAG_MASK);
-      // get a pointer to lastMatch's parent
-      Node256 *lastMatchParentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
+      Node256 *parentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
       // Ensure 'keyPtr[lastMatchIndex-1]' next line makes sense
       assert(lastMatchIndex>0); 
-      // Double check parent really points to lastMatch
-      assert(lastMatchParentPtr->offset(keyPtr[lastMatchIndex-1])==lastMatch);
-      // update pointer in tree to new 'lastMatch' carrying forward any tags
-      lastMatchParentPtr->setOffset(keyPtr[lastMatchIndex-1], copyOffset | (lastMatch&k_NODE256_ANY_TAG));
-      // update pointer to 'lastMatch' for code below
-      lastMatchPtr = (Node256*)(basePtr+newOffset);
+      // Ok, now reallocate child and relink it
+      u_int32_t copyOffset = parentPtr->reallocateAndLink(keyPtr[lastMatchIndex-1], newMin, newMax, lastMatch);
+      assert(copyOffset!=0);
+      // update pointer to 'lastMatch' to reflect reallocation
+      lastMatchPtr = (Node256*)(basePtr+copyOffset);
       // now complete assignment as intended
       lastMatchPtr->setOffset(byte, newOffset);
     }
@@ -182,7 +178,16 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   }
 
   // Termination of case 2 OR case 1
-  lastMatchPtr->setOffset(byte, k_NODE256_IS_LEAF);
+  if (!lastMatchPtr->trySetOffset(byte, k_NODE256_IS_LEAF, newMin, newMax)) {
+    Node256 *parentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
+    // Ok, now reallocate child and relink it
+    u_int32_t copyOffset = parentPtr->reallocateAndLink(keyPtr[lastMatchIndex-1], newMin, newMax, lastMatch);
+    assert(copyOffset!=0);
+    // update pointer to 'lastMatch' to reflect reallocation
+    lastMatchPtr = (Node256*)(basePtr+copyOffset);
+    // now complete assignment as intended
+    lastMatchPtr->setOffset(byte, k_NODE256_IS_LEAF);
+  }
 
   if (size>d_currentMaxDepth) {
     d_currentMaxDepth = size;

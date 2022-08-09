@@ -81,12 +81,65 @@ private:
     u_int16_t *lastMatchIndex, u_int32_t *lastMatch, u_int32_t *lastMatchParent);
     // Search for specified 'key' of specified 'size' returning 'e_EXISTS'
     // if found, and 'e_NOT_FOUND' otherwise. The behavior is defined provided
-    // 'size>0'. 'lastMatchIndex, lastMatch, lastMatchParent' are defined only
-    // when 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size' is
-    // set to the last byte matched in key, '*lastMatch' points to the node
-    // offset in which 'key[*lastMatchIndex]' terminates. '*lastMatchParent' is
+    // 'size>0'. 'lastMatchIndex, lastMatch, lastMatchParent' are set and defined
+    // only when 'e_NOT_FOUND' is returned. In that case '0<=lastMatchIndex<size'
+    // is set to the last byte matched in key, 'lastMatch' points to the node
+    // offset in which 'key[*lastMatchIndex]' terminates. 'lastMatchParent' is
     // 'lastMatch's parent.
-};
+
+  u_int32_t reallocateAndLink(u_int8_t byte, int32_t min, int32_t max, u_int32_t child);
+    // Copy-reallocate the child node at specified 'byte' so it has sufficient
+    // capacity to hold its current entries plus all offsets in '[min, max]'
+    // returing the offset to the new node or 0 if there's no memory. Behavior
+    // is defined provided 'byte<k_MAX_CHILDREN', 'this->offset(byte)==child'.
+    // Note all of the following:
+    //
+    // * invoke this method on the parent of 'child'
+    // * memory at 'child' is marked dead by memory manager on return
+    // * 'min, max' are calculated for you. See example below
+    // * 'offset' contract requires 'this->minIndex()<=byte<=this->maxIndex()'
+    //
+    // Typical call flow appears below in pseudo code matching this cartoon:
+    // 
+    // Before:
+    // +------------+      +-------+
+    // | parent@'D' |----> | child | 0x1234 (offset 1200)
+    // +------------+      +-------+ min/max ['a', 'c']
+    // offset('D')=1200
+    //
+    // Now suppose we need to add 'z' to child. If there's not enough memory
+    // it has to be reallocated, and the pointer to it updated:
+    //
+    // After:
+    // +------------+      +-------+
+    // | parent@'D' |----> | child | 0x5678 (offset 5000)
+    // +------------+      +-------+ min/max ['a', 'c']
+    // offset('D')=5000              but now has capacity to set 'z'
+    //                     +-------+
+    //                     | child | 0x1234 (offset 1200)
+    //                     +-------+ **DEAD** marked for reclamation
+    //
+    // int32_t newMin, newMax;
+    // # Try to set 'z' to 555 in child:
+    // if (!childPtr->trySetOffset('z', 555, newMin, newMax)) {
+    //   # false returned so childPtr didn't have enough capacity
+    //   # copy-reallocate and relink using newMin, newMax calc'd
+    //   # for us by trySetOffset. Here 'childOffset' is 'childPtr'
+    //   # in its offset form. parentPtr is the pointer form of the
+    //   # parent offset holding child:
+    //   u_int32_t newOffset = parentPtr->reallocateAndLink('D', min, max, childOffset);
+    //   # make sure 0 not returned implies out of memory
+    //   assert(newOffset!=0);
+    //   # convert offset to pointer. alternative: d_memManager->ptr(newOffset)
+    //   childPtr = (Node256*)(d_memManager->basePtr()+newOffset);
+    //   # make assignment as intended
+    //   childPtr->setOffset('z', 555);
+    //   printf("offset @ 'z' set to 555 after reallocation");
+    // } else {
+    //   # true returned. assignment was done
+    //   printf("offset @ 'z' set to 555");
+    // }
+    //
 
 // INLINE DEFINITIONS
 // CREATORS
@@ -101,10 +154,22 @@ u_int64_t Tree::currentMaxDepth() const {
   return d_currentMaxDepth;
 }
 
-// MANIPULATORS
 inline
 int Tree::find(const Benchmark::Slice<u_int8_t> key) const {
   return findHelper(key.data(), key.size());
 }
+
+// MANIPULATORS
+inline
+u_int32_t Tree::reallocateAndLink(u_int8_t byte, int32_t min, int32_t max, u_int32_t child) {
+  assert(byte>=minIndex());
+  assert(byte<=minIndex());
+  assert(child!=0);
+  assert(offset(byte)==child);
+  u_int32_t newOffset = d_memManager->copyAllocateNode256(newMin, newMax, child&k_NODE256_NO_TAG_MASK);
+  assert(newOffset!=0);
+  setOffset(byte, newOffset | (child&k_NODE256_ANY_TAG));
+  return newOffset;
+}                                                                                                                       
 
 } // namespace Radix

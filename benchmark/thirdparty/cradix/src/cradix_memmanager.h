@@ -187,6 +187,7 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
 
   // Make sure we have memory
   if ((d_offset+sz)>d_size) {
+    assert(false);
     return 0;
   }
 
@@ -235,6 +236,7 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
 
   // Make sure we have memory
   if ((d_offset+sz)>d_size) {
+    assert(false);
     return 0;
   }
 
@@ -285,6 +287,7 @@ u_int32_t MemManager::newRoot() {
 
   // Make sure we have memory
   if ((d_offset+sz)>d_size) {
+    assert(false);
     return 0;
   }
 
