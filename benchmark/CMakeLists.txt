@@ -19,6 +19,7 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_hot.cpp
   ./src/benchmark_art.cpp
   ./src/benchmark_patricia.cpp
+  ./src/benchmark_cradix.cpp
 
   ./src/intel_skylake_pmu.cpp
 
@@ -41,6 +42,15 @@ set(BENCHMARK_SOURCES
   
   ./thirdparty/radix/src/radix_memmanager.cpp
   ./thirdparty/radix/src/radix.cpp
+
+  ./thirdparty/cradix/src/cradix_constants.cpp
+  ./thirdparty/cradix/src/cradix_iterator.cpp
+  ./thirdparty/cradix/src/cradix_iterstate.cpp
+  ./thirdparty/cradix/src/cradix_memmanager.cpp
+  ./thirdparty/cradix/src/cradix_memstats.cpp
+  ./thirdparty/cradix/src/cradix_node256.cpp
+  ./thirdparty/cradix/src/cradix_tree.cpp
+  ./thirdparty/cradix/src/cradix_treestats.cpp
 )
 
 find_library(HUGELIB
@@ -51,8 +61,10 @@ find_library(HUGELIB
 
 set(BENCHMARK_TARGET benchmark.tsk)
 add_executable(${BENCHMARK_TARGET} ${BENCHMARK_SOURCES})
-target_compile_options(${BENCHMARK_TARGET} PUBLIC -g -O2)
-target_compile_definitions(${BENCHMARK_TARGET} PUBLIC -DNDEBUG)
+# target_compile_options(${BENCHMARK_TARGET} PUBLIC -g -O2)
+# target_compile_definitions(${BENCHMARK_TARGET} PUBLIC -DNDEBUG)
+target_compile_options(${BENCHMARK_TARGET} PUBLIC -g -O0)
+target_compile_definitions(${BENCHMARK_TARGET} PUBLIC -DCRADIX_MEMMANAGER_RUNTIME_STATISTICS)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/art)
@@ -65,6 +77,7 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/folly/contain
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hot/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/radix/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/patricia/src)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cradix/src)
 # target_link_options(${BENCHMARK_TARGET} PUBLIC -pg)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)

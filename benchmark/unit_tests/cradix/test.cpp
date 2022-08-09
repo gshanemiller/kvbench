@@ -440,3 +440,22 @@ TEST (cradix, multiInsertPermuations) {
     EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
   } while(std::next_permutation(perm.begin(), perm.end()));
 }
+
+TEST (cradix, node256) {
+    const u_int32_t index=10;
+    const u_int32_t offset=0xdeadbeef;
+  
+    CRadix::MemManager mem(bufferSize, 4);;
+    EXPECT_TRUE(CRadix::k_MEMMANAGER_DEFAULT_CAPACITY>0);
+
+    u_int32_t nodeOffset = mem.newNode256(CRadix::k_MEMMANAGER_DEFAULT_CAPACITY, index, offset);
+    EXPECT_TRUE(nodeOffset>=CRadix::k_MEMMANAGER_MIN_OFFSET);
+
+    CRadix::Node256 *nodePtr = (CRadix::Node256)(mem.basePtr()+nodeOffset);
+    EXPECT_TRUE(nodePtr==mem.ptr(nodeOffset));
+    EXPECT_EQ(nodePtr->minIndex(), index);
+    EXPECT_EQ(nodePtr->maxIndex(), index);
+    EXPECT_EQ(nodePtr->spareCapacity(), CRadix::k_MEMMANAGER_DEFAULT_CAPACITY-1);
+    EXPECT_EQ(nodePtr->uspareCapacity(), CRadix::k_MEMMANAGER_DEFAULT_CAPACITY-1);
+ 
+

@@ -147,7 +147,6 @@ int Radix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
   u_int16_t *lastMatchIndex, Node256 **lastMatch) {
   assert(key!=0);
   assert(size>0);
-  assert(index!=0);
   assert(lastMatch!=0);
   assert(*lastMatch!=0);
 

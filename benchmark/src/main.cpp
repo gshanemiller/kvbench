@@ -10,6 +10,7 @@
 #include <benchmark_hot.h>
 #include <benchmark_art.h>
 #include <benchmark_patricia.h>
+#include <benchmark_cradix.h>
 
 #include <benchmark_textscan.h>
 
@@ -30,7 +31,8 @@ void usageAndExit() {
   printf("                                'f14'        : hashmap  https://github.com/facebook/folly\n");
   printf("                                'hot'        : HOT trie https://github.com/speedskater/hot\n");
   printf("                                'art'        : ART trie https://github.com/armon/libart.git\n");
-  printf("                                'patricia'   : Patricia trie based on https://cr.yp.to/critbit.html, https://github.com/agl/critbit\n");
+  printf("                                'patricia'   : own trie based on https://cr.yp.to/critbit.html, https://github.com/agl/critbit\n");
+  printf("                                'cradix'     : own m-ary trie\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
   printf("                                'xxhash:XX3_64bits': xxhash    variant 'XXH3_64bits()' https://github.com/Cyan4973/xxHash.git\n");
@@ -90,6 +92,8 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("art", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("patricia", optarg)) {
+            config.d_dataStructure = optarg;
+          } else if (!strcmp("cradix", optarg)) {
             config.d_dataStructure = optarg;
           } else {
             usageAndExit();
@@ -182,6 +186,10 @@ int main(int argc, char **argv) {
     test.report();
   } else if (config.d_dataStructure=="patricia") {
     Benchmark::patricia test(config, file);
+    test.start();
+    test.report();
+  } else if (config.d_dataStructure=="cradix") {
+    Benchmark::cradix test(config, file);
     test.start();
     test.report();
   }
