@@ -64,6 +64,7 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
       offset = childOffset;
       offsetPtr = (Node256*)(basePtr+(childOffset&k_NODE256_CLR_TERMINAL_MASK));
     } else if (childOffset==0) {
+      // either not there or key[i] out of span
       assert(i<size);
       assert(offset);
       *lastMatchIndex = i;
@@ -82,7 +83,8 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
         // This is done, because on return, key[*lastMatchIndex] will
         // be immediately modified to have a new, decendent node in order
         // to complete insertion. We also mark this new node terminal
-        // (it was a leaf implying terminal).
+        // (it was a leaf implying terminal). Note can confidently call
+        // set offset because we know key[i] valid on offsetPtr:
         *lastMatch = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, key[*lastMatchIndex], 0);
         offsetPtr->setOffset(key[i], (*lastMatch|k_NODE256_IS_TERMINAL));
         *lastMatchParent = pOffset;
@@ -99,7 +101,8 @@ int CRadix::Tree::insertHelper(const u_int8_t *key, const u_int16_t size,
   // definite match. To get here pOffset must be a inner node since all other
   // cases must have already returned from loop above. The remaining issue
   // is to ensure the link/pointer from pOffset to offset is marked terminal.
-  // We'll reuse node union to so mark it
+  // We'll reuse node union to so mark it. Can confidentally call 'setOffset'
+  // here because we know key[size-1] valid on pOffset:
   assert(pOffset>=k_MEMMANAGER_MIN_OFFSET);
   offsetPtr = (Node256*)(basePtr+(pOffset&k_NODE256_CLR_TERMINAL_MASK));
   offset = offsetPtr->offset(key[size-1]);

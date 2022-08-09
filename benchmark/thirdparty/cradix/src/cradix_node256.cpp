@@ -1,11 +1,11 @@
 #include <cradix_node256.h> 
 #include <string.h>
 
-bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset) {
+bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset, int32_t& newMin, int32_t& newMax) {
   assert(!isDead());
   assert(index<k_MAX_CHILDREN);
 
-  int32_t oldMin, oldMax, newMin, newMax, delta;
+  int32_t oldMin, oldMax, delta;
   if (!canSetOffset((int32_t)index, oldMin, oldMax, newMin, newMax, delta)) {
     return false;
   }

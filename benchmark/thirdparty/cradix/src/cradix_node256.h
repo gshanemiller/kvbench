@@ -89,7 +89,9 @@ struct Node256 {
     int32_t& newMin, int32_t& newMax, int32_t& delta) const;
     // Return true if it's possible to set an offset at specified index 'i' without requiring
     // memory allocation, and false otherwise. Behavior is defined provided 'i<k_MAX_CHILDREN'.
-    // The other arguments may be ignored, but note they are used by 'trySetOffset'
+    // Note 'true' does not mean 'setOffset' can be called; see its contract. There is a middle
+    // case where memory allocation is not required but data in 'd_offset' must be moved to
+    // acommondate 'i'. If setting 'i' is the desired endgoal, run 'trySetOffset' instead.
 
   u_int64_t uncompressedSizeBytes() const;
     // Return the uncompressed size of this node. This is a constant equal to k_MAX_CHILDREN
@@ -107,10 +109,12 @@ struct Node256 {
     // Set the value at specified index 'i' to specified 'offset'. Behavior is defined
     // provided 'minIndex()<=i<=maxIndex()' and 'isDead()==false'
 
-  bool trySetOffset(const u_int32_t index, const u_int32_t offset);
+  bool trySetOffset(const u_int32_t index, const u_int32_t offset, int32_t& newMin, int32_t& newMax);
     // Return true and set specified 'index' to specified 'offset', and otherwise return false
     // if memory reallocation is required. Behavior is defined provided 'i<k_MAX_CHILDREN' and
-    // 'isDead()==false'.
+    // 'isDead()==false'. If false is returned only 'newMin, newMax' hold the smallest span containing
+    // all entries before call plus specified 'index'. 'newMin, newMax' can be used to copy allocate
+    // space for 'index' if desired. See class 'MemManager'.
 
   void markDead();
     // Mark this object dead and eligble for reclaimation
