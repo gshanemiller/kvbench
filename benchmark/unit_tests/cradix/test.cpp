@@ -389,12 +389,15 @@ TEST (cradix, multiInsertPermuations) {
     perm.push_back(i);
   }
 
+  u_int32_t permCount(0);
+
   do {
     CRadix::MemManager mem(bufferSize, 4);;
     CRadix::Tree tree(&mem);
 
     for (unsigned i=0; i<perm.size(); ++i) {
       Benchmark::Slice<unsigned char> key(REFERENCE_VALUES[perm[i]].d_data, REFERENCE_VALUES[perm[i]].d_size);
+      key.print();
 
       int rc = tree.find(key);
       assert(rc==CRadix::e_NOT_FOUND);
@@ -438,12 +441,17 @@ TEST (cradix, multiInsertPermuations) {
     EXPECT_EQ((mstats.d_currentSizeBytes-mstats.d_deadBytes), stats.d_totalCompressedSizeBytes);
 */
     EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
+
+    if ((++permCount%100000)==0) {
+      printf("running permutation %u...\n", permCount);
+    }
   } while(std::next_permutation(perm.begin(), perm.end()));
 }
 
 TEST (cradix, node256_ctor) {
     const u_int32_t index=10;
     const u_int32_t offset=0xdeadbeef;
+    int32_t newMin, newMax;
   
     CRadix::MemManager mem(bufferSize, 4);;
     EXPECT_TRUE(CRadix::k_MEMMANAGER_DEFAULT_CAPACITY>0);
@@ -451,7 +459,7 @@ TEST (cradix, node256_ctor) {
     u_int32_t nodeOffset = mem.newNode256(CRadix::k_MEMMANAGER_DEFAULT_CAPACITY, index, offset);
     EXPECT_TRUE(nodeOffset>=CRadix::k_MEMMANAGER_MIN_OFFSET);
 
-    CRadix::Node256 *nodePtr = (CRadix::Node256)(mem.basePtr()+nodeOffset);
+    CRadix::Node256 *nodePtr = (CRadix::Node256*)(mem.basePtr()+nodeOffset);
     EXPECT_TRUE(nodePtr==mem.ptr(nodeOffset));
     EXPECT_FALSE(nodePtr->isDead());
 
@@ -468,7 +476,6 @@ TEST (cradix, node256_ctor) {
 
     // number of items thay can be stored is what's stored now + spare capacity
     EXPECT_EQ(nodePtr->capacity(), CRadix::k_MEMMANAGER_DEFAULT_CAPACITY);
-    EXPECT_EQ(nodePtr->ucapacity(), CRadix::k_MEMMANAGER_DEFAULT_CAPACITY);
 
     // get offset set in ctor
     EXPECT_EQ(nodePtr->offset(index), offset);
@@ -480,7 +487,7 @@ TEST (cradix, node256_ctor) {
     EXPECT_EQ(nodePtr->offset(index), offset-1);
 
     // reset offset @ same index
-    nodePtr->trySetOffset(index, offset-2);
+    nodePtr->trySetOffset(index, offset-2, newMin, newMax);
     EXPECT_EQ(nodePtr->tryOffset(index), offset-2);
     EXPECT_EQ(nodePtr->offset(index), offset-2);
 
@@ -496,12 +503,12 @@ TEST (cradix, node256_canSetOffset_basic) {
 
     // Create a node with key byte 10 = 0xdeadbeef w/ default capacity
     u_int32_t nodeOffset = mem.newNode256(CRadix::k_MEMMANAGER_DEFAULT_CAPACITY, index, offset);
-    CRadix::Node256 *nodePtr = (CRadix::Node256)(mem.basePtr()+nodeOffset);
+    CRadix::Node256 *nodePtr = (CRadix::Node256*)(mem.basePtr()+nodeOffset);
 
     // Since the min/max is 10 capcity 4 we can only set [7,10] low end to [10,13] high end
     // without memory allocation.
-    u_int32_t lowest = index - CRadix::k_MEMMANAGER_DEFAULT_CAPACITY + 1
-    u_int32_t highest = index + CRadix::k_MEMMANAGER_DEFAULT_CAPACITY - 1
+    u_int32_t lowest = index - CRadix::k_MEMMANAGER_DEFAULT_CAPACITY + 1;
+    u_int32_t highest = index + CRadix::k_MEMMANAGER_DEFAULT_CAPACITY - 1;
     int32_t oldMin, oldMax, newMin, newMax, delta;
     for (u_int32_t i=0; i<lowest; ++i) {
       EXPECT_FALSE(nodePtr->canSetOffset(i, oldMin, oldMax, newMin, newMax, delta));

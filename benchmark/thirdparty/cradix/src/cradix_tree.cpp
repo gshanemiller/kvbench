@@ -150,31 +150,37 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   // Set up to finish insertion
   u_int8_t *basePtr = const_cast<u_int8_t *>(d_memManager->basePtr());
   Node256 *lastMatchPtr = (Node256*)(basePtr+(lastMatch&k_NODE256_NO_TAG_MASK));
-  int32_t oldMin, oldMax, newMin, newMax, delta, newOffset;
+  u_int32_t newOffset;
+  int32_t newMin, newMax;
   u_int8_t byte(keyPtr[lastMatchIndex]);
-
-  if (!lastMatchPtr->canSetOffset(byte, oldMin, oldMax, newMin, newMax, delta)) {
-    // lastMatch doesn't have enough capacity: reallocate
-    newOffset = d_memManager->copyAllocateNode256(newMin, newMax, lastMatch&k_NODE256_NO_TAG_MASK);
-    // get a pointer to lastMatch's parent
-    Node256 *lastMatchParentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
-    // Ensure 'keyPtr[lastMatchIndex-1]' next line makes sense
-    assert(lastMatchIndex>0); 
-    // Double check parent really points to lastMatch
-    assert(lastMatchParentPtr->offset(keyPtr[lastMatchIndex-1])==lastMatch);
-    // update pointer in tree to new 'lastMatch' carrying forward any tags
-    lastMatchParentPtr->setOffset(keyPtr[lastMatchIndex-1], newOffset | (lastMatch&k_NODE256_ANY_TAG));
-    // update pointer to 'lastMatch' for code below
-    lastMatchPtr = (Node256*)(basePtr+newOffset);
-  }
 
   // Case 2
   while (lastMatchIndex < size-1) {
     newOffset = d_memManager->newNode256(k_MEMMANAGER_DEFAULT_CAPACITY, keyPtr[lastMatchIndex+1], 0);
-    lastMatchPtr->setOffset(byte, newOffset);
+    if (!lastMatchPtr->trySetOffset(byte, newOffset, newMin, newMax)) {
+      // lastMatch doesn't have enough capacity: reallocate
+      u_int32_t copyOffset = d_memManager->copyAllocateNode256(newMin, newMax, lastMatch&k_NODE256_NO_TAG_MASK);
+      // get a pointer to lastMatch's parent
+      Node256 *lastMatchParentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
+      // Ensure 'keyPtr[lastMatchIndex-1]' next line makes sense
+      assert(lastMatchIndex>0); 
+      // Double check parent really points to lastMatch
+      assert(lastMatchParentPtr->offset(keyPtr[lastMatchIndex-1])==lastMatch);
+      // update pointer in tree to new 'lastMatch' carrying forward any tags
+      lastMatchParentPtr->setOffset(keyPtr[lastMatchIndex-1], copyOffset | (lastMatch&k_NODE256_ANY_TAG));
+      // update pointer to 'lastMatch' for code below
+      lastMatchPtr = (Node256*)(basePtr+newOffset);
+      // now complete assignment as intended
+      lastMatchPtr->setOffset(byte, newOffset);
+    }
+
+    lastMatchParent = lastMatch;
+    lastMatch = newOffset;
     lastMatchPtr = (Node256*)(basePtr+newOffset);
+
     byte = keyPtr[++lastMatchIndex];
   }
+
   // Termination of case 2 OR case 1
   lastMatchPtr->setOffset(byte, k_NODE256_IS_LEAF);
 
