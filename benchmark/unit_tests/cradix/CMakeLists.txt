@@ -21,6 +21,7 @@ target_compile_options(${UNIT_TEST_TASK} PUBLIC -g)
 target_compile_options(${UNIT_TEST_TASK} PUBLIC -O0)
 
 target_compile_definitions(${UNIT_TEST_TASK} PUBLIC CRADIX_MEMMANAGER_RUNTIME_STATISTICS )
+target_compile_definitions(${UNIT_TEST_TASK} PUBLIC -DCRADIX_NODE_RUNTIME_STATISTICS)                                 
 
 target_include_directories(${UNIT_TEST_TASK} PUBLIC ../../src)
 target_include_directories(${UNIT_TEST_TASK} PUBLIC /usr/local/include)

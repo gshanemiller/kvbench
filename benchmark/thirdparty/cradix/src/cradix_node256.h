@@ -250,7 +250,7 @@ u_int32_t Node256::uspareCapacity() const {
 
 inline
 u_int32_t Node256::capacity() const {                                                                                          
-  return maxIndex() - minIndex() + 1 + uspareCapacity();
+  return size() + uspareCapacity();
 }
 
 inline
@@ -303,6 +303,9 @@ bool Node256::canSetOffset(const int32_t i, int32_t& oldMin, int32_t& oldMax,
   // branchless std::max(oldMax, i)
   newMax = oldMax - ((oldMax - i) & ((oldMax - i) >> ((sizeof(int32_t)<<3) - 1)));     
   delta = newMax - newMin - delta;
+  // newMin can only get smaller; newMax can only get bigger
+  assert(newMin<=oldMin);
+  assert(newMax>=oldMax);
   // false implies memory re-allocation required
 #ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
   ++d_nodeStats.d_failedCanSetOffsetCount += !(delta <= spareCapacity());
