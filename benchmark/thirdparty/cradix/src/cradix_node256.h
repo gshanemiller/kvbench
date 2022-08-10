@@ -306,10 +306,12 @@ bool Node256::canSetOffset(const int32_t i, int32_t& oldMin, int32_t& oldMax,
   // newMin can only get smaller; newMax can only get bigger
   assert(newMin<=oldMin);
   assert(newMax>=oldMax);
-  // false implies memory re-allocation required
 #ifdef CRADIX_NODE_RUNTIME_STATISTICS                                                                                   
   ++d_nodeStats.d_failedCanSetOffsetCount += !(delta <= spareCapacity());
 #endif                                                                                                                  
+  // Negative deltas not expected
+  assert(delta>=0);
+  // false implies memory re-allocation required
   return (delta <= spareCapacity());
 }
 
