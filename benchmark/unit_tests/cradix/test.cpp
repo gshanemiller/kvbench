@@ -482,7 +482,6 @@ TEST (cradix, node256_trySetOffset_case2) {
       // Now try setting everything in '[index, highest]'
       u_int32_t value = baseValue;
       for (u_int32_t i=index; i<=highest; ++i, ++value) {
-        printf("\n\ntry cap %u index %u :: highest %u set-index %u\n", capacity, index, highest, i);
         EXPECT_TRUE(nodePtr->trySetOffset(i, value, min, max));
         // make sure can read back value just set
         EXPECT_EQ(nodePtr->offset(i), value);
@@ -547,7 +546,6 @@ TEST (cradix, node256_trySetOffset_case1) {
       // Now try setting everything in '[lowest, lowest+capacity-1]'
       u_int32_t value = baseValue;
       for (u_int32_t i=lowest; i<lowest+capacity; ++i, ++value) {
-        printf("\n\ntry cap %u index %u :: lowest %u set-index %u\n", capacity, index, lowest, i);
         EXPECT_TRUE(nodePtr->trySetOffset(i, value, min, max));
         // make sure can read back value just set
         EXPECT_EQ(nodePtr->offset(i), value);
@@ -589,8 +587,6 @@ TEST (cradix, multiInsertPermuations) {
   for (unsigned i=0; i<NUM_REFERENCE_VALUES; ++i) {
     perm.push_back(i);
   }
-
-  u_int32_t permCount(0);
 
   do {
     CRadix::MemManager mem(bufferSize, 4);;
@@ -641,9 +637,5 @@ TEST (cradix, multiInsertPermuations) {
     EXPECT_EQ((mstats.d_currentSizeBytes-mstats.d_deadBytes), stats.d_totalCompressedSizeBytes);
 */
     EXPECT_EQ(mstats.d_sizeBytes, bufferSize);
-
-    if ((++permCount%100000)==0) {
-      printf("running permutation %u...\n", permCount);
-    }
   } while(std::next_permutation(perm.begin(), perm.end()));
 }

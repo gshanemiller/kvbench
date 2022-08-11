@@ -10,10 +10,6 @@
 
 namespace CRadix {
 
-#ifdef CRADIX_NODE_RUNTIME_STATISTICS
-static NodeStats d_nodeStats;
-#endif
-
 // Class Node256: Compressed CRadix inner node
 //
 // Organization of 4 bytes in union:
@@ -24,6 +20,12 @@ static NodeStats d_nodeStats;
 //           bit 24   : 1 if this node is dead
 //           bit 25-31: unused
 struct Node256 {
+  // STATIC DATA
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  static NodeStats d_nodeStats;
+#endif
+
+  // DATA
   union {
     int32_t     d_data;     // span state
     u_int32_t   d_udata;
@@ -109,6 +111,12 @@ struct Node256 {
   double compressionRatio() const;
     // Return the ratio of 'sizeBytes() / uncompressedSizeBytes()'
 
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  static void runtimeStatistics(NodeStats *stats);
+    // Assign to specified 'stats' the attribute 'nodeStats' consisting of a detailed read/write statistics
+    // summary for all Node256s
+#endif
+
   // MANIPULATORS
   void setOffset(const u_int32_t i, u_int32_t offset);
     // Set the value at specified index 'i' to specified 'offset'. Behavior is defined
@@ -126,6 +134,11 @@ struct Node256 {
 
   const Node256& operator=(const Node256& rhs) = delete;
     // Copy constructor not provided
+
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+  static void resetRuntimeStatistics();
+    // Reset all counters in 'nodeStats' attribute to 0
+#endif
 
   // ASPECTS
   std::ostream& statistics(std::ostream& stream) const;
@@ -321,6 +334,8 @@ void Node256::setOffset(const u_int32_t i, u_int32_t offset) {
   // with certainty that specified index is valid
   assert(!isDead());
   assert(i>=minIndex()&&i<=maxIndex());
+  assert((i-minIndex())<usize());
+  assert((i-minIndex())<capacity());
 #ifdef CRADIX_NODE_RUNTIME_STATISTICS
   ++d_nodeStats.d_setOffsetCount;
 #endif
@@ -361,5 +376,18 @@ std::ostream& Node256::print(std::ostream& stream) const {
   }
   return stream;
 }
+
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
+inline
+void Node256::runtimeStatistics(NodeStats *stats) {
+  assert(stats);
+  *stats = d_nodeStats;
+}
+
+inline
+void Node256::resetRuntimeStatistics() {
+  d_nodeStats.reset();
+}
+#endif
 
 } // namespace CRadix

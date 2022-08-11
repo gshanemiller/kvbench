@@ -21,15 +21,48 @@ static int cradix_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats&
   pmu.start();
   
   // Benchmark running: do insert
+  u_int32_t count=0;
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
+    printf("insert word: %u ", count);
     word.print();
-    printf("=================================================\n");
-    map->insert(word);
-    CRadix::Iterator iter = map->begin();
-    while(!iter.end()) {
-      iter.print(std::cout);
-      iter.next();
+
+    if (count==2904) {
+      printf("here we go\n");
     }
+
+    map->insert(word);
+
+    if (map->find(word)!=CRadix::e_EXISTS) {
+      printf("bad last key\n");
+      map->find(word);
+      break;
+    }
+
+    if (count==2903) {
+      printf("good I hope\n");
+      map->dotGraph(std::cout);
+    }
+
+    if (count<2904) {
+      ++count;
+      printf("\n\n");
+      continue;
+    }
+
+    map->insert(word);
+
+    map->dotGraph(std::cout);
+
+    CRadix::TreeStats tstats;
+    map->statistics(&tstats);
+    tstats.print(std::cout);
+
+    CRadix::NodeStats nstats;
+    CRadix::Node256::runtimeStatistics(&nstats);
+    nstats.print(std::cout);
+
+    ++count;
+    printf("\n\n");
   }
 
   // Benchmark done: take stats
@@ -71,7 +104,7 @@ static int cradix_test_text_find(unsigned runNumber, T* map, Benchmark::Stats& s
   // Benchmark running: do find
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     auto val = map->find(word);
-    if (val!=0) {
+    if (val!=CRadix::e_EXISTS) {
       ++errors;
     }
   }
@@ -114,7 +147,8 @@ int Benchmark::cradix::start() {
     if (d_stats.config().d_customAllocator) {
       return rc;
     } else {
-      for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
+      // for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
+      for (unsigned i=0; i<1; ++i) {
         if (d_stats.config().d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
@@ -122,9 +156,18 @@ int Benchmark::cradix::start() {
         CRadix::Tree cradixTree(&mem);
         cradix_test_text_insert(i, &cradixTree, d_stats, d_file);
         cradix_test_text_find(i, &cradixTree, d_stats, d_file);
+
         CRadix::MemStats mstats;
         mem.statistics(&mstats);
         mstats.print(std::cout);
+
+        CRadix::TreeStats tstats;
+        cradixTree.statistics(&tstats);
+        tstats.print(std::cout);
+
+        CRadix::NodeStats nstats;
+        CRadix::Node256::runtimeStatistics(&nstats);
+        nstats.print(std::cout);
       }
     }
   }

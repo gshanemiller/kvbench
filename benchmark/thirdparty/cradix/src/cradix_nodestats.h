@@ -56,17 +56,17 @@ inline
 std::ostream& NodeStats::print(std::ostream& stream) const {
   stream
     << "copyAllocationCount: "      << d_copyAllocationCount
-    << "offsetCount: "              << d_offsetCount
-    << "tryOffsetCount: "           << d_tryOffsetCount
-    << "canSetOffsetCount: "        << d_canSetOffsetCount
-    << "failedCanSetOffsetCount: "  << d_failedCanSetOffsetCount
-    << "setOffsetCount: "           << d_setOffsetCount
-    << "trySetOffsetCount: "        << d_trySetOffsetCount
-    << "trySetOffsetCase1Count: "   << d_trySetOffsetCase1Count
-    << "trySetOffsetCase2Count: "   << d_trySetOffsetCase2Count
-    << "trySetOffsetCase3Count: "   << d_trySetOffsetCase3Count
-    << "bytesCopied: "              << d_bytesCopied
-    << "bytesCleared: "             << d_bytesCleared
+    << " offsetCount: "              << d_offsetCount
+    << " tryOffsetCount: "           << d_tryOffsetCount
+    << " canSetOffsetCount: "        << d_canSetOffsetCount
+    << " failedCanSetOffsetCount: "  << d_failedCanSetOffsetCount
+    << " setOffsetCount: "           << d_setOffsetCount
+    << " trySetOffsetCount: "        << d_trySetOffsetCount
+    << " trySetOffsetCase1Count: "   << d_trySetOffsetCase1Count
+    << " trySetOffsetCase2Count: "   << d_trySetOffsetCase2Count
+    << " trySetOffsetCase3Count: "   << d_trySetOffsetCase3Count
+    << " bytesCopied: "              << d_bytesCopied
+    << " bytesCleared: "             << d_bytesCleared
     << std::endl;
   return stream;
 }
