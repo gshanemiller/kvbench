@@ -72,12 +72,13 @@ struct MemManager {
     // Node256's constructor and must satisfy its contract. If there's not
     // enough free memory 0 is returned.
     
-  u_int32_t copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_int32_t oldObject);
+  u_int32_t copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_int32_t oldParentOffset, u_int32_t oldOffset);
     // Allocate memory with capacity of 'newMax-newMin-1' offsets then copy-construct
-    // 'oldObject' into it. The memory at 'oldObject' is marked dead. The offset
-    // to the new object is returned. Behavior is defined provided 'newMin, newMax'
-    // and implied new capacity satisfiy the contract for Node256's copy-creator.
-    // If there's no enough free memory 0 is returned.
+    // 'oldOffset' into it where 'oldParentOffset' is 'oldOffset's parent offset.
+    // The memory at 'oldOffset' is marked dead. The offset to the new object is
+    // returned. Behavior is defined provided 'newMin, newMax' and implied new
+    // capacity satisfiy the contract for Node256's copy-creator. If there's not
+    // enough free memory 0 is returned.
 
   u_int32_t newRoot();
     // Allocate memory and construct the root of a CRadix tree object holding
@@ -229,11 +230,11 @@ u_int32_t MemManager::newNode256(u_int32_t capacity, u_int32_t index, u_int32_t 
 }
 
 inline
-u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_int32_t oldObject) {
-  assert(oldObject>=k_MEMMANAGER_MIN_OFFSET);
+u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_int32_t oldParentOffset, u_int32_t oldOffset) {
+  assert(oldOffset>=k_MEMMANAGER_MIN_OFFSET);
   assert(newMax>newMin);
 
-  Node256 *oldNode = ptr(oldObject & k_NODE256_NO_TAG_MASK);
+  Node256 *oldNode = ptr(oldOffset);
 
   // Memory request in bytes
   u_int64_t sz = sizeof(Node256)+((newMax-newMin+1)<<2);
@@ -244,7 +245,8 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
     return 0;
   }
 
-  d_deadOffsets.push_back(oldObject & k_NODE256_NO_TAG_MASK);
+  d_deadOffsets.push_back(oldParentOffset);
+  d_deadOffsets.push_back(oldOffset);
 
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
   ++d_stats.d_allocCount;

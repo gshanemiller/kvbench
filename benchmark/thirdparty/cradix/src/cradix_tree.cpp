@@ -162,7 +162,7 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
       // Ensure 'keyPtr[lastMatchIndex-1]' next line makes sense
       assert(lastMatchIndex>0); 
       // Ok, now reallocate child and relink it
-      u_int32_t copyOffset = reallocateAndLink(parentPtr, keyPtr[lastMatchIndex-1], newMin, newMax, lastMatch);
+      u_int32_t copyOffset = reallocateAndLink(parentPtr, keyPtr[lastMatchIndex-1], newMin, newMax, lastMatchParent, lastMatch);
       assert(copyOffset!=0);
       // update pointer to 'lastMatch' to reflect reallocation
       lastMatchPtr = (Node256*)(basePtr+copyOffset);
@@ -181,7 +181,7 @@ int CRadix::Tree::insert(const Benchmark::Slice<u_int8_t> key) {
   if (!lastMatchPtr->trySetOffset(byte, k_NODE256_IS_LEAF, newMin, newMax)) {
     Node256 *parentPtr = (Node256*)(basePtr+(lastMatchParent&k_NODE256_NO_TAG_MASK));
     // Ok, now reallocate child and relink it
-    u_int32_t copyOffset = reallocateAndLink(parentPtr, keyPtr[lastMatchIndex-1], newMin, newMax, lastMatch);
+    u_int32_t copyOffset = reallocateAndLink(parentPtr, keyPtr[lastMatchIndex-1], newMin, newMax, lastMatchParent, lastMatch);
     assert(copyOffset!=0);
     // update pointer to 'lastMatch' to reflect reallocation
     lastMatchPtr = (Node256*)(basePtr+copyOffset);
@@ -392,13 +392,13 @@ begin:
 
 // MANIPULATORS                                                                                                         
 inline                                                                                                                  
-u_int32_t CRadix::Tree::reallocateAndLink(Node256 *parentPtr, u_int8_t byte, int32_t min, int32_t max, u_int32_t child) {       
+u_int32_t CRadix::Tree::reallocateAndLink(Node256 *parentPtr, u_int8_t byte, int32_t min, int32_t max, u_int32_t parent, u_int32_t child) {       
   assert(parentPtr);                                                                                                    
   assert(byte>=parentPtr->minIndex());                                                                                  
   assert(byte<=parentPtr->maxIndex());                                                                                  
   assert(child!=0);                                                                                                     
   assert(parentPtr->tryOffset(byte)==child);                                                                            
-  u_int32_t newOffset = d_memManager->copyAllocateNode256(min, max, child&k_NODE256_NO_TAG_MASK);                 
+  u_int32_t newOffset = d_memManager->copyAllocateNode256(min, max, parent&k_NODE256_NO_TAG_MASK, child&k_NODE256_NO_TAG_MASK);                 
   assert(newOffset!=0);                                                                                                 
   parentPtr->setOffset(byte, newOffset | (child&k_NODE256_ANY_TAG));                                                    
   return newOffset;                                                                                                     

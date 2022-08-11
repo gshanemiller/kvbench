@@ -87,7 +87,7 @@ private:
     // offset in which 'key[*lastMatchIndex]' terminates. 'lastMatchParent' is
     // 'lastMatch's parent.
 
-  u_int32_t reallocateAndLink(Node256 *parentPtr, u_int8_t byte, int32_t min, int32_t max, u_int32_t child);
+  u_int32_t reallocateAndLink(Node256 *parentPtr, u_int8_t byte, int32_t min, int32_t max, u_int32_t parent, u_int32_t child);
     // Copy-reallocate the specified 'child' offset of 'parentPtr' node at
     // specified 'byte' so it has sufficient capacity to hold its current
     // entries plus all offsets in '[min, max]' returing the offset to the
