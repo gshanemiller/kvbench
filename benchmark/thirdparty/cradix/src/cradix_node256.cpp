@@ -47,17 +47,15 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
       assert((int32_t)index==newMin);
       // confirm oldmax did not change
       assert(oldMax==newMax);
-      // check we're moving memory within d_offset bounds. we're moving
-      // delta<<2 bytes or 'delta' count of 4-byte words bytes starting
-      // @ d_offset+delta and this cannot be >= capacity() which is one
-      // word past end of d_offset e.g. d_offset[capacity()] is 1 word
-      // too far. By post-condition of canSetOffset delta must be >=0:
-      assert((delta+delta)<(int)capacity());
-      // move old offsets right in d_offset
-      memmove(d_offset+delta, d_offset, delta<<2);
+      // ensure we're not writing beyond end of d_offset. 'size()' gives the
+      // number of entries in d_offset now prior to adding new offset and 
+      // updating this' minIndex():
+      assert((void*)(d_offset+delta+size()) <= (void*)(d_offset+capacity()));
+      // move old offsets right in d_offset. note memmove requires len in bytes
+      memmove(d_offset+delta, d_offset, size()<<2);
       // check we're not memsetting beyond end of d_offset
-      assert(delta<(int)capacity());
-      // memset new empty slots 0
+      assert((void*)(d_offset+delta) <= (void*)(d_offset+capacity()));
+      // memset new empty slots to 0
       memset(d_offset, 0, delta<<2);
       // set/update offset
       d_offset[0] = offset;
@@ -78,9 +76,10 @@ bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset
       assert((int32_t)index==newMax);
       // make sure byte count for memset next is >=0
       assert(((delta-1)*4)>=0);
-      // make sure we're not memsetting beyond end of d_offset. here
-      // is old size send min/max not yet updated
-      assert((size()+delta)<(int)capacity());
+      // make sure we're not memsetting beyond end of d_offset.
+      // here 'size()' gives the number of entries in d_offset
+      // now before adding new offset and updating new max:
+      assert((size()+delta)<=(int)capacity());
       // Append 0s e.g. null
       memset(d_offset+size(), 0, delta<<2);
       // set/update offset

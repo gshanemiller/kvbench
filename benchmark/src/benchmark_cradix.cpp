@@ -23,21 +23,15 @@ static int cradix_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats&
   // Benchmark running: do insert
   u_int32_t count=0;
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    printf("insert word: %u ", count);
-    word.print();
 
+/*
     if (count==2904) {
       printf("here we go\n");
     }
-
+*/
     map->insert(word);
 
-    if (map->find(word)!=CRadix::e_EXISTS) {
-      printf("bad last key\n");
-      map->find(word);
-      break;
-    }
-
+/*
     if (count==2903) {
       printf("good I hope\n");
       map->dotGraph(std::cout);
@@ -48,9 +42,9 @@ static int cradix_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats&
       printf("\n\n");
       continue;
     }
+*/
 
-    map->insert(word);
-
+/*
     map->dotGraph(std::cout);
 
     CRadix::TreeStats tstats;
@@ -63,6 +57,7 @@ static int cradix_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats&
 
     ++count;
     printf("\n\n");
+*/
   }
 
   // Benchmark done: take stats
@@ -147,8 +142,7 @@ int Benchmark::cradix::start() {
     if (d_stats.config().d_customAllocator) {
       return rc;
     } else {
-      // for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-      for (unsigned i=0; i<1; ++i) {
+      for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
         if (d_stats.config().d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
