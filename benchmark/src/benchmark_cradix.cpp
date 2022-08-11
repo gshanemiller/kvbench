@@ -23,41 +23,7 @@ static int cradix_test_text_insert(unsigned runNumber, T* map, Benchmark::Stats&
   // Benchmark running: do insert
   u_int32_t count=0;
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-
-/*
-    if (count==2904) {
-      printf("here we go\n");
-    }
-*/
     map->insert(word);
-
-/*
-    if (count==2903) {
-      printf("good I hope\n");
-      map->dotGraph(std::cout);
-    }
-
-    if (count<2904) {
-      ++count;
-      printf("\n\n");
-      continue;
-    }
-*/
-
-/*
-    map->dotGraph(std::cout);
-
-    CRadix::TreeStats tstats;
-    map->statistics(&tstats);
-    tstats.print(std::cout);
-
-    CRadix::NodeStats nstats;
-    CRadix::Node256::runtimeStatistics(&nstats);
-    nstats.print(std::cout);
-
-    ++count;
-    printf("\n\n");
-*/
   }
 
   // Benchmark done: take stats
@@ -159,9 +125,11 @@ int Benchmark::cradix::start() {
         cradixTree.statistics(&tstats);
         tstats.print(std::cout);
 
+/*
         CRadix::NodeStats nstats;
         CRadix::Node256::runtimeStatistics(&nstats);
         nstats.print(std::cout);
+*/
       }
     }
   }

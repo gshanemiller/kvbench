@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <iostream>
+#include <vector>
 
 #include <cradix_constants.h>
 #include <cradix_memstats.h>
@@ -12,17 +13,18 @@ namespace CRadix {
 struct MemManager {
   // DATA
   union {
-    u_int8_t *d_basePtr;          // memory mananged by this object
-    u_int64_t d_baseVal;          // 'd_basePtr' as uint64 
+    u_int8_t *d_basePtr;                  // memory mananged by this object
+    u_int64_t d_baseVal;                  // 'd_basePtr' as uint64 
   };
-  u_int64_t   d_size;             // size in bytes of memory at basePtr
-  u_int64_t   d_offset;           // first free byte after 'd_basePtr' not in use
-  u_int64_t   d_alignment;        // alignment in bytes of all addresses returned
-  u_int64_t   d_alignMask;        // bit mask used to check for correct alignment
+  u_int64_t   d_size;                     // size in bytes of memory at basePtr
+  u_int64_t   d_offset;                   // first free byte after 'd_basePtr' not in use
+  u_int64_t   d_alignment;                // alignment in bytes of all addresses returned
+  u_int64_t   d_alignMask;                // bit mask used to check for correct alignment
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
-  MemStats    d_stats;            // runtime memory statistics
+  MemStats    d_stats;                    // runtime memory statistics
 #endif
-  bool        d_owned;            // true if memory freed in destructor
+  std::vector<u_int32_t>  d_deadOffsets;
+  bool                    d_owned;        // true if memory freed in destructor
 
   // CREATORS
   MemManager() = delete;
@@ -115,6 +117,8 @@ MemManager::MemManager(u_int8_t *ptr, u_int64_t size, u_int64_t alignment)
   assert(((d_baseVal+d_offset) & k_NODE256_IS_LEAF)==0);
   assert(((d_baseVal+d_offset) & k_NODE256_IS_TERMINAL)==0);
   assert(d_offset<=d_size);
+
+  d_deadOffsets.reserve(CRadix::k_MEMMANAGER_DEADMEMORY_RESERVE);
 }
 
 inline
@@ -239,6 +243,8 @@ u_int32_t MemManager::copyAllocateNode256(u_int32_t newMin, u_int32_t newMax, u_
     assert(false);
     return 0;
   }
+
+  d_deadOffsets.push_back(oldObject & k_NODE256_NO_TAG_MASK);
 
 #ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
   ++d_stats.d_allocCount;

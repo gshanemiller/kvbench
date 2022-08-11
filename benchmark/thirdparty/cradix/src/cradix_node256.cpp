@@ -1,7 +1,9 @@
 #include <cradix_node256.h> 
 #include <string.h>
 
+#ifdef CRADIX_NODE_RUNTIME_STATISTICS
 CRadix::NodeStats CRadix::Node256::d_nodeStats;
+#endif
 
 bool CRadix::Node256::trySetOffset(const u_int32_t index, const u_int32_t offset, int32_t& newMin, int32_t& newMax) {
   assert(!isDead());
