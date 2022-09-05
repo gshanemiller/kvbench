@@ -20,9 +20,12 @@ struct Config {
   std::string   d_allocator;        // name of custom allocator
   bool          d_needHashAlgo;     // True if 'd_dataStructure' requires hash algo
   bool          d_customAllocator;  // True if a custom allocator not default malloc/free or std::allocator used
-  unsigned      d_runs;             // How many timees to run each test
-  unsigned      d_recordRuns;       // The last 'd_recordRuns' of 'd_runs' total are reported
+  unsigned      d_runs;             // How many times to run each test
   unsigned      d_verbosity;        // higher verbosity level gives more output
+  int           d_cpu0;             // Optional cpu coreId for pinning thread(s)
+  int           d_cpu1;             // Optional cpu coreId for pinning thread(s)
+  int           d_cpu2;             // Optional cpu coreId for pinning thread(s)
+  int           d_cpu3;             // Optional cpu coreId for pinning thread(s)
 
   // CREATORS
   Config();
@@ -39,8 +42,11 @@ Config::Config()
 : d_needHashAlgo(false)
 , d_customAllocator(false)
 , d_runs(10)
-, d_recordRuns(1)
 , d_verbosity(0)
+, d_cpu0(2)
+, d_cpu1(4)
+, d_cpu2(6)
+, d_cpu3(8)
 {
 }
 
@@ -57,8 +63,11 @@ void Config::print() const {
   printf("  needsHashAlgo: %s,\n",  d_needHashAlgo ? "true": "false" );
   printf("  customAlloc  : %s,\n", d_customAllocator ? "true": "false" );
   printf("  runs         : %u,\n", d_runs);
-  printf("  recordRuns   : %u,\n", d_recordRuns);
-  printf("  verbosity    : %u\n", d_verbosity);
+  printf("  verbosity    : %u,\n", d_verbosity);
+  printf("  coreId0      : %d,\n", d_cpu0);
+  printf("  coreId1      : %d,\n", d_cpu1);
+  printf("  coreId2      : %d,\n", d_cpu2);
+  printf("  coreId3      : %d\n", d_cpu3);
   printf("}\n");
 }
 

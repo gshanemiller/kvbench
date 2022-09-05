@@ -150,8 +150,7 @@ public:
 
   // ACCESSORS
   int core() const;
-    // Return the pinned HW core number (zero-based) of the caller. As documented in the constructors, the caller's
-    // thread leaves the constructor pinned. This acceessor returns that HW core number.
+    // Return the current HW core number (zero-based) of the caller.
 
   unsigned fixedCountersSupported() const;
     // Return the number of fixed, distinct counters Intel Skylake PMU can run concurrently. Note the value returned
@@ -249,6 +248,11 @@ public:
   PMU& operator=(const PMU& rhs) = delete;
     // Assignment operator not supported
 
+  static int pinToHWCore(int coreId);
+    // Return 0 if the the current/caller thread was pinned to 'coreId' and non-zero errno otherwise. Behavior is
+    // defined provided 'coreId>=0' and 'coreId' is less than the total number of cores available in the underlying
+    // HW as reported by 'cat /proc/cpuinfo'. Note this routine only enforces the minimum bound.
+
 private:
   // PRIVATE MANIPULATORS
   int rdmsr(u_int32_t reg, u_int64_t *value);
@@ -262,10 +266,6 @@ private:
   int open(int cpu);
     // Return 0 if the MSR system file for specified 'cpu' was successfully opened. Class member 'd_fid' will hold
     // the file handle to it.
-
-  int pinToHWCore();
-    // Return 0 if the the current thread was pinned the current HW core and non-zero otherwise. Hence forth, 'core()'
-    // will return this value.
 };
 
 // INLINE DEFINITIONS
@@ -280,7 +280,7 @@ PMU::PMU(bool pin, ProgCounterSetConfig config)
   assert(config>=0 && config<k_DEFAULT_CONFIG_UNDEFINED);
 
   if (pin) {
-    pinToHWCore();
+    pinToHWCore(sched_getcpu());
   }
 
   memset(d_pcfg, 0, sizeof(d_pcfg));
@@ -329,7 +329,7 @@ PMU::PMU(bool pin, unsigned count, u_int64_t *config, const char **progMnemonic,
   assert(progDescription);
 
   if (pin) {
-    pinToHWCore();
+    pinToHWCore(sched_getcpu());
   }
 
   memset(d_pcfg, 0, sizeof(d_pcfg));
@@ -646,22 +646,6 @@ int PMU::open(int cpu) {
     fprintf(stderr, "Error: cannot open '%s': %s\n", msr_file_name, strerror(errno));                                                 
     return errno;
   }
-
-  return 0;
-}
-
-inline
-int PMU::pinToHWCore() {
-  int cpu = sched_getcpu();                                                                                             
-  cpu_set_t mask;                                                                                                       
-  CPU_ZERO(&mask);                                                                                                      
-  CPU_SET(cpu, &mask);                                                                                                  
-                                                                                                                        
-  // Pin caller's (current) thread to cpu                                                                            
-  if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1) {                                                           
-      fprintf(stderr, "Error: could not pin thread to core %d: %s\n", cpu, strerror(errno));                                                 
-      return 1;                                                                                                         
-  } 
 
   return 0;
 }

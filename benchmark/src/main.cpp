@@ -39,10 +39,14 @@ void usageAndExit() {
   printf("                                't1ha::t1ha'       : t1ha hash variant 't1ha()'        https://github.com/olevino/t1ha.git\n");
   printf("                                'city::cityhash64' : city hash variant 'CityHash64()'  https://github.com/google/cityhash\n");
   printf("\n");
-  printf("       -a <allocator>           optional  : ommiting this argument means you get vanilla free/malloc and/or STL allocator\n");
+  printf("       -a <allocator>           optional  : ommiting this argument means you get free/malloc, STL allocator, whatever allocator comes with -d\n");
   printf("                                'mimalloc': Microsoft's allocator https://github.com/microsoft/mimalloc\n");
   printf("                                            Per MS' doc it beats STL, jemalloc, tcmalloc, Hoard, and others\n");
   printf("                                            See https://github.com/microsoft/mimalloc#benchmark-results-on-a-16-core-amd-5950x-zen3\n");
+  printf("\n");
+  printf("                                optional  : CPU cores for pinning threads\n");
+  printf("       -0 <coreId0>             run thread 0 pinned to 'coreId0>=0'. 'cradix uses thread 0 to run radix operations\n");
+  printf("       -1 <coreId1>             run thread 1 pinned to 'coreId1>=0'. 'cradix uses thread 1 to delegate insert/find operations to thread0\n");
   printf("\n");
   printf("File format descriptions provided in 'README.md' at https://github.com/rodgarrison/kvbench\n");
   exit(2);
@@ -51,7 +55,7 @@ void usageAndExit() {
 void parseCommandLine(int argc, char **argv) {
   int opt;
 
-  const char *switches = "f:F:d:h:a:";
+  const char *switches = "f:F:d:h:a:0:1:2:3:";
 
   while ((opt = getopt(argc, argv, switches)) != -1) {
     switch (opt) {
@@ -125,7 +129,42 @@ void parseCommandLine(int argc, char **argv) {
           }
         }
         break;
-
+      case '0':
+        {
+          if (atoi(optarg)>=0) {
+            config.d_cpu0 = atoi(optarg);
+          } else {
+            usageAndExit();
+          }
+        }
+        break;
+      case '1':
+        {
+          if (atoi(optarg)>=0) {
+            config.d_cpu1 = atoi(optarg);
+          } else {
+            usageAndExit();
+          }
+        }
+        break;
+      case '2':
+        {
+          if (atoi(optarg)>=0) {
+            config.d_cpu2 = atoi(optarg);
+          } else {
+            usageAndExit();
+          }
+        }
+        break;
+      case '3':
+        {
+          if (atoi(optarg)>=0) {
+            config.d_cpu3 = atoi(optarg);
+          } else {
+            usageAndExit();
+          }
+        }
+        break;
       default:
         {
           usageAndExit();

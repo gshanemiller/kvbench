@@ -46,6 +46,12 @@ public:
     // 'd_data, d_size' defined behavior also requires 'd_size>0' and the memory range '[d_data, d_data+d_size)' is
     // valid, contiguous.
 
+  explicit Slice(u_int64_t word);
+    // Create a Slice from specified 'word'. Behavior is defined provided the upper 16 bits of 'word' are the slice's
+    // size and the lower 48 bits point to the underlying data. After moving the bits from 'word' into member attributes
+    // 'd_data, d_size' defined behavior also requires 'd_size>0' and the memory range '[d_data, d_data+d_size)' is
+    // valid, contiguous.
+
   Slice(const Slice& other) = default;
     // Copy constructor
 
@@ -53,6 +59,9 @@ public:
     // Destroy this object. 'd_data' not freed/destroyed because it is not owned.
 
   // ACCESSORS
+  u_int64_t rawValue() const;
+    // return the raw, opaque value of this Slice
+
   ssize size() const;
     // Return 'size' attribute
 
@@ -130,7 +139,22 @@ Slice<T>::Slice(const void *ptr)
   assert(reinterpret_cast<u_int64_t>(ptr) >> 48);
 }
 
+template<class T>
+inline
+Slice<T>::Slice(u_int64_t word)
+: d_opaque(word)
+{
+  assert((word) & 0xFFFFFFFFFFFFULL);
+  assert(word >> 48);
+}
+
 // ACCESSORS
+template<class T>
+inline
+u_int64_t Slice<T>::rawValue() const {
+  return d_opaque;
+}
+
 template<class T>
 inline
 ssize Slice<T>::size() const {

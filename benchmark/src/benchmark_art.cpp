@@ -42,11 +42,10 @@ static int art_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
 
   timespec_get(&endTime, TIME_UTC);
 
-  if (stats.config().d_runs-runNumber<=stats.config().d_recordRuns) {
-    char label[128];
-    snprintf(label, sizeof(label), "insert run %u", runNumber);
-    stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
-  }
+  char label[128];
+  snprintf(label, sizeof(label), "insert run %u", runNumber);
+  stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
+
   return 0;
 }
 
@@ -90,11 +89,10 @@ static int art_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
   }
 
   // Benchmark done: take stats
-  if (stats.config().d_runs-runNumber<=stats.config().d_recordRuns) {
-    char label[128];
-    snprintf(label, sizeof(label), "find run %u", runNumber);
-    stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
-  }
+  char label[128];
+  snprintf(label, sizeof(label), "find run %u", runNumber);
+  stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
+
   return 0;
 }
 

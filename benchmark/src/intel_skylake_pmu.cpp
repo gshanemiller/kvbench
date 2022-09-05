@@ -39,3 +39,17 @@ void Intel::SkyLake::PMU::print(const char *label) {
       progOverflow[i] ? "true" : "false");
   }
 }
+
+int Intel::SkyLake::PMU::pinToHWCore(int coreId) {
+  assert(coreId>=0);
+
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  CPU_SET(coreId, &mask);
+
+  if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
+      return errno;
+  }
+
+  return 0;
+}
