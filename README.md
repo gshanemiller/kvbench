@@ -117,28 +117,45 @@ Or you can make an ASCII file using Perl/Ruby/Python with keys, values in your d
 The CRadix implementation started as a rewrite of ART but then evolved into something simpler, and with argubably
 better performance. It offers these features:
 
-* Keys may be up 0xffff bytes in size
-* It is a 8-bit (256-children) vanilla radix tree supporting, in consequence, ASCII or arbitrary binary-blob keys
-* Radix trees require no sorting so no SIMD for sorting, and no rotations or other special parent-child cleanup unlike
-Btrees or ART
+* It is a 8-bit (256-children) vanilla radix tree supporting arbitrary binary-blob keys which includes vanilla
+ASCII keys. ART/HOT have might tighter constraints
+* Radix trees require no sorting with or without SIMD help, and no rotations or other special parent-child 
+cleanup unlike Btrees or ART
 * Radix tress keep keys in sorted order, and support prefix matching unlike hashmaps
 * Radix trees have worst-case O(N) time complexity where N is the maximum key size regardless of insert order. This
 means CRadix will not peform marketly worse just because keys were inserted in-order, for example. This concern is
-touched on by the ART, HOT technical papers since key order and key-distribution sometimes makes trie performance much
-better or much worse
+touched on by the ART, HOT technical papers since key order and key-distribution sometimes makes trie performance
+artifically better or worse
 * The CRadix tree implemenation comes with an iterator
 * CRadix tree keeps internal nodes as small as possible usually under 10% of what a textbook 256 n-ary tree would
-require. The benchmark emits statistics on this
+require. The benchmark emits statistics on this. The root, however, always contains 256-children.
 * No memory is used for leaf nodes
 * CRadix is faster than ART, HOT
+* CRadix can collect certain runtime statistics if built with the right defines
+* Keys may be up 0xffff bytes in size
+
+Shortcomings to be addressed:
+
+* CRadix is not templatized
+* CRadix does not accept a standard style C++ allocator
+* CRadix API does not currently deal with values only keys
+* Memory allocation depending on your aims/desires; see below
 
 While this benchmark investigates data structures, my ultimate aim is something larger. It was important to have an
 efficient sorted data structure that is also MT safe. In consequence, this respository runs the CRadix trie in one
 thread, while another thread feeds it insert or find operations from the binary input file connected by a MT safe
-ring-buffer. Even with this overhead, CRadix will is still very competative. In contrast no other algorithm is run
-with threads or a ringbuffer, and are not not MT safe to my knowledge. 
+ring-buffer. Even with this overhead, CRadix will is still very competative. In contrast no other algorithm tested 
+here is run with threads, ringbuffer, or connecting connecting queue. 
 
-# Worked Example
+For memory allocation CRadix tree accepts a memory manager object in its constructor. The object does not have STL
+allocator API. The library implementation pre-allocates a fixed chunk of memory then hands out new memory with a
+defined alignment by simply incrementing a pointer. Memory is not freed; it is tombstoned or zombied leaving dead
+memory. However, and for my long term purposes, this is desirable because I want CRadix to play well with LSM where
+closed segments of memory are never touched. As such, older memory segments can be cleaned in a trivially MT-safe
+way. See [RAMCloud](https://ramcloud.atlassian.net/wiki/spaces/RAM/overview) where segmented LSM is implemented.
+For other users, the memory manager object can just wrap malloc/free or new/delete as desired.
+
+# Worked Benchmark Example
 Obtain a test file:
 
 * `curl -o dict.txt https://www.gutenberg.org/cache/epub/29765/pg29765.txt`
@@ -152,29 +169,35 @@ You'll see output like this:
 ```
 $ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin
 reading './dict.txt' ...
-000000000 bytes left
 writing './dict.bin' ...
 wrote 004545921 words
 ```
 
-As of this writing we'll need a zero terminator on the end of strings for the HOT trie code. Add `-t`:
+We need a zero terminator on the end of strings for the HOT trie code. Add `-t`:
 
 ```
-$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.trie -t`
+$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.hot -t`
 ```
 
-The conversion finds all 4545921 words in `dict.txt` writing into `dict.bin`. Append `-v` to command line to see each
-word found on stdout. A word is just the ASCII text sitting between whitespaces. There's only ~500,000 unique words in
-this file with average key length of `28956348/4545921` about 6 chars or less. `28956348` is the filesize of `dict.txt`
-including whitespaces.
+For CRadix we require all keys to be on a 2-byte boundary. Add `-b 2`:
+
+```
+$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.cradix -b 2`
+```
+
+The conversion finds all 4545921 words (~500,000 unique) in `dict.txt` writing into `dict.bin.*`. Append `-v` 
+to command line to see each word found on stdout. A word is just the ASCII text sitting between whitespaces. 
 
 We'll now benachmark this file using three algorithms:
 
 * Cuckoo hash map
 * Facebook's F14 hash map
+* Patricia Trie
 * HOT Trie
+* ART Trie
+* CRadix Trie
 
-The first benchmark will be explained at length. The other two will be summarized.
+The first benchmark will be explained at length. The remainder will give elided stats only followed by a few remarks.
 
 ## Cuckoo Hashmap on dict.bin
 
