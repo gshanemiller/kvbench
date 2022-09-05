@@ -1,5 +1,5 @@
 # Goal
-Benchmark a variety of hash, tree, and trie implementations on large KV data sets. The basic approach:
+Benchmark a variety of hash, and trie implementations on KV (key-value) data sets. The basic approach:
 
 1. Test sets are stored in a file
 2. Using transparent huge memory support, load a test set into shared memory
@@ -14,33 +14,34 @@ example, hashmaps often can point back to (2) both for keys, values whereas trie
 key because key ordering is structurally dependent on it.
 
 # Features
-* This respository is self contained and self building. There are no dependencies and no GIT sub-modules. This comes at
-the cost of copying third-party code into this repo rarely with small edits to make the code build. Build hell is real!
-I've tried to clearly advertise where the original code came from so its authors get credit for their know-how.
+* This respository is self contained and self building. There are no GIT sub-modules. This comes at the cost of copying
+third-party code into this repo rarely with small edits to make the code build. I clearly advertise where the original
+code came from so its author(s) get credit for their know-how. URLs are provided so readers can see the original code
+in its original organization.
 
 * Simple build, simple setup
 
-* Supports **xxhash, t1ha, cityhash** algorithms which may be intermixed with a hash map algorithm
+* Supports **xxhash, t1ha, cityhash** hashing algorithms which may be intermixed with a hashmap algorithm
 
-* Hashing algorithms supported: **cuckoo** hash map, **Facebook's F14** hash map
+* Hashmap algorithms supported: **cuckoo** hash map, **Facebook's F14**
 
-* Trie algos supported: **HOT** Height Optimized Trie. Per HOT paper it beats ART (Adaptive Radix Tree)
+* Trie algos supported: **ART** (Adaptive Radix Tree), **HOT** (Height Optimized Trie), **Patricia** implementation,
+and **CRadix**. The last data structure, CRadix, is my own implementation of a Radix tree. As implemented in this
+benchmark, it confers distinction in several respects. See below for more information.
 
-* Tree algos supported: **None**: binary search trees, btrees regularly underpeform tries
+* Learned Indexes: **None** at present. I strongly considered https://github.com/gvinciguerra/PGM-index but at this
+time I could not find a compact, efficient way to map arbitrary keys to integers. See https://github.com/gvinciguerra/PGM-index/issues/38
 
-* Learned Indexes: **None** at present. Too many papers work with integral key types e.g. uint64. But if keys are real
-world, one needs a map from the string to an integral type. How best to do this is an open question
+* Optionally supports Microsoft's mimmalloc allocator. When data structures under benchmark admit easy composition with
+a non-default allocation, you can specify alternates on the command line. Otherwise the the code's default approach
+(whether malloc/free, STL allocator etc.) is used.
 
-* Supports two memory allocators: default STL allocator, and Microsoft's MIM allocator each with one or two variations
-
-* Intel PMU metrics (programmable!) provided with each benchmark
-
-* SIMD support: some algos have SIMD equivalents or enablements
+* Programmable/configurable Intel PMU metrics
 
 * Generator to make KV pairs, and to convert or help convert data you might have laying around ready for benchmarking
 
-* Test Data is preloaded and organized into memory before the bechmark runs. So even if you have Gbs of KV pairs
-disk I/O, TLB misses, and random memory I/O getting to the data before the code-under-test runs is minimized
+* Test Data is preloaded and organized into huge page memory before the bechmark runs. This approach minimizes the
+pollution of benchmark results with disk I/O, TLB misses getting to the data.
 
 * Decently documented
 
@@ -51,16 +52,16 @@ The PMU code was developed by me. I copied it into this repository, again, to ke
 # Environments Supported
 Code verified to run on:
 
-* Ubuntu 20.04 LTS
-* Equinix c3.small.x86 ($0.50/hr) (1) Intel Xeon E-2278G CPU 3.4Ghz 32Gb 4-channel RAM
+* Linux (Ubuntu 20.04 LTS)
+* Equinix c3.small.x86 ($0.75/hr) (1) Intel Xeon E-2278G CPU 3.4Ghz
 * GNU 9.4.0 or better
-* Last tested May 2022
+* Last tested Sept 2022
 
-No windows support. Your CPU must have Intel PMU and basic SIMD support.
+No windows/mac support. Your box must have Intel PMU. ART will run faster if it detects SIMD.
 
 # Building (Est 10mins)
-There are three approaches available to you. If you already have an Intel x86 Linux system with a GNU C/C++ tool chain
-and required dependencies then clone `kvbench` and build. The only atypical dependency is `libhuge*`:
+If you already have an Intel x86 Linux system with a GNU C/C++ tool chain and required dependencies then clone kvbench
+and build:
 
 * Run command: `git clone https://github.com/rodgarrison/kvbench`
 * Run command: `cd kvbench`
@@ -70,65 +71,72 @@ and required dependencies then clone `kvbench` and build. The only atypical depe
 * Run command: `make -j 8`
 * Proceed to setup below
 
-If you don't have the tool chain and/or libraries and don't wanna waste your time figuring out what's needed get a throw
-away Ubuntu 20.04 LTS bare metal machine:
+If you don't have the tool chain and/or dependent libraries and don't wanna waste your time figuring which build
+libraries are needed, surf to the [file](https://github.com/rodgarrison/kvbench/blob/main/benchmark/scripts/install)
+and copy the apt install (cira line 16) command, then run it as root on your box. Build per above.
 
-* Provision a machine (e.g. AWS EC2 or Equinix c3.small.x86 recommended) preferrably bare metal. It must be `apt` based
-* [Copy the install script contents](https://github.com/rodgarrison/kvbench/blob/main/benchmark/scripts/install) onto
-your machine in your user's home directory called, say, `install`. Git provides a copy-contents button for this purpose
-* `chmod 755 ./install`
-* `sudo ./install` to download dependencies with apt (which requirs root) **and** built kvbench
-* Proceed to setup
-
-Finally, there's a hybrid approach: [lift the `apt` command line](https://github.com/rodgarrison/kvbench/blob/main/benchmark/scripts/install)
-to install whatever you might be missing, then fall back to self-build in approach 1.
-
-`kvbench` itself installs nothing. All tasks are found in  `~/Dev/kvbench/build`.
+`kvbench` itself installs nothing. All tasks are found in the `build` directory.
 
 # Setup (Est 5 mins)
 * Build code; see previous section
 * Enable TLB/huge-pages. It's usually simplest and best to allocate a number of 1Gb huge pages equal to the
 maximum size of your test set. The memory required for any one test file is equal to the size in bytes of that
 file as reported by `ls -la`. Round the largest size found to next highest 1Gb size. Run `scripts/huge_1gb_pages <N>`
-where `N` is the number of pages you need e.g. 1.5Gb file needs 2 1Gb pages so `N=2`
+where `N` is the number of pages you need e.g. a 1.5Gb file needs 2 1Gb pages so `N=2`
 * Enable PMU in userspace by running `scripts/linux_pmu on`. Benchmarks will segfault otherwise. `rdpmc` has details
 on this
 * Optionally disable CPU hyper-threading by running `scripts/intel_ht off`
-* Optionally disable NMI by running `scripts/linux_nmi off`; this has not been thoroughly vetted by me
+* Optionally disable NMI by running `scripts/linux_nmi off`
 
-All steps are one-time, must be run as root/sudo, and should be done before running the benchmark task. Benchmarking
+All steps here are one-time, must be run as root/sudo, and should be done before running the benchmark task. Benchmarking
 code always deallocates memory on exit so `ipcs -m` will not show stranded allocations by this code. You can always
 force remove allocations if required with `sudo ipcrm -m <id>` where id is from `sudo ipcs -m`. The most likely case
 for `ipcrm` is on benchmark crash. And a crash almost always means input file is not valid.
 
-If you don't have test files handy see the next section for options.
-
 # Getting Data
-This benchmark suite works with three kinds of data sets:
+This repository provides a generator task that converts vanilla ASCII files containing keys or key-value pairs into a
+binary format that the benchmark task reads. The generator is a one-liner.
 
-* Files containing whitespace separated text words transformed into a `-F bin-text` binary file with a one-liner; see
-below. Since it does not contain KV pairs only words, these files are used to benchmark key performance where the value
-is a constant `bool` set false. In these tests, no memory (well, no serious memory) is spent holding values. Each word
-`W` in the file is considered to be a key. The KV pair `(W, false)` is inserted into the test structure. Keys or words
-here are modeled in code as `Benchmark::Slice<char>`.
+* Files containing whitespace separated text words are transformed into a binary file consisting of keys only. 
+Therefore trie, hashmap algos benchmark inserting and finding keys
 
-* Binary files holding explicit text KV pairs aka `-F bin-text-kv` also modeled as `Benchmark::Slice<char>`
+* Files holding ASCII only KV pairs are transformed into a binary format containing key, values. trie, hashmap algos
+then benchmark inserting and finding keys with values. 
 
-* Binary files holding explicit blob KV pairs aka `-F bin-slice-kv` modeled as `Benchmark::Slice<unsigned char>`.
+If you don't have ASCII files handy for conversion you can obtain sample files:
 
-If you cannot transform a KV file already into your possession into the supported format, you can run the generator
-task in this repository to make one. (NOTE: this task is not yet written but is coming). This will also give you
-control over the size and distribution of key/values.
-
-[In the alternative this web site](https://people.eng.unimelb.edu.au/sgog/data/) has a variety of text files you can
-obtain with `curl` or `wget`. [The Guttenberg Org](https://www.gutenberg.org/) also has good files:
-
+* [This web site](https://people.eng.unimelb.edu.au/sgog/data/) has a variety of text files you can
+obtain with `curl` or `wget`
+* [Guttenberg Org](https://www.gutenberg.org/) also has good files:
 * [Shakespeare's Collected Works](https://www.gutenberg.org/cache/epub/100/pg100.txt)
 * [English Dictionary](https://www.gutenberg.org/cache/epub/29765/pg29765.txt)
 
-Vanilla text files are the simplest way to get a decent look at a test configuration. Text files are easy to make and
-are readily available. The `generator.tsk` program in this repository has a conversion tool to transform them into
-`bin-text` suitable for benchmarking. See the next section for a worked example.
+Or you can make an ASCII file using Perl/Ruby/Python with keys, values in your desired distribution 
+
+# CRadix Background
+The CRadix implementation started as a rewrite of ART but then evolved into something simpler, and with argubably
+better performance. It offers these features:
+
+* Keys may be up 0xffff bytes in size
+* It is a 8-bit (256-children) vanilla radix tree supporting, in consequence, ASCII or arbitrary binary-blob keys
+* Radix trees require no sorting so no SIMD for sorting, and no rotations or other special parent-child cleanup unlike
+Btrees or ART
+* Radix tress keep keys in sorted order, and support prefix matching unlike hashmaps
+* Radix trees have worst-case O(N) time complexity where N is the maximum key size regardless of insert order. This
+means CRadix will not peform marketly worse just because keys were inserted in-order, for example. This concern is
+touched on by the ART, HOT technical papers since key order and key-distribution sometimes makes trie performance much
+better or much worse
+* The CRadix tree implemenation comes with an iterator
+* CRadix tree keeps internal nodes as small as possible usually under 10% of what a textbook 256 n-ary tree would
+require. The benchmark emits statistics on this
+* No memory is used for leaf nodes
+* CRadix is faster than ART, HOT
+
+While this benchmark investigates data structures, my ultimate aim is something larger. It was important to have an
+efficient sorted data structure that is also MT safe. In consequence, this respository runs the CRadix trie in one
+thread, while another thread feeds it insert or find operations from the binary input file connected by a MT safe
+ring-buffer. Even with this overhead, CRadix will is still very competative. In contrast no other algorithm is run
+with threads or a ringbuffer, and are not not MT safe to my knowledge. 
 
 # Worked Example
 Obtain a test file:
