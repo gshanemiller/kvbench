@@ -114,46 +114,42 @@ obtain with `curl` or `wget`
 Or you can make an ASCII file using Perl/Ruby/Python with keys, values in your desired distribution 
 
 # CRadix Background
-The CRadix implementation started as a rewrite of ART but then evolved into something simpler, and with argubably
-better performance. It offers these features:
+CRadix implementation started as a rewrite of ART, but then evolved into something better:
 
-* It is a 8-bit (256-children) vanilla radix tree supporting arbitrary binary-blob keys which includes vanilla
-ASCII keys. ART/HOT have might tighter constraints
-* Radix trees require no sorting with or without SIMD help, and no rotations or other special parent-child 
-cleanup unlike Btrees or ART
-* Radix tress keep keys in sorted order, and support prefix matching unlike hashmaps
-* Radix trees have worst-case O(N) time complexity where N is the maximum key size regardless of insert order. This
-means CRadix will not peform marketly worse just because keys were inserted in-order, for example. This concern is
-touched on by the ART, HOT technical papers since key order and key-distribution sometimes makes trie performance
-artifically better or worse
-* The CRadix tree implemenation comes with an iterator
+* 8-bit (256-children) vanilla radix tree supporting arbitrary binary-blob keys
+* Radix trees require no sorting with or without SIMD help, and do not require balancing
+* Radix trees keep keys in sort order unlike hashmaps
+* Radix trees have worst-case O(N) time complexity where N is the maximum key size regardless of insertion order. This
+means CRadix will not peform worse just because keys were inserted in-order, for example
+* CRadix tree implemenation comes with a key iterator
 * CRadix tree keeps internal nodes as small as possible usually under 10% of what a textbook 256 n-ary tree would
-require. The benchmark emits statistics on this. The root, however, always contains 256-children.
+require. See benchmark for stats
 * No memory is used for leaf nodes
 * CRadix is faster than ART, HOT
-* CRadix can collect certain runtime statistics if built with the right defines
+* CRadix collects runtime statistics if built with the right defines
 * Keys may be up 0xffff bytes in size
 
-Shortcomings to be addressed:
-
-* CRadix is not templatized
-* CRadix does not accept a standard style C++ allocator
-* CRadix API does not currently deal with values only keys
-* Memory allocation depending on your aims/desires; see below
-
 While this benchmark investigates data structures, my ultimate aim is something larger. It was important to have an
-efficient sorted data structure that is also MT safe. In consequence, this respository runs the CRadix trie in one
-thread, while another thread feeds it insert or find operations from the binary input file connected by a MT safe
-ring-buffer. Even with this overhead, CRadix will is still very competative. In contrast no other algorithm tested 
-here is run with threads, ringbuffer, or connecting connecting queue. 
+efficient sorted data structure that is also MT safe. In consequence, CRadix operations are benchmarked in one thread,
+while another thread feeds it insert or find commands from the binary input file connected by a MT safe ring-buffer.
+Even with this overhead, CRadix will is still very competative. In contrast no other algorithm tested here is run with 
+threads, ringbuffers, or connecting connecting queue.
 
-For memory allocation CRadix tree accepts a memory manager object in its constructor. The object does not have STL
-allocator API. The library implementation pre-allocates a fixed chunk of memory then hands out new memory with a
-defined alignment by simply incrementing a pointer. Memory is not freed; it is tombstoned or zombied leaving dead
-memory. However, and for my long term purposes, this is desirable because I want CRadix to play well with LSM where
-closed segments of memory are never touched. As such, older memory segments can be cleaned in a trivially MT-safe
-way. See [RAMCloud](https://ramcloud.atlassian.net/wiki/spaces/RAM/overview) where segmented LSM is implemented.
-For other users, the memory manager object can just wrap malloc/free or new/delete as desired.
+Shortcomings of the current implementation:
+
+* Not templatized
+* Does not store values; keys have been focus to date
+* Does not accept a standard style C++ allocator
+* Memory allocation policy not meet your needs
+
+CRadix tree accepts a memory manager object in its constructor. This object does not have STL allocator API. The 
+library implementation pre-allocates a fixed chunk of memory then hands out new memory on a defined alignmentment
+boundary by simply incrementing a pointer. Memory is not freed; it is tombstoned or zombied leaving dead memory.
+
+However, and for my long term purposes, this is desirable because I want CRadix to play well with LSM. See 
+[RAMCloud](https://ramcloud.atlassian.net/wiki/spaces/RAM/overview) where segmented LSM is well developed.
+For other users the memory manager implementation can just wrap malloc/free or new/delete as desired. There is
+no hard dependency between CRadix and memory management.
 
 # Worked Benchmark Example
 Obtain a test file:
