@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+
+import sys
+import string
+import random
+
+if len(sys.argv)<5:
+  print("usage: keygen <N> <avg> <dist> <s1>")
+  print("       N    - #keys to generate")
+  print("       avg  - average key length")
+  print("       dist - 'gauss' only support distribution");
+  print("       s1   - for gauss this gives the std deviation. bigger -> larger variation")
+  print
+  print("keys will consist of any valid ASCII upper/lower letter character");
+  sys.exit(2)
+
+N = int(sys.argv[1])
+avg = int(sys.argv[2])
+dist = sys.argv[3]
+s1 = 0
+
+letters = string.ascii_letters
+
+if N<1:
+  print("N must be >0");
+  sys.exit(2)
+
+if avg<1:
+  print("avg must be >0");
+  sys.exit(2)
+
+if dist=='gauss':
+  s1 = float(sys.argv[4])
+  if s1<=0:
+    print("s1 must be positive for gauss");
+    sys.exit(2)
+  
+minLen=0
+maxLen=0
+avgLen=0
+total=0
+
+if dist=='gauss':
+  i=0
+  while i<N:
+    len = int(random.gauss(avg, s1))
+    if len<1:
+      len = 1
+    total = total + len
+    key = ''.join(random.choice(letters) for i in range(len))
+    if i==0:
+      minLen = maxLen = len
+    elif len<minLen:
+      minLen = len
+    elif len>maxLen:
+      maxLen = len
+    print(key)
+    i = i + 1
+    if ((i%10000)==0):
+      sys.stderr.write("generated {0} keys...\n".format(i))
+
+sys.stderr.write("generated {0} keys with minLen {1} maxLen {2} avgLen {3}\n".format(N, minLen, maxLen, total*1.0/N))

@@ -96,14 +96,15 @@ int Benchmark::ART::start() {
         if (d_config.d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
+        art_mem_stats_reset();
         art_tree artTrie;
         art_tree_init(&artTrie);
         art_test_text_insert(i, artTrie, d_insertStats, d_file);
         art_test_text_find(i, artTrie, d_findStats, d_file);
         // art_iter(&artTrie, art_test_text_iter, 0);
-        art_print_memory();
         art_tree_destroy(&artTrie);
         art_print_memory();
+        art_mem_stats_reset();
       }
     }
   }

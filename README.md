@@ -205,14 +205,15 @@ We'll now benchmark this file set using several algorithms:
 * HOT Trie
 
 The first benchmark will be explained at length. The remainder will give elided stats only followed by a few remarks.
-All results are from [Equinix](https://console.equinix.com/) on-demand c3.small.x86 bare metal instance. 
+All results are from [Equinix](https://console.equinix.com/) on-demand c3.small.x86 bare metal instance. Benchmarks
+include cycles spent tracking memory.
 
 ## CRadix
 
 Here's the first command:
 
 ```
-./example/benchmark.tsk -f ./dict.bin.cradix -F bin-text -d cradix
+./benchmark.tsk -f ./dict.bin.cradix -F bin-text -d cradix
 ```
 
 This command reads `./dict.bin.cradix` and the inserts every key in the file into a new CRadix tree. Then, on the same
@@ -222,19 +223,29 @@ consumer) queue. Here a single thread runs inserts/finds. Then it's done with a 
 insert/find commands over the queue, while another thread runs the insert/finds. Again, **no other data structure
 benchmarked uses SPSC**. 
 
-For each set of 10 runs the benchmark gives the quickest (min), longest (max), and average metric. The first data line
-to look at is `NSI` nanoseconds/iteration or `OPS` (operations/second) which quickly summarize performance:
+For each set of 10 runs the benchmark gives the quickest (min), longest (max), and average (avg) metric. The first data
+line to look at is `NSI` nanoseconds/iteration or `OPS` (operations/second):
 
 ```
-./example/benchmark.tsk -f ./dict.bin.cradix -F bin-text -d cradix
+./benchmark.tsk -f ./dict.bin.cradix -F bin-text -d cradix
 loading './dict.bin.cradix'
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
+allocCount: 1665141 deadCount: 331106 freeCount: 0 currentSizeBytes: 68148032 maximumSizeBytes: 68148032 requestedBytes: 68148032 freedBytes: 0 deadBytes: 19798072 sizeBytes: 4294967295
 config: {
   filename     : "./dict.bin.cradix"
   fileSizeBytes: 43496622,
   format       : "bin-text"
   dataStructure: "cradix"
   hashAlgorithm: ""
-  allocator    : "vanilla malloc or std::allocator"
+  allocator    : "code default"
   needsHashAlgo: false,
   customAlloc  : false,
   runs         : 10,
@@ -245,77 +256,86 @@ config: {
   coreId3      : 8
 }
 Scaled Summary Statistics: 10 runs: CRadix Insert
-C0 : [rdtsc cycles: use with F2                                   ] minValue: 177.82932        maxValue: 179.77454        avgValue: 178.80151       
-F0 : [retired instructions                                        ] minValue: 310.59668        maxValue: 310.61272        avgValue: 310.59838       
-F1 : [no-halt cpu cycles                                          ] minValue: 247.57177        maxValue: 249.47584        avgValue: 248.85532       
-F2 : [reference no-halt cpu cycles                                ] minValue: 169.15065        maxValue: 170.45734        avgValue: 170.08109       
-P0 : [LLC references                                              ] minValue: 8.06368          maxValue: 10.61815         avgValue: 8.59964         
-P1 : [LLC misses                                                  ] minValue: 0.72530          maxValue: 0.94934          avgValue: 0.77121         
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 178.59992        maxValue: 179.55846        avgValue: 179.15513       
+F0 : [retired instructions                                        ] minValue: 309.59668        maxValue: 309.61272        avgValue: 309.59838       
+F1 : [no-halt cpu cycles                                          ] minValue: 248.32575        maxValue: 250.00136        avgValue: 249.40140       
+F2 : [reference no-halt cpu cycles                                ] minValue: 169.66740        maxValue: 170.80692        avgValue: 170.39810       
+P0 : [LLC references                                              ] minValue: 8.03325          maxValue: 10.54760         avgValue: 8.32516         
+P1 : [LLC misses                                                  ] minValue: 0.72276          maxValue: 0.94371          avgValue: 0.74755         
 P2 : [retired branch instructions                                 ] minValue: 59.52857         maxValue: 59.52990         avgValue: 59.52873        
 P3 : [retired branch instructions not taken                       ] minValue: 40.91113         maxValue: 40.91117         avgValue: 40.91115        
-NSI: [nanoseconds per iteration                                   ] minValue: 52.17974         maxValue: 52.75054         avgValue: 52.46499        
-OPS: [operations per second                                       ] minValue: 19164525.00291   maxValue: 18957150.29096   avgValue: 19060328.84574  
+NSI: [nanoseconds per iteration                                   ] minValue: 52.40585         maxValue: 52.68713         avgValue: 52.56879        
+OPS: [operations per second                                       ] minValue: 19081840.91100   maxValue: 18979965.52584   avgValue: 19022693.75666  
 N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
-NS : [nanoseconds elapsed                                         ] minValue: 237204992.00000  maxValue: 239799808.00000  avgValue: 238501708.80000 
+NS : [nanoseconds elapsed                                         ] minValue: 238232832.00000  maxValue: 239511552.00000  avgValue: 238973568.00000 
 Scaled Summary Statistics: 10 runs: CRadix Find
-C0 : [rdtsc cycles: use with F2                                   ] minValue: 133.54341        maxValue: 136.40191        avgValue: 135.69191       
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 133.54113        maxValue: 136.43453        avgValue: 135.98129       
 F0 : [retired instructions                                        ] minValue: 149.06026        maxValue: 149.06030        avgValue: 149.06029       
-F1 : [no-halt cpu cycles                                          ] minValue: 195.00121        maxValue: 199.19319        avgValue: 198.16128       
-F2 : [reference no-halt cpu cycles                                ] minValue: 133.22924        maxValue: 136.10152        avgValue: 135.39444       
-P0 : [LLC references                                              ] minValue: 9.25547          maxValue: 10.98943         avgValue: 9.62411         
-P1 : [LLC misses                                                  ] minValue: 1.08097          maxValue: 1.33715          avgValue: 1.13369         
+F1 : [no-halt cpu cycles                                          ] minValue: 194.99772        maxValue: 199.24616        avgValue: 198.53847       
+F2 : [reference no-halt cpu cycles                                ] minValue: 133.23436        maxValue: 136.13760        avgValue: 135.65445       
+P0 : [LLC references                                              ] minValue: 9.21235          maxValue: 10.94663         avgValue: 9.42406         
+P1 : [LLC misses                                                  ] minValue: 1.08203          maxValue: 1.34048          avgValue: 1.11129         
 P2 : [retired branch instructions                                 ] minValue: 33.43374         maxValue: 33.43375         avgValue: 33.43375        
 P3 : [retired branch instructions not taken                       ] minValue: 23.34698         maxValue: 23.34698         avgValue: 23.34698        
-NSI: [nanoseconds per iteration                                   ] minValue: 39.18512         maxValue: 40.02387         avgValue: 39.81553        
-OPS: [operations per second                                       ] minValue: 25519888.34378   maxValue: 24985091.12715   avgValue: 25115825.41517  
+NSI: [nanoseconds per iteration                                   ] minValue: 39.18445         maxValue: 40.03344         avgValue: 39.90048        
+OPS: [operations per second                                       ] minValue: 25520328.45694   maxValue: 24979116.30461   avgValue: 25062356.18170  
 N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
-NS : [nanoseconds elapsed                                         ] minValue: 178132480.00000  maxValue: 181945344.00000  avgValue: 180998272.00000 
+NS : [nanoseconds elapsed                                         ] minValue: 178129408.00000  maxValue: 181988864.00000  avgValue: 181384422.40000 
 Scaled Summary Statistics: 10 runs: CRadix Insert with SPSC Queue
-C0 : [rdtsc cycles: use with F2                                   ] minValue: 197.08603        maxValue: 204.22293        avgValue: 200.19575       
-F0 : [retired instructions                                        ] minValue: 298.82205        maxValue: 331.44770        avgValue: 318.58599       
-F1 : [no-halt cpu cycles                                          ] minValue: 282.05897        maxValue: 292.08773        avgValue: 286.42194       
-F2 : [reference no-halt cpu cycles                                ] minValue: 196.63362        maxValue: 203.62676        avgValue: 199.67627       
-P0 : [LLC references                                              ] minValue: 7.92447          maxValue: 13.52094         avgValue: 9.46566         
-P1 : [LLC misses                                                  ] minValue: 0.24514          maxValue: 0.24788          avgValue: 0.24643         
-P2 : [retired branch instructions                                 ] minValue: 71.70551         maxValue: 79.86192         avgValue: 76.64649        
-P3 : [retired branch instructions not taken                       ] minValue: 24.91892         maxValue: 27.63444         avgValue: 26.56389        
-NSI: [nanoseconds per iteration                                   ] minValue: 57.83014         maxValue: 59.92430         avgValue: 58.74263        
-OPS: [operations per second                                       ] minValue: 17292020.01935   maxValue: 16687720.87203   avgValue: 17023413.46159  
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 237.48924        maxValue: 242.76962        avgValue: 239.81549       
+F0 : [retired instructions                                        ] minValue: 668.55997        maxValue: 735.80810        avgValue: 721.38296       
+F1 : [no-halt cpu cycles                                          ] minValue: 339.90581        maxValue: 347.43847        avgValue: 343.10824       
+F2 : [reference no-halt cpu cycles                                ] minValue: 236.96101        maxValue: 242.21301        avgValue: 239.19538       
+P0 : [LLC references                                              ] minValue: 13.86532         maxValue: 15.95950         avgValue: 14.28421        
+P1 : [LLC misses                                                  ] minValue: 0.24299          maxValue: 0.24651          avgValue: 0.24562         
+P2 : [retired branch instructions                                 ] minValue: 164.13999        maxValue: 180.95201        avgValue: 177.34574       
+P3 : [retired branch instructions not taken                       ] minValue: 55.73874         maxValue: 61.33328         avgValue: 60.13323        
+NSI: [nanoseconds per iteration                                   ] minValue: 69.68553         maxValue: 71.23490         avgValue: 70.36810        
+OPS: [operations per second                                       ] minValue: 14350182.27637   maxValue: 14038062.97008   avgValue: 14210984.92788  
 N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
-NS : [nanoseconds elapsed                                         ] minValue: 262891264.00000  maxValue: 272411136.00000  avgValue: 267039334.40000 
+NS : [nanoseconds elapsed                                         ] minValue: 316784896.00000  maxValue: 323828224.00000  avgValue: 319887820.80000 
 Scaled Summary Statistics: 10 runs: CRadix Find with SPSC Queue
-C0 : [rdtsc cycles: use with F2                                   ] minValue: 165.45301        maxValue: 169.33818        avgValue: 167.14123       
-F0 : [retired instructions                                        ] minValue: 295.59081        maxValue: 305.64934        avgValue: 299.91896       
-F1 : [no-halt cpu cycles                                          ] minValue: 236.81538        maxValue: 242.52406        avgValue: 239.33592       
-F2 : [reference no-halt cpu cycles                                ] minValue: 164.89685        maxValue: 168.85168        avgValue: 166.64309       
-P0 : [LLC references                                              ] minValue: 6.70423          maxValue: 7.07149          avgValue: 6.84820         
-P1 : [LLC misses                                                  ] minValue: 0.24289          maxValue: 0.24548          avgValue: 0.24437         
-P2 : [retired branch instructions                                 ] minValue: 70.89770         maxValue: 73.41233         avgValue: 71.97973        
-P3 : [retired branch instructions not taken                       ] minValue: 25.19150         maxValue: 26.02587         avgValue: 25.55095        
-NSI: [nanoseconds per iteration                                   ] minValue: 48.54821         maxValue: 49.68823         avgValue: 49.04359        
-OPS: [operations per second                                       ] minValue: 20598082.46916   maxValue: 20125489.07648   avgValue: 20390025.42595  
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 201.25512        maxValue: 207.18944        avgValue: 204.35119       
+F0 : [retired instructions                                        ] minValue: 672.02955        maxValue: 712.37410        avgValue: 693.78844       
+F1 : [no-halt cpu cycles                                          ] minValue: 288.12859        maxValue: 296.38723        avgValue: 292.53128       
+F2 : [reference no-halt cpu cycles                                ] minValue: 200.67907        maxValue: 206.40327        avgValue: 203.72261       
+P0 : [LLC references                                              ] minValue: 11.82697         maxValue: 12.78944         avgValue: 12.27159        
+P1 : [LLC misses                                                  ] minValue: 0.24213          maxValue: 0.24401          avgValue: 0.24339         
+P2 : [retired branch instructions                                 ] minValue: 165.00738        maxValue: 175.09352        avgValue: 170.44711       
+P3 : [retired branch instructions not taken                       ] minValue: 56.46193         maxValue: 59.81926         avgValue: 58.27154        
+NSI: [nanoseconds per iteration                                   ] minValue: 59.05351         maxValue: 60.79475         avgValue: 59.96198        
+OPS: [operations per second                                       ] minValue: 16933793.39418   maxValue: 16448788.91389   avgValue: 16677234.38147  
 N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
-NS : [nanoseconds elapsed                                         ] minValue: 220696320.00000  maxValue: 225878784.00000  avgValue: 222948275.20000 
+NS : [nanoseconds elapsed                                         ] minValue: 268452608.00000  maxValue: 276368128.00000  avgValue: 272582425.60000 
 ```
 
-When run **without SPSC** it takes `52.46499 ns/op` to insert and `39.81553 ns/op` to find. Adding SPSC overhead these
-numbers increase to `58.74263` and `49.04359 ns/op` respectively. The P0/P1 data lines show there are a few LLC refs
+When run **without SPSC** it takes `52.56879 ns/op` to insert and `39.90048 ns/op` to find. Adding SPSC overhead these
+numbers increase to `70.36810` and `59.96198 ns/op` respectively. The P0/P1 data lines show there are a few LLC refs
 and almost 0 LLC misses. That's because the test file is not particularly big containing only ~500,000 unique words.
 Comparing C0 to F2 we can see the code doesn't spend too much time halted waiting for resources. Finally, comparing
 F0 to P2 and P3 note branch instructions are almost half of what the CPU does. The number of iterations appears in data
-line `N` (constant 4545921) which is what the generator command above reported. After repeated testing CRadix does
-sub-100 ns/operation work which puts it into the same order of 10 as hashing. 
+line `N` (constant 4545921) which is what the generator command above reported. CRadix does sub-100 ns/operation work
+which puts it into the same order of 10 as hashing. 
+
+On the memory side CRadix makes 1665141 allocations, 331106 deallocations reaching a peak of 68148032 (65Mb). Because
+the memory is not freed immediately unlike ART/HOT the free count remains 0, however, and there's 19798072 in dead
+bytes. Subtracting the dead bytes from peak we get 46.1Mb which is what CRadix would have achieved with malloc/free.
+As we'll see, this is higher than ART.
 
 ## Facebook's F14 Hashmap
 
 For all other data structures it's imperative to run the benchmark pinned to a core. The CPU identifiers `coreId0`
-etc. appearing in the config data are used only by CRadix. That's why this command is prefixed by `taskset`. Facebook's
-F14 hashmap using the `xxhash:XX3_64bits` hashing algo gives `33.55490 ns/op` insert and `25.91206 ns/op' find with
-approximately the same LLC metrics. It spends less time branching compared to CRadix because it's not fundamentally
-organized as a tree of nodes.
+etc. appearing in the config data are used only by CRadix. That's why this command is prefixed by `taskset`. We also
+run F14 with mimalloc prefixing the command with `MIMALLOC_SHOW_STATS=1` to see how much memory F14 requires.
+
+Facebook's F14 hashmap using the `xxhash:XX3_64bits` hashing algo gives `31.67530 ns/op` insert and `25.21285 ns/op'
+find with approximately the same LLC metrics. It spends less time branching compared to CRadix because it's not
+fundamentally organized as a tree of nodes.
+
+On the memory side F14 uses 64Mb.
 
 ```
-taskset -c 5 ./example/benchmark.tsk -f ./dict.bin -F bin-text -d f14 -h xxhash:XX3_64bits 
+MIMALLOC_SHOW_STATS=1 taskset -c 5 ./benchmark.tsk -f ./dict.bin -F bin-text -d f14 -h xxhash:XX3_64bits -a mimalloc
 loading './dict.bin'
 config: {
   filename     : "./dict.bin"
@@ -323,9 +343,9 @@ config: {
   format       : "bin-text"
   dataStructure: "f14"
   hashAlgorithm: "xxhash:XX3_64bits"
-  allocator    : "vanilla malloc or std::allocator"
+  allocator    : "mimalloc"
   needsHashAlgo: true,
-  customAlloc  : false,
+  customAlloc  : true,
   runs         : 10,
   verbosity    : 0,
   coreId0      : 2,
@@ -334,32 +354,153 @@ config: {
   coreId3      : 8
 }
 Scaled Summary Statistics: 10 runs: F14 Insert
-C0 : [rdtsc cycles: use with F2                                   ] minValue: 113.51912        maxValue: 118.13129        avgValue: 114.35575       
-F0 : [retired instructions                                        ] minValue: 207.74573        maxValue: 207.74834        avgValue: 207.74705       
-F1 : [no-halt cpu cycles                                          ] minValue: 158.76499        maxValue: 167.61762        avgValue: 161.99272       
-F2 : [reference no-halt cpu cycles                                ] minValue: 110.09121        maxValue: 114.52474        avgValue: 110.90500       
-P0 : [LLC references                                              ] minValue: 6.53855          maxValue: 7.26735          avgValue: 6.73450         
-P1 : [LLC misses                                                  ] minValue: 1.17671          maxValue: 1.26706          avgValue: 1.20137         
-P2 : [retired branch instructions                                 ] minValue: 36.14632         maxValue: 36.14694         avgValue: 36.14663        
-P3 : [retired branch instructions not taken                       ] minValue: 18.94157         maxValue: 18.94244         avgValue: 18.94189        
-NSI: [nanoseconds per iteration                                   ] minValue: 33.30958         maxValue: 34.66287         avgValue: 33.55490        
-OPS: [operations per second                                       ] minValue: 30021393.09081   maxValue: 28849315.71737   avgValue: 29801910.11825  
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 107.37272        maxValue: 111.55737        avgValue: 107.94967       
+F0 : [retired instructions                                        ] minValue: 207.99753        maxValue: 208.00990        avgValue: 208.00023       
+F1 : [no-halt cpu cycles                                          ] minValue: 156.77186        maxValue: 157.45797        avgValue: 157.06306       
+F2 : [reference no-halt cpu cycles                                ] minValue: 107.19312        maxValue: 107.59420        avgValue: 107.35181       
+P0 : [LLC references                                              ] minValue: 6.47517          maxValue: 6.58989          avgValue: 6.57135         
+P1 : [LLC misses                                                  ] minValue: 1.18773          maxValue: 1.31235          avgValue: 1.29184         
+P2 : [retired branch instructions                                 ] minValue: 36.14495         maxValue: 36.14898         avgValue: 36.14571        
+P3 : [retired branch instructions not taken                       ] minValue: 18.94165         maxValue: 18.94316         avgValue: 18.94217        
+NSI: [nanoseconds per iteration                                   ] minValue: 31.50600         maxValue: 32.73382         avgValue: 31.67530        
+OPS: [operations per second                                       ] minValue: 31739981.38633   maxValue: 30549440.63311   avgValue: 31570338.24701  
 N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
-NS : [nanoseconds elapsed                                         ] minValue: 151422720.00000  maxValue: 157574656.00000  avgValue: 152537907.20000 
+NS : [nanoseconds elapsed                                         ] minValue: 143223808.00000  maxValue: 148805376.00000  avgValue: 143993420.80000 
 Scaled Summary Statistics: 10 runs: F14 Find
-C0 : [rdtsc cycles: use with F2                                   ] minValue: 86.14668         maxValue: 99.70892         avgValue: 88.30825        
-F0 : [retired instructions                                        ] minValue: 170.45465        maxValue: 170.45721        avgValue: 170.45636       
-F1 : [no-halt cpu cycles                                          ] minValue: 125.80771        maxValue: 145.66379        avgValue: 128.93414       
-F2 : [reference no-halt cpu cycles                                ] minValue: 85.95366         maxValue: 99.51830         avgValue: 88.09124        
-P0 : [LLC references                                              ] minValue: 5.71993          maxValue: 7.67854          avgValue: 6.05827         
-P1 : [LLC misses                                                  ] minValue: 1.03748          maxValue: 1.21057          avgValue: 1.07355         
-P2 : [retired branch instructions                                 ] minValue: 29.53234         maxValue: 29.53293         avgValue: 29.53272        
-P3 : [retired branch instructions not taken                       ] minValue: 14.60601         maxValue: 14.60636         avgValue: 14.60622        
-NSI: [nanoseconds per iteration                                   ] minValue: 25.27776         maxValue: 29.25732         avgValue: 25.91206        
-OPS: [operations per second                                       ] minValue: 39560460.50360   maxValue: 34179478.85569   avgValue: 38592069.27174  
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 85.80208         maxValue: 86.04510         avgValue: 85.92548        
+F0 : [retired instructions                                        ] minValue: 171.45583        maxValue: 171.45790        avgValue: 171.45678       
+F1 : [no-halt cpu cycles                                          ] minValue: 125.41892        maxValue: 125.61658        avgValue: 125.49983       
+F2 : [reference no-halt cpu cycles                                ] minValue: 85.68621         maxValue: 85.82397         avgValue: 85.74437        
+P0 : [LLC references                                              ] minValue: 5.69399          maxValue: 5.70531          avgValue: 5.69771         
+P1 : [LLC misses                                                  ] minValue: 1.02283          maxValue: 1.02901          avgValue: 1.02616         
+P2 : [retired branch instructions                                 ] minValue: 29.53261         maxValue: 29.53308         avgValue: 29.53282        
+P3 : [retired branch instructions not taken                       ] minValue: 14.60615         maxValue: 14.60645         avgValue: 14.60627        
+NSI: [nanoseconds per iteration                                   ] minValue: 25.17662         maxValue: 25.24797         avgValue: 25.21285        
+OPS: [operations per second                                       ] minValue: 39719384.05331   maxValue: 39607138.10749   avgValue: 39662313.48722  
 N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
-NS : [nanoseconds elapsed                                         ] minValue: 114910720.00000  maxValue: 133001472.00000  avgValue: 117794176.00000 
+NS : [nanoseconds elapsed                                         ] minValue: 114450944.00000  maxValue: 114775296.00000  avgValue: 114615628.80000 
+heap stats:    peak      total      freed    current       unit      count   
+  reserved:   64.0 MiB   64.0 MiB      0       64.0 MiB
+.
+ .
+  .
 ```
 
 ## ART (Adaptive Radix Trie)
+Compared to CRadix, ART is slower CPU wise, and better at memory. It runs with average `72.02056 ns/op` insert and
+`68.64186 ns/op` for find. It has a few more LLC references and about the same number of LLC misses as CRadix. Despite
+doing less memory work, it does more CPU work retiring 345 instructions per insert compared to CRadix 179. The likely
+cause is the `A` in ART: being an adaptive tree, ART peridocally reorganizes nodes for fit. And that makes it more
+complicated algorithm.
+
+On the memory side it does 879661 allocations reaching peak memory of 34003866 bytes (32.4Mb).
+
+```
+taskset -c 5 ./benchmark.tsk -f ./dict.bin.hot -F bin-text -d art
+loading './dict.bin.hot'
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+art memory: freeCount 879661, allocCount: 879661, currentBytes: 0, maxBytes: 34003866, requestedBytes: 36195754
+config: {
+  filename     : "./dict.bin.hot"
+  fileSizeBytes: 45853558,
+  format       : "bin-text"
+  dataStructure: "art"
+  hashAlgorithm: ""
+  allocator    : "code default"
+  needsHashAlgo: false,
+  customAlloc  : false,
+  runs         : 10,
+  verbosity    : 0,
+  coreId0      : 2,
+  coreId1      : 4,
+  coreId2      : 6,
+  coreId3      : 8
+}
+Scaled Summary Statistics: 10 runs: ART Insert
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 243.68451        maxValue: 253.22887        avgValue: 245.44728       
+F0 : [retired instructions                                        ] minValue: 345.35154        maxValue: 345.81221        avgValue: 345.51978       
+F1 : [no-halt cpu cycles                                          ] minValue: 355.94812        maxValue: 360.98015        avgValue: 357.52406       
+F2 : [reference no-halt cpu cycles                                ] minValue: 243.18875        maxValue: 246.64307        avgValue: 244.27252       
+P0 : [LLC references                                              ] minValue: 10.03844         maxValue: 13.36795         avgValue: 12.91674        
+P1 : [LLC misses                                                  ] minValue: 0.56324          maxValue: 0.96312          avgValue: 0.92041         
+P2 : [retired branch instructions                                 ] minValue: 85.15652         maxValue: 85.25395         avgValue: 85.19328        
+P3 : [retired branch instructions not taken                       ] minValue: 44.54928         maxValue: 44.60369         avgValue: 44.56835        
+NSI: [nanoseconds per iteration                                   ] minValue: 71.50329         maxValue: 74.30386         avgValue: 72.02056        
+OPS: [operations per second                                       ] minValue: 13985369.92900   maxValue: 13458251.88374   avgValue: 13884924.79173  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 325048320.00000  maxValue: 337779456.00000  avgValue: 327399756.80000 
+Scaled Summary Statistics: 10 runs: ART Find
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 233.23340        maxValue: 234.57883        avgValue: 233.93271       
+F0 : [retired instructions                                        ] minValue: 225.12540        maxValue: 225.59568        avgValue: 225.29879       
+F1 : [no-halt cpu cycles                                          ] minValue: 340.70605        maxValue: 342.42088        avgValue: 341.62537       
+F2 : [reference no-halt cpu cycles                                ] minValue: 232.77534        maxValue: 233.95875        avgValue: 233.40772       
+P0 : [LLC references                                              ] minValue: 14.24628         maxValue: 15.57193         avgValue: 15.28599        
+P1 : [LLC misses                                                  ] minValue: 1.18624          maxValue: 1.25014          avgValue: 1.23641         
+P2 : [retired branch instructions                                 ] minValue: 59.14462         maxValue: 59.25034         avgValue: 59.18836        
+P3 : [retired branch instructions not taken                       ] minValue: 36.58782         maxValue: 36.64224         avgValue: 36.60665        
+NSI: [nanoseconds per iteration                                   ] minValue: 68.43665         maxValue: 68.83146         avgValue: 68.64186        
+OPS: [operations per second                                       ] minValue: 14612054.58752   maxValue: 14528239.47659   avgValue: 14568369.76163  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 311107584.00000  maxValue: 312902400.00000  avgValue: 312040473.60000 
+```
+## HOT (Height Optimized Trie)
+I initially had high hopes for HOT. I thought it'd beat ART handily. But insertion performance of `202.96023 ns/op`
+is an order of 10 higher. Finds clock in at `81.09925 ns/op`. I did not benchmark memory because it's performance is
+too slow. HOT retires 2152.62048 instructions per iteration with more LLC references but, like ART and CRadix, almost
+no LLC misses.
+
+```
+taskset -c 5 ./benchmark.tsk -f ./dict.bin.hot -F bin-text -d hot
+loading './dict.bin.hot'
+config: {
+  filename     : "./dict.bin.hot"
+  fileSizeBytes: 45853558,
+  format       : "bin-text"
+  dataStructure: "hot"
+  hashAlgorithm: ""
+  allocator    : "code default"
+  needsHashAlgo: false,
+  customAlloc  : false,
+  runs         : 10,
+  verbosity    : 0,
+  coreId0      : 2,
+  coreId1      : 4,
+  coreId2      : 6,
+  coreId3      : 8
+}
+Scaled Summary Statistics: 10 runs: HOT Insert
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 690.94548        maxValue: 692.93342        avgValue: 691.69116       
+F0 : [retired instructions                                        ] minValue: 2152.36850       maxValue: 2152.78835       avgValue: 2152.62048      
+F1 : [no-halt cpu cycles                                          ] minValue: 1006.62524       maxValue: 1011.81385       avgValue: 1009.99367      
+F2 : [reference no-halt cpu cycles                                ] minValue: 687.75706        maxValue: 691.29891        avgValue: 690.05238       
+P0 : [LLC references                                              ] minValue: 18.91982         maxValue: 19.19026         avgValue: 19.02994        
+P1 : [LLC misses                                                  ] minValue: 0.58097          maxValue: 0.68751          avgValue: 0.64916         
+P2 : [retired branch instructions                                 ] minValue: 530.26357        maxValue: 530.34170        avgValue: 530.30878       
+P3 : [retired branch instructions not taken                       ] minValue: 265.75163        maxValue: 265.80489        avgValue: 265.78353       
+NSI: [nanoseconds per iteration                                   ] minValue: 202.74139        maxValue: 203.32475        avgValue: 202.96023       
+OPS: [operations per second                                       ] minValue: 4932391.98425    maxValue: 4918240.45884    avgValue: 4927073.74925   
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 921646336.00000  maxValue: 924298240.00000  avgValue: 922641152.00000 
+Scaled Summary Statistics: 10 runs: HOT Find
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 275.63572        maxValue: 277.28205        avgValue: 276.38705       
+F0 : [retired instructions                                        ] minValue: 430.01599        maxValue: 430.01599        avgValue: 430.01599       
+F1 : [no-halt cpu cycles                                          ] minValue: 402.79076        maxValue: 405.03214        avgValue: 403.71289       
+F2 : [reference no-halt cpu cycles                                ] minValue: 275.19732        maxValue: 276.72276        avgValue: 275.82717       
+P0 : [LLC references                                              ] minValue: 14.36829         maxValue: 14.63487         avgValue: 14.55280        
+P1 : [LLC misses                                                  ] minValue: 0.54326          maxValue: 0.56571          avgValue: 0.55585         
+P2 : [retired branch instructions                                 ] minValue: 66.02836         maxValue: 66.02836         avgValue: 66.02836        
+P3 : [retired branch instructions not taken                       ] minValue: 33.04357         maxValue: 33.04357         avgValue: 33.04357        
+NSI: [nanoseconds per iteration                                   ] minValue: 80.87882         maxValue: 81.36183         avgValue: 81.09925        
+OPS: [operations per second                                       ] minValue: 12364176.10444   maxValue: 12290775.78173   avgValue: 12330570.67476  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 367668736.00000  maxValue: 369864448.00000  avgValue: 368670771.20000 
+```
 

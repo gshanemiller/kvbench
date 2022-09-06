@@ -62,7 +62,7 @@ find_library(HUGELIB
 set(BENCHMARK_TARGET benchmark.tsk)
 add_executable(${BENCHMARK_TARGET} ${BENCHMARK_SOURCES})
 # target_compile_options(${BENCHMARK_TARGET} PUBLIC -g -O0)
-target_compile_definitions(${BENCHMARK_TARGET} PUBLIC -DCRADIX_MEMMANAGER_RUNTIME_STATISTICS)
+# target_compile_definitions(${BENCHMARK_TARGET} PUBLIC -DCRADIX_MEMMANAGER_RUNTIME_STATISTICS)
 # target_compile_definitions(${BENCHMARK_TARGET} PUBLIC -DCRADIX_NODE_RUNTIME_STATISTICS)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty)

@@ -59,7 +59,7 @@ void Config::print() const {
   printf("  format       : \"%s\"\n", d_format.c_str());
   printf("  dataStructure: \"%s\"\n", d_dataStructure.c_str());
   printf("  hashAlgorithm: \"%s\"\n", d_hashAlgo.c_str());
-  printf("  allocator    : \"%s\"\n", !d_allocator.empty() ? d_allocator.c_str() : "vanilla malloc or std::allocator");
+  printf("  allocator    : \"%s\"\n", !d_allocator.empty() ? d_allocator.c_str() : "code default");
   printf("  needsHashAlgo: %s,\n",  d_needHashAlgo ? "true": "false" );
   printf("  customAlloc  : %s,\n", d_customAllocator ? "true": "false" );
   printf("  runs         : %u,\n", d_runs);

@@ -60,7 +60,15 @@ void art_free_leaf(art_leaf*ptr) {
   mi_free(ptr);
 }
 
+void art_mem_stats_reset(void) {
+  art_freeCount = 0;
+  art_allocCount = 0;
+  art_currentBytes = 0;
+  art_maxBytes = 0;
+  art_requestedBytes = 0;
+}
+
 void art_print_memory(void) {
-  printf("art memory: free %lu, alloc: %lu, currentBytes: %lu, maxBytes: %lu, requestedBytes: %lu\n",
+  printf("art memory: freeCount %lu, allocCount: %lu, currentBytes: %lu, maxBytes: %lu, requestedBytes: %lu\n",
     art_freeCount, art_allocCount, art_currentBytes, art_maxBytes, art_requestedBytes);
 }

@@ -15,6 +15,8 @@ void art_free_leaf(art_leaf*ptr);
 
 void art_print_memory(void);
 
+void art_mem_stats_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

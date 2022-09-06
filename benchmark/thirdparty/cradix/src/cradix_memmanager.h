@@ -169,11 +169,13 @@ const u_int8_t *MemManager::basePtr() const {
   return d_basePtr;
 }
 
+#ifdef CRADIX_MEMMANAGER_RUNTIME_STATISTICS
 inline
 void MemManager::statistics(MemStats *stats) const {                                                            
   *stats = d_stats;
   stats->d_sizeBytes = d_size;
 }
+#endif
 
 // MANIUPULATORS
 inline

@@ -121,7 +121,6 @@ int Benchmark::FacebookF14::start() {
           f14_test_text_find(i, map, d_findStats, d_file);
         }
       } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
-        printf("made it\n");
         // MIM alloc + t1ha
         for (unsigned i=0; i<d_config.d_runs; ++i) {
           if (d_config.d_verbosity>0) {
@@ -154,7 +153,6 @@ int Benchmark::FacebookF14::start() {
           f14_test_text_find(i, map, d_findStats, d_file);
         }
       } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
-        printf("made it std\n");
         // std alloc + t1ha
         for (unsigned i=0; i<d_config.d_runs; ++i) {
           if (d_config.d_verbosity>0) {
