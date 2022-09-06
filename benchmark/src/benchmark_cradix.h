@@ -14,6 +14,8 @@ class cradix {
   const Config&   d_config;                                                                                             
   Intel::Stats    d_findStats;
   Intel::Stats    d_insertStats;
+  Intel::Stats    d_findStatsWithQueue;
+  Intel::Stats    d_insertStatsWithQueue;
 
 public:
   // CREATORS

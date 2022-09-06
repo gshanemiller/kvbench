@@ -10,6 +10,66 @@
 
 template<typename T>
 static int cradix_test_text_insert(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file,
+  int coreId0) {
+
+  char label[128];
+  snprintf(label, sizeof(label), "insert run %u", runNumber);
+
+  Intel::SkyLake::PMU::pinToHWCore(coreId0);
+  Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
+
+  timespec startTime, endTime;
+  Benchmark::TextScan scanner(file);
+
+  pmu.reset();
+  timespec_get(&startTime, TIME_UTC);
+  pmu.start();
+
+  // Benchmark running: do insert
+  RingBuffer::Op op;
+  Benchmark::Slice<unsigned char> word;
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
+    map->insert(word);
+  }
+
+  timespec_get(&endTime, TIME_UTC);
+  stats.record(label, scanner.count(), startTime, endTime, pmu);
+
+  return 0;
+}
+
+template<typename T>
+static int cradix_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file,
+  int coreId0) {
+
+  char label[128];
+  snprintf(label, sizeof(label), "find run %u", runNumber);
+  
+  Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
+  Intel::SkyLake::PMU::pinToHWCore(coreId0);
+
+  timespec startTime, endTime;
+  Benchmark::TextScan scanner(file);
+
+  pmu.reset();
+  timespec_get(&startTime, TIME_UTC);
+  pmu.start();
+
+  // Benchmark running: do find
+  RingBuffer::Op op;
+  Benchmark::Slice<unsigned char> word;
+  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
+    map->find(word);
+  }
+
+  timespec_get(&endTime, TIME_UTC);
+  stats.record(label, scanner.count(), startTime, endTime, pmu);
+
+  return 0;
+}
+
+template<typename T>
+static int cradix_test_text_insert_queue(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file,
   int coreId0, int coreId1) {
   RingBuffer::SPSC queue;
   auto t = std::thread([&] {
@@ -59,7 +119,7 @@ static int cradix_test_text_insert(unsigned runNumber, T* map, Intel::Stats& sta
 }
 
 template<typename T>
-static int cradix_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file,
+static int cradix_test_text_find_queue(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file,
   int coreId0, int coreId1) {
   RingBuffer::SPSC queue;
   auto t = std::thread([&] {
@@ -128,8 +188,10 @@ int Benchmark::cradix::start() {
         }
         CRadix::MemManager mem(0xFFFFFFFFU, 4);;
         CRadix::Tree cradixTree(&mem);
-        cradix_test_text_insert(i, &cradixTree, d_insertStats, d_file, d_config.d_cpu0, d_config.d_cpu1);
-        cradix_test_text_find(i, &cradixTree, d_findStats, d_file, d_config.d_cpu0, d_config.d_cpu1);
+        cradix_test_text_insert(i, &cradixTree, d_insertStats, d_file, d_config.d_cpu0);
+        cradix_test_text_find(i, &cradixTree, d_findStats, d_file, d_config.d_cpu0);
+        cradix_test_text_insert_queue(i, &cradixTree, d_insertStatsWithQueue, d_file, d_config.d_cpu0, d_config.d_cpu1);
+        cradix_test_text_find_queue(i, &cradixTree, d_findStatsWithQueue, d_file, d_config.d_cpu0, d_config.d_cpu1);
 
 /*
         CRadix::MemStats mstats;
@@ -151,4 +213,6 @@ void Benchmark::cradix::report() {
   d_config.print();
   d_insertStats.summary("CRadix Insert", pmu);
   d_findStats.summary("CRadix Find", pmu);
+  d_insertStatsWithQueue.summary("CRadix Insert with SPSC Queue", pmu);
+  d_findStatsWithQueue.summary("CRadix Find with SPSC Queue", pmu);
 }
