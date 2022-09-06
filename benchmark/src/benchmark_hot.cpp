@@ -115,8 +115,8 @@ int Benchmark::HOT::start() {
           printf("execute run set %u...\n", i);
         }
         HOTTrie hotTrie;
-        hot_test_text_insert(i, hotTrie, d_stats, d_file);
-        hot_test_text_find(i, hotTrie, d_stats, d_file);
+        hot_test_text_insert(i, hotTrie, d_insertStats, d_file);
+        hot_test_text_find(i, hotTrie, d_findStats, d_file);
       }
     }
   }
@@ -126,5 +126,6 @@ int Benchmark::HOT::start() {
 void Benchmark::HOT::report() {
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
   d_config.print();
-  d_stats.summary(pmu);
+  d_insertStats.summary("HOT Insert", pmu);
+  d_findStats.summary("HOT Find", pmu);
 }

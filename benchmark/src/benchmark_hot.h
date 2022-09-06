@@ -17,7 +17,8 @@ class HOT {
   // DATA
   const LoadFile& d_file;
   const Config&   d_config;                                                                                             
-  Intel::Stats    d_stats;
+  Intel::Stats    d_findStats;
+  Intel::Stats    d_insertStats;
 
 public:
   // CREATORS

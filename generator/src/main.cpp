@@ -232,7 +232,7 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
     }
   }
 
-  printf("wrote %09u words\n", words);
+  printf("wrote %u words\n", words);
 
   return 0;
 }

@@ -128,8 +128,8 @@ int Benchmark::cradix::start() {
         }
         CRadix::MemManager mem(0xFFFFFFFFU, 4);;
         CRadix::Tree cradixTree(&mem);
-        cradix_test_text_insert(i, &cradixTree, d_stats, d_file, d_config.d_cpu0, d_config.d_cpu1);
-        cradix_test_text_find(i, &cradixTree, d_stats, d_file, d_config.d_cpu0, d_config.d_cpu1);
+        cradix_test_text_insert(i, &cradixTree, d_insertStats, d_file, d_config.d_cpu0, d_config.d_cpu1);
+        cradix_test_text_find(i, &cradixTree, d_findStats, d_file, d_config.d_cpu0, d_config.d_cpu1);
 
 /*
         CRadix::MemStats mstats;
@@ -149,5 +149,6 @@ int Benchmark::cradix::start() {
 void Benchmark::cradix::report() {
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
   d_config.print();
-  d_stats.summary(pmu);
+  d_insertStats.summary("CRadix Insert", pmu);
+  d_findStats.summary("CRadix Find", pmu);
 }

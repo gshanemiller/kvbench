@@ -166,19 +166,19 @@ You'll see output like this:
 $ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin
 reading './dict.txt' ...
 writing './dict.bin' ...
-wrote 004545921 words
+wrote 4545921 words
 ```
 
 We need a zero terminator on the end of strings for the HOT trie code. Add `-t`:
 
 ```
-$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.hot -t`
+$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.hot -t
 ```
 
 For CRadix we require all keys to be on a 2-byte boundary. Add `-b 2`:
 
 ```
-$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.cradix -b 2`
+$ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.cradix -b 2
 ```
 
 The conversion finds all 4545921 words (~500,000 unique) in `dict.txt` writing into `dict.bin.*`. Append `-v` 

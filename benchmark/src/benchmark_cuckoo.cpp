@@ -118,8 +118,8 @@ int Benchmark::Cuckoo::start() {
             printf("execute run set %u...\n", i);
           }
           CuckooXXhash_MIM_SliceBool_XX3_64BITS map;
-          cuckoo_test_text_insert(i, map, d_stats, d_file);
-          cuckoo_test_text_find(i, map, d_stats, d_file);
+          cuckoo_test_text_insert(i, map, d_insertStats, d_file);
+          cuckoo_test_text_find(i, map, d_findStats, d_file);
         }
       } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
         printf("made it\n");
@@ -129,8 +129,8 @@ int Benchmark::Cuckoo::start() {
             printf("execute run set %u...\n", i);
           }
           CuckooT1ha_MIM_SliceBool map;
-          cuckoo_test_text_insert(i, map, d_stats, d_file);
-          cuckoo_test_text_find(i, map, d_stats, d_file);
+          cuckoo_test_text_insert(i, map, d_insertStats, d_file);
+          cuckoo_test_text_find(i, map, d_findStats, d_file);
         }
       } else if (d_config.d_hashAlgo=="city::cityhash64") {
         // MIM alloc + cityhash64
@@ -139,8 +139,8 @@ int Benchmark::Cuckoo::start() {
             printf("execute run set %u...\n", i);
           }
           CuckooCity_MIM_SliceBool_CityHash64 map;
-          cuckoo_test_text_insert(i, map, d_stats, d_file);
-          cuckoo_test_text_find(i, map, d_stats, d_file);
+          cuckoo_test_text_insert(i, map, d_insertStats, d_file);
+          cuckoo_test_text_find(i, map, d_findStats, d_file);
         }
       }
     } else {
@@ -151,8 +151,8 @@ int Benchmark::Cuckoo::start() {
             printf("execute run set %u...\n", i);
           }
           CuckooXXhash_SliceBool_XX3_64BITS map;
-          cuckoo_test_text_insert(i, map, d_stats, d_file);
-          cuckoo_test_text_find(i, map, d_stats, d_file);
+          cuckoo_test_text_insert(i, map, d_insertStats, d_file);
+          cuckoo_test_text_find(i, map, d_findStats, d_file);
         }
       } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
         printf("made it std\n");
@@ -162,8 +162,8 @@ int Benchmark::Cuckoo::start() {
             printf("execute run set %u...\n", i);
           }
           CuckooT1ha_SliceBool map;
-          cuckoo_test_text_insert(i, map, d_stats, d_file);
-          cuckoo_test_text_find(i, map, d_stats, d_file);
+          cuckoo_test_text_insert(i, map, d_insertStats, d_file);
+          cuckoo_test_text_find(i, map, d_findStats, d_file);
         }
       } else if (d_config.d_hashAlgo=="city::cityhash64") {
         // std alloc + cityhash64
@@ -172,8 +172,8 @@ int Benchmark::Cuckoo::start() {
             printf("execute run set %u...\n", i);
           }
           CuckooCity_SliceBool_CityHash64 map;
-          cuckoo_test_text_insert(i, map, d_stats, d_file);
-          cuckoo_test_text_find(i, map, d_stats, d_file);
+          cuckoo_test_text_insert(i, map, d_insertStats, d_file);
+          cuckoo_test_text_find(i, map, d_findStats, d_file);
         }
       }
     }
@@ -184,5 +184,6 @@ int Benchmark::Cuckoo::start() {
 void Benchmark::Cuckoo::report() {
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
   d_config.print();
-  d_stats.summary(pmu);
+  d_insertStats.summary("Cuckoo Insert", pmu);                                                                          
+  d_findStats.summary("Cuckoo Find", pmu); 
 }
