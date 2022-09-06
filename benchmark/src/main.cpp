@@ -5,7 +5,6 @@
 #include <benchmark_config.h>
 #include <benchmark_loadfile.h>
 #include <benchmark_cuckoo.h>
-#include <benchmark_misc.h>
 #include <benchmark_f14.h>
 #include <benchmark_hot.h>
 #include <benchmark_art.h>
@@ -198,13 +197,6 @@ int main(int argc, char **argv) {
     exit(1);
   }
   config.d_fileSizeBytes = file.fileSize();
-
-  // Always benchmark overhead, primitive build blocks
-  {
-    Benchmark::Misc test(config, file);
-    test.start();
-    test.report();
-  }
 
   // Now do what command line requested
   if (config.d_dataStructure=="cuckoo") {

@@ -43,9 +43,9 @@ public:
     // | Intel Architecturally Significant Metrics, Basic Set                                          |
     // +-----------------------------------------------------------------------------------------------+
     // | Counter 0: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE        |
-    // | Counter 1: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS             |
-    // | Counter 2: https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.ALL_BRANCHES_PS    |
-    // | Counter 3: https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.COND_NTAKEN        |
+    // | Counter 1: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE        |
+    // | Counter 2: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS             |
+    // | Counter 3: https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.ALL_BRANCHES_PS    |
     // +-----------------------------------------------------------------------------------------------+
     k_DEFAULT_SKYLAKE_CONFIG_0 = 0,
     k_DEFAULT_CONFIG_UNDEFINED = 1,
@@ -55,9 +55,9 @@ private:
   enum Support {
     k_FIXED_COUNTERS            = 3,    // All boxes have 3 fixed counters
     k_MAX_PROG_COUNTERS_HT_ON   = 4,    // When CPU hyper threading ON  prog counters 0,1,2,3 available
-    k_MAX_PROG_COUNTERS_HT_OFF  = 8,    // When CPU hyper threading OFF prog counters [0-7] available
+    k_MAX_PROG_COUNTERS_HT_OFF  = 8,    // When CPU hyper threading OFF prog counters mostly [0-7] available
+                                        // See https://perfmon-events.intel.com by event for details
   };
-
 
   const u_int32_t IA32_PERF_GLOBAL_STATUS = 0x38e;
   const u_int32_t IA32_PERF_GLOBAL_CTRL   = 0x38f;
@@ -102,6 +102,7 @@ private:
   int       d_fid;                             // file handle for MSR read/write
   unsigned  d_cnt;                             // # programmable counters in use [1, k_PROGRAMMABLE_COUNTERS]
   u_int64_t d_fcfg;                            // configuration for all fixed counters
+  u_int64_t d_lastRdtsc;                       // last value of 'timeStampCounter()'
   u_int64_t d_pcfg[k_MAX_PROG_COUNTERS_HT_OFF];// configuration for each programmable counter in [0, d_cnt)
   
   // Pretty-print helper data
@@ -126,7 +127,7 @@ public:
     // counters '[0, k_MAX_PROG_COUNTERS_HT_ON)' only if CPU hyper threading is ON. Otherwise CPU hyper threading
     // is OFF and all programmable counters '[0, k_MAX_PROG_COUNTERS_HT_OFF]' are available. Note, this method does
     // not check if CPU hyper threading is enabled. Also note that this method initializes the descriptor arrays
-    // to reflect 'config'. See 'print()'.
+    // to reflect 'config'. See 'printSnapshot()'.
 
   explicit PMU(bool pin, unsigned count, u_int64_t *config, const char **progMnemonic, const char **progDescription);
     // Create a PMU object to run all Skylake fixed counters and 'count' programmable counters as specified in 
@@ -135,8 +136,8 @@ public:
     // 'count>0' specifies both the total number of and index of each programmable counter for configuration e.g.
     // 'count==4' means counters '0,1,2,3' are selected for use. If count is zero, no programmable counters are used.
     // 'config[i]' must contain a valid 'IA32_PERFEVTSET' value for counter 'i'. See 'doc/pmu.md' for all details.
-    // The arrays 'progMnemonic, progDescription' provide a textual description of each counter. See 'print()'. Upon
-    // return the caller must run 'reset()'. The behavior is defined provided (*) the calling thread leaves this
+    // The arrays 'progMnemonic, progDescription' provide a textual description of each counter. See 'prinSnapshott()'.
+    // Upon return the caller must run 'reset()'. The behavior is defined provided (*) the calling thread leaves this
     // method pinned to a HW core. PMU data will be incorrect if the calling code bounces around cores (*) If CPU
     // hyper threading is ON 'count<k_MAX_PROG_COUNTERS_HT_ON' else 'count<k_MAX_PROG_COUNTERS_HT_OFF' (*) if the
     // descriptor arrays 'progMnemonic, progDescription' have exactly 'count' valid pointers. Note, this method does
@@ -150,7 +151,8 @@ public:
 
   // ACCESSORS
   int core() const;
-    // Return the current HW core number (zero-based) of the caller.
+    // Return the pinned HW core number (zero-based) of the caller. As documented in the constructors, the caller's
+    // thread leaves the constructor pinned. This acceessor returns that HW core number.
 
   unsigned fixedCountersSupported() const;
     // Return the number of fixed, distinct counters Intel Skylake PMU can run concurrently. Note the value returned
@@ -169,6 +171,12 @@ public:
   unsigned programmableCounterDefined() const;
     // Return the number of programmable counters defined or requested at construction time e.g. a return value of
     // four means counters 0,1,2,3 are configured to run.
+
+  u_int64_t startTimeStampCounter() const;
+    // Return the value of 'rdtsc' for this thread's core the last time 'start()' was called
+
+  u_int64_t timeStampCounter() const;
+    // Return the current value of 'rdtsc' for this thread's core
 
   u_int64_t programmableCounterValue(unsigned counter) const;
     // Return the current value of the specified programmable 'counter' on the HW core given by 'core()'. The behavior
@@ -207,7 +215,7 @@ public:
   int start();
     // Return 0 if all fixed Skylake counters, and all defined programmable counters defined at construction time 
     // are running and non-zero otherwise. The behavior is defined provided 'reset()' previously ran without error.
-    // Counters run until 'reset' is called.
+    // Counters run until 'reset' is called. 'start()' also caches the current value of 'timeStampCounter()'.
 
   int reset();
     // Return zero if all counters requested at construction time are stopped, configured, and reset to 0. The counters
@@ -227,28 +235,23 @@ public:
   bool fixedCounterOverflowed(unsigned counter);
     // Return true if specified fixed 'counter' overflowed and false otherwise. The behavior is defined provided
     // 'start()' or 'reset()' previously ran without error, and if 'counter' is in the range the semi-closed internal
-    // '0<=counter<fixedCountersSupported()'.
+    // ''0<=counter<fixedCountersSupported()'.
 
   bool programmableCounterOverflowed(unsigned counter);
     // Return true if specified programmable 'counter' overflowed and false otherwise. The behavior is defined provided
     // 'start()' or 'reset()' previously ran without error, and if 'counter' is in the range the semi-closed internal
     // '0<=counter<programmableCounterDefined()'
 
-  void print(const char *label);
+  void printSnapshot(const char *label);
     // Pretty print to stdout a human readable snapshot of counters defined at construction time and their current
     // values. Specified 'label' should describe context for PMU metrics. The behavior is defined provided 'reset()'
-    // returned without error.
-
-  void describeFixedCounter(unsigned counter, std::string *value);
-    // Set into 'value' a human readable description of specified fixed '0<=counter<fixedCountersSupported()'
-
-  void describeProgrammableCounter(unsigned counter, std::string *value);
-    // Set into 'value' a human readable description of specified programmable '0<=counter<programmableCounterDefined()'
+    // returned without error. Callers usually run 'start()' first.
 
   PMU& operator=(const PMU& rhs) = delete;
     // Assignment operator not supported
 
-  static int pinToHWCore(int coreId);
+  // STATIC MANIPULATORS
+  static int pinToHWCore(int coreId);                                                                                   
     // Return 0 if the the current/caller thread was pinned to 'coreId' and non-zero errno otherwise. Behavior is
     // defined provided 'coreId>=0' and 'coreId' is less than the total number of cores available in the underlying
     // HW as reported by 'cat /proc/cpuinfo'. Note this routine only enforces the minimum bound.
@@ -276,6 +279,7 @@ PMU::PMU(bool pin, ProgCounterSetConfig config)
 : d_fid(-1)
 , d_cnt(0)
 , d_fcfg(DEFAULT_FIXED_CONFIG)                                                                           
+, d_lastRdtsc(0)
 {
   assert(config>=0 && config<k_DEFAULT_CONFIG_UNDEFINED);
 
@@ -304,9 +308,14 @@ PMU::PMU(bool pin, ProgCounterSetConfig config)
     d_progDescription.push_back("retired branch instructions");
     d_progDescription.push_back("retired branch instructions not taken");
   
-    // Each programmable counter umask, event-select is anded with 0x410000 where
-    // 0x410000 enables bit 16 (USR space code) bit 22 (EN enable counter). See 
-    // 'doc/pmu.md' for details
+    // +-----------------------------------------------------------------------------------------------+
+    // | Intel Architecturally Significant Metrics, Basic Set                                          |
+    // +-----------------------------------------------------------------------------------------------+
+    // | Counter 0: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE        |
+    // | Counter 1: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.REFERENCE        |
+    // | Counter 2: https://perfmon-events.intel.com/ -> SkyLake -> LONGEST_LAT_CACHE.MISS             |
+    // | Counter 3: https://perfmon-events.intel.com/ -> SkyLake -> BR_INST_RETIRED.ALL_BRANCHES_PS    |
+    // +-----------------------------------------------------------------------------------------------+
     d_pcfg[0] = 0x414f2e;
     d_pcfg[1] = 0x41412e;
     d_pcfg[2] = 0x4104c4;
@@ -322,6 +331,7 @@ PMU::PMU(bool pin, unsigned count, u_int64_t *config, const char **progMnemonic,
 : d_fid(-1)
 , d_cnt(0)
 , d_fcfg(DEFAULT_FIXED_CONFIG)                                                                           
+, d_lastRdtsc(0)
 {
   assert(count<k_MAX_PROG_COUNTERS_HT_OFF);
   assert(config);
@@ -396,11 +406,24 @@ unsigned PMU::programmableCounterDefined() const {
 }
 
 inline
+u_int64_t PMU::startTimeStampCounter() const {
+  return d_lastRdtsc;
+}
+
+inline
+u_int64_t PMU::timeStampCounter() const {
+  u_int32_t hi, lo;
+  __asm __volatile("mfence;lfence");                                                                                           
+  __asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((u_int64_t)lo) | (((u_int64_t)hi)<<32);
+}
+
+inline
 u_int64_t PMU::programmableCounterValue(unsigned c) const {
   assert(c<programmableCounterDefined());
   u_int64_t a,d;                                                                                                        
   // Finish pending instructions                                                                                        
-  __asm __volatile("lfence");                                                                                           
+  __asm __volatile("mfence;lfence");                                                                                           
   // https://www.felixcloutier.com/x86/rdpmc                                                                            
   // https://hjlebbink.github.io/x86doc/html/RDPMC.html                                                                 
   // ECX register: bit 30 <- 0 (programmable cntr) w/ low order bits counter# zero based                                       
@@ -414,7 +437,7 @@ u_int64_t PMU::fixedCounterValue(unsigned c) const {
   assert(c<fixedCountersSupported());
   u_int64_t a,d;                                                                                                        
   // Finish pending instructions                                                                                        
-  __asm __volatile("lfence");                                                                                           
+  __asm __volatile("mfence;lfence");                                                                                           
   // https://www.felixcloutier.com/x86/rdpmc                                                                            
   // https://hjlebbink.github.io/x86doc/html/RDPMC.html                                                                 
   // ECX register: bit 30 <- 1 (fixed counter) w/ low order bits counter# zero based                                       
@@ -467,6 +490,8 @@ int PMU::start() {
       return rc;
     }
   }
+
+  d_lastRdtsc = timeStampCounter();
 
   return 0;
 }
@@ -585,24 +610,6 @@ bool PMU::programmableCounterOverflowed(unsigned counter) {
   u_int64_t mask(PMC0_OVERFLOW_MASK);
   for (unsigned i=0; i<=counter; ++i, mask<<=1);
   return (overFlowStatus & mask);
-}
-
-inline
-void PMU::describeFixedCounter(unsigned counter, std::string *value) {
-  assert(value);
-  assert(counter<fixedCountersSupported());
-  char buf[128];
-  snprintf(buf, sizeof(buf), "%-3s [%-40s]", d_fixedMnemonic[counter].c_str(), d_fixedDescription[counter].c_str());
-  *value = buf;
-}
-
-inline
-void PMU::describeProgrammableCounter(unsigned counter, std::string *value) {
-  assert(value);
-  assert(counter<d_cnt);
-  char buf[128];
-  snprintf(buf, sizeof(buf), "%-3s [%-40s]", d_progMnemonic[counter].c_str(), d_progDescription[counter].c_str());
-  *value = buf;
 }
 
 inline

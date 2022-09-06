@@ -46,12 +46,13 @@ typedef folly::F14ValueMap<Benchmark::Slice<char>, bool, Benchmark::char_slice_c
   Benchmark::SliceEqual<Benchmark::Slice<char>>, mi_stl_allocator<std::pair<const Benchmark::Slice<char>,bool>>> FacebookF14City_MIM_SliceBool_CityHash64;
 
 template<typename T>
-static int f14_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
+static int f14_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
-
   Benchmark::TextScan scanner(file);
-
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
+
+  char label[128];
+  snprintf(label, sizeof(label), "insert run %u", runNumber);
 
   timespec startTime;
   timespec endTime;
@@ -64,32 +65,20 @@ static int f14_test_text_insert(unsigned runNumber, T& map, Benchmark::Stats& st
     map.insert(std::pair(word, false));
   }
 
-  // Benchmark done: take stats
-  u_int64_t f0 = pmu.fixedCounterValue(0);
-  u_int64_t f1 = pmu.fixedCounterValue(1);
-  u_int64_t f2 = pmu.fixedCounterValue(2);
-
-  u_int64_t p0 = pmu.programmableCounterValue(0);
-  u_int64_t p1 = pmu.programmableCounterValue(1);
-  u_int64_t p2 = pmu.programmableCounterValue(2);
-  u_int64_t p3 = pmu.programmableCounterValue(3);
-
   timespec_get(&endTime, TIME_UTC);
-
-  char label[128];
-  snprintf(label, sizeof(label), "insert run %u", runNumber);
-  stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
+  stats.record(label, scanner.count(), startTime, endTime, pmu);
 
   return 0;
 }
 
 template<typename T>
-static int f14_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stats, const Benchmark::LoadFile& file) {
+static int f14_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
-
   Benchmark::TextScan scanner(file);
-
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
+
+  char label[128];
+  snprintf(label, sizeof(label), "find run %u", runNumber);
 
   timespec startTime;
   timespec endTime;
@@ -103,21 +92,8 @@ static int f14_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
     Intel::DoNotOptimize(iter);
   }
 
-  // Benchmark done: take stats
-  u_int64_t f0 = pmu.fixedCounterValue(0);
-  u_int64_t f1 = pmu.fixedCounterValue(1);
-  u_int64_t f2 = pmu.fixedCounterValue(2);
-
-  u_int64_t p0 = pmu.programmableCounterValue(0);
-  u_int64_t p1 = pmu.programmableCounterValue(1);
-  u_int64_t p2 = pmu.programmableCounterValue(2);
-  u_int64_t p3 = pmu.programmableCounterValue(3);
-
   timespec_get(&endTime, TIME_UTC);
-
-  char label[128];
-  snprintf(label, sizeof(label), "find run %u", runNumber);
-  stats.addResultSet(label, scanner.count(), startTime, endTime, f0, f1, f2, p0, p1, p2, p3);
+  stats.record(label, scanner.count(), startTime, endTime, pmu);
 
   return 0;
 }
@@ -125,40 +101,40 @@ static int f14_test_text_find(unsigned runNumber, T& map, Benchmark::Stats& stat
 int Benchmark::FacebookF14::start() {
   int rc(0);
 
-  if (d_stats.config().d_format == "bin-text-kv") {
+  if (d_config.d_format == "bin-text-kv") {
     // We have KV pairs to play with
     // Not implemented yet
     return rc;
-  } else if (d_stats.config().d_format=="bin-text") {
+  } else if (d_config.d_format=="bin-text") {
     // We have a text file therefore we can only benchamrk key ins/upd/fnd/del on keys.
     // Make a cuckoo map with the smallest possible value type (bool) and set it to a 
     // constant value throughout all tests.
-    if (d_stats.config().d_customAllocator) {
-      if (d_stats.config().d_hashAlgo=="xxhash:XX3_64bits") {
+    if (d_config.d_customAllocator) {
+      if (d_config.d_hashAlgo=="xxhash:XX3_64bits") {
         // MIM alloc + xxhash
-        for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-          if (d_stats.config().d_verbosity>0) {
+        for (unsigned i=0; i<d_config.d_runs; ++i) {
+          if (d_config.d_verbosity>0) {
             printf("execute run set %u...\n", i);
           }
           FacebookF14XXhash_MIM_SliceBool_XX3_64BITS map;
           f14_test_text_insert(i, map, d_stats, d_file);
           f14_test_text_find(i, map, d_stats, d_file);
         }
-      } else if (d_stats.config().d_hashAlgo=="t1ha::t1ha") {
+      } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
         printf("made it\n");
         // MIM alloc + t1ha
-        for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-          if (d_stats.config().d_verbosity>0) {
+        for (unsigned i=0; i<d_config.d_runs; ++i) {
+          if (d_config.d_verbosity>0) {
             printf("execute run set %u...\n", i);
           }
           FacebookF14T1ha_MIM_SliceBool map;
           f14_test_text_insert(i, map, d_stats, d_file);
           f14_test_text_find(i, map, d_stats, d_file);
         }
-      } else if (d_stats.config().d_hashAlgo=="city::cityhash64") {
+      } else if (d_config.d_hashAlgo=="city::cityhash64") {
         // MIM alloc + cityhash64
-        for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-          if (d_stats.config().d_verbosity>0) {
+        for (unsigned i=0; i<d_config.d_runs; ++i) {
+          if (d_config.d_verbosity>0) {
             printf("execute run set %u...\n", i);
           }
           FacebookF14City_MIM_SliceBool_CityHash64 map;
@@ -167,31 +143,31 @@ int Benchmark::FacebookF14::start() {
         }
       }
     } else {
-      if (d_stats.config().d_hashAlgo=="xxhash:XX3_64bits") {
+      if (d_config.d_hashAlgo=="xxhash:XX3_64bits") {
         // std alloc + xxhash
-        for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-          if (d_stats.config().d_verbosity>0) {
+        for (unsigned i=0; i<d_config.d_runs; ++i) {
+          if (d_config.d_verbosity>0) {
             printf("execute run set %u...\n", i);
           }
           FacebookF14XXhash_SliceBool_XX3_64BITS map;
           f14_test_text_insert(i, map, d_stats, d_file);
           f14_test_text_find(i, map, d_stats, d_file);
         }
-      } else if (d_stats.config().d_hashAlgo=="t1ha::t1ha") {
+      } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
         printf("made it std\n");
         // std alloc + t1ha
-        for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-          if (d_stats.config().d_verbosity>0) {
+        for (unsigned i=0; i<d_config.d_runs; ++i) {
+          if (d_config.d_verbosity>0) {
             printf("execute run set %u...\n", i);
           }
           FacebookF14T1ha_SliceBool map;
           f14_test_text_insert(i, map, d_stats, d_file);
           f14_test_text_find(i, map, d_stats, d_file);
         }
-      } else if (d_stats.config().d_hashAlgo=="city::cityhash64") {
+      } else if (d_config.d_hashAlgo=="city::cityhash64") {
         // std alloc + cityhash64
-        for (unsigned i=0; i<d_stats.config().d_runs; ++i) {
-          if (d_stats.config().d_verbosity>0) {
+        for (unsigned i=0; i<d_config.d_runs; ++i) {
+          if (d_config.d_verbosity>0) {
             printf("execute run set %u...\n", i);
           }
           FacebookF14City_SliceBool_CityHash64 map;
@@ -206,5 +182,6 @@ int Benchmark::FacebookF14::start() {
 
 void Benchmark::FacebookF14::report() {
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
-  d_stats.print(pmu);
+  d_config.print();
+  d_stats.summary(pmu);
 }

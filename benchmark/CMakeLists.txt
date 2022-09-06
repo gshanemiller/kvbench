@@ -11,10 +11,8 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_cstr.cpp
   ./src/benchmark_cuckoo.cpp
   ./src/benchmark_f14.cpp
-  ./src/benchmark_misc.cpp
   ./src/benchmark_loadfile.cpp
   ./src/benchmark_slice.cpp
-  ./src/benchmark_stats.cpp
   ./src/benchmark_textscan.cpp
   ./src/benchmark_hot.cpp
   ./src/benchmark_art.cpp
@@ -22,6 +20,7 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_cradix.cpp
 
   ./src/intel_skylake_pmu.cpp
+  ./src/intel_pmu_stats.cpp
 
   ./thirdparty/xxhash/xxhash.c
 

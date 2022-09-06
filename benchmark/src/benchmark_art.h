@@ -4,14 +4,15 @@
 
 #include <benchmark_config.h>
 #include <benchmark_loadfile.h>
-#include <benchmark_stats.h>
+#include <intel_pmu_stats.h>
 
 namespace Benchmark {
 
 class ART {
   // DATA
   const LoadFile& d_file;
-  Stats           d_stats;
+  const Config&   d_config;                                                                                             
+  Intel::Stats    d_stats;
 
 public:
   // CREATORS
@@ -38,7 +39,7 @@ public:
 
 inline ART::ART(const Config& config, const LoadFile& file)
 : d_file(file)
-, d_stats(config)
+, d_config(config)
 {
 }
 
