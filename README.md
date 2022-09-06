@@ -1,9 +1,9 @@
 # Goal
-Benchmark a variety of hash, and trie implementations on KV (key-value) data sets. The basic approach:
+Benchmark selected hash, trie, radix implementations on KV (key-value) data sets. The basic approach:
 
 1. Test sets are stored in a file
 2. Using transparent huge memory support, load a test set into shared memory
-3. Insert all data from (2) by scanning the data from beginning to end in order performing inserts, updates, deletes
+3. Insert all data from (2) by scanning the data from beginning to end in order performing inserts, updates
 4. Report timings in ns/op together with stats collected from Intel's PMU functionality including CPU cache hit/misses
 
 The benchmark code does not sort or organize the file loaded. So, for example, if one wishes to benchmark data in
@@ -29,8 +29,8 @@ in its original organization.
 and **CRadix**. The last data structure, CRadix, is my own implementation of a Radix tree. As implemented in this
 benchmark, it confers distinction in several respects. See below for more information.
 
-* Learned Indexes: **None** at present. I strongly considered https://github.com/gvinciguerra/PGM-index but at this
-time I could not find a compact, efficient way to map arbitrary keys to integers. See https://github.com/gvinciguerra/PGM-index/issues/38
+* Learned Indexes: **None** at present. I strongly considered [PGM](https://github.com/gvinciguerra/PGM-index) but at this
+time I could not find a compact, efficient way to map arbitrary keys to integers. See [GIT Issue](https://github.com/gvinciguerra/PGM-index/issues/38)
 
 * Optionally supports Microsoft's mimmalloc allocator. When data structures under benchmark admit easy composition with
 a non-default allocation, you can specify alternates on the command line. Otherwise the the code's default approach
@@ -45,23 +45,28 @@ pollution of benchmark results with disk I/O, TLB misses getting to the data.
 
 * Decently documented
 
+# Known Design Issues
+This code is not NUMA aware. There is no fundamental reason why it can't be, and it's easy to do. It's just not done
+yet. Benchmarking on a multi-socket box across NUMA nodes will have poor performance until fixed.  
+
+# Environments Supported
+Verified to run on:
+* Linux (Ubuntu 20.04 LTS)
+* gcc version 11.2.0 (Ubuntu 11.2.0-19ubuntu1) 
+
+No windows/mac support. Your box must have Intel PMU. ART will run faster if it detects SIMD.
+
+This code was tested on:
+* [Equinix](https://console.equinix.com/) on-demand c3.small.x86 ($0.75/hr) (1) Intel Xeon E-2278G CPU 3.4Ghz
+* Last tested Sept 2022
+
 # PMU Background
 The PMU code was developed by me. I copied it into this repository, again, to keep build dependencies down. Find the
 [original source code with extensive documentation here](https://github.com/rodgarrison/rdpmc).
 
-# Environments Supported
-Code verified to run on:
-
-* Linux (Ubuntu 20.04 LTS)
-* Equinix c3.small.x86 ($0.75/hr) (1) Intel Xeon E-2278G CPU 3.4Ghz
-* GNU 9.4.0 or better
-* Last tested Sept 2022
-
-No windows/mac support. Your box must have Intel PMU. ART will run faster if it detects SIMD.
-
 # Building (Est 10mins)
 If you already have an Intel x86 Linux system with a GNU C/C++ tool chain and required dependencies then clone kvbench
-and build:
+and build. The only non-standard libraries required are `libhugetlbfs` and `boost`:
 
 * Run command: `git clone https://github.com/rodgarrison/kvbench`
 * Run command: `cd kvbench`
@@ -72,21 +77,25 @@ and build:
 * Proceed to setup below
 
 If you don't have the tool chain and/or dependent libraries and don't wanna waste your time figuring which build
-libraries are needed, surf to the [file](https://github.com/rodgarrison/kvbench/blob/main/benchmark/scripts/install)
-and copy the apt install (cira line 16) command, then run it as root on your box. Build per above.
+libraries are needed, surf to the [install file](https://github.com/rodgarrison/kvbench/blob/main/benchmark/scripts/install)
+and copy the apt install command near line 16, then run it as root on your box. Build per above.
+
+If you want a turn-key solution get yourself a Linux Ubuntu login from [Equinix](https://console.equinix.com/) and
+simply run the [install file](https://github.com/rodgarrison/kvbench/blob/main/benchmark/scripts/install) as root.
+It will setup your box, download this code, and build it.
 
 `kvbench` itself installs nothing. All tasks are found in the `build` directory.
 
 # Setup (Est 5 mins)
 * Build code; see previous section
 * Enable TLB/huge-pages. It's usually simplest and best to allocate a number of 1Gb huge pages equal to the
-maximum size of your test set. The memory required for any one test file is equal to the size in bytes of that
-file as reported by `ls -la`. Round the largest size found to next highest 1Gb size. Run `scripts/huge_1gb_pages <N>`
+maximum size of your test file. The memory required for any one test file is equal to the size in bytes of that
+file as reported by `ls -la` rounded to the next highest page size. Run `benchmark/scripts/huge_1gb_pages <N>`
 where `N` is the number of pages you need e.g. a 1.5Gb file needs 2 1Gb pages so `N=2`
-* Enable PMU in userspace by running `scripts/linux_pmu on`. Benchmarks will segfault otherwise. `rdpmc` has details
-on this
-* Optionally disable CPU hyper-threading by running `scripts/intel_ht off`
-* Optionally disable NMI by running `scripts/linux_nmi off`
+* Enable PMU in userspace by running `benchmark/scripts/linux_pmu on`. Benchmarks will segfault otherwise. `rdpmc` has
+details on this
+* Optionally disable CPU hyper-threading by running `benchmark/scripts/intel_ht off`
+* Optionally disable NMI by running `benchmark/scripts/linux_nmi off`
 
 All steps here are one-time, must be run as root/sudo, and should be done before running the benchmark task. Benchmarking
 code always deallocates memory on exit so `ipcs -m` will not show stranded allocations by this code. You can always
@@ -98,7 +107,7 @@ This repository provides a generator task that converts vanilla ASCII files cont
 binary format that the benchmark task reads. The generator is a one-liner.
 
 * Files containing whitespace separated text words are transformed into a binary file consisting of keys only. 
-Therefore trie, hashmap algos benchmark inserting and finding keys
+Therefore radix, trie, hashmap algos benchmark inserting and finding keys
 
 * Files holding ASCII only KV pairs are transformed into a binary format containing key, values. trie, hashmap algos
 then benchmark inserting and finding keys with values. 
@@ -114,42 +123,44 @@ obtain with `curl` or `wget`
 Or you can make an ASCII file using Perl/Ruby/Python with keys, values in your desired distribution 
 
 # CRadix Background
-CRadix implementation started as a rewrite of ART, but then evolved into something better:
+The CRadix implementation started as a rewrite of ART, but then evolved into something better:
 
 * 8-bit (256-children) vanilla radix tree supporting arbitrary binary-blob keys
-* Radix trees require no sorting with or without SIMD help, and do not require balancing
+* Radix trees require no sorting with or without SIMD help, and do not require balancing or rotations
 * Radix trees keep keys in sort order unlike hashmaps
 * Radix trees have worst-case O(N) time complexity where N is the maximum key size regardless of insertion order. This
-means CRadix will not peform worse just because keys were inserted in-order, for example
+means CRadix will not perform worse just because keys were inserted in-order, for example
 * CRadix tree implemenation comes with a key iterator
 * CRadix tree keeps internal nodes as small as possible usually under 10% of what a textbook 256 n-ary tree would
-require. See benchmark for stats
+require. See section `CRadix in Detail` for actual data
 * No memory is used for leaf nodes
 * CRadix is faster than ART, HOT
 * CRadix collects runtime statistics if built with the right defines
 * Keys may be up 0xffff bytes in size
 
 While this benchmark investigates data structures, my ultimate aim is something larger. It was important to have an
-efficient sorted data structure that is also MT safe. In consequence, CRadix operations are benchmarked in one thread,
-while another thread feeds it insert or find commands from the binary input file connected by a MT safe ring-buffer.
-Even with this overhead, CRadix will is still very competative. In contrast no other algorithm tested here is run with 
-threads, ringbuffers, or connecting connecting queue.
+efficient sorted data structure that is also MT safe. In consequence, CRadix operations are benchmarked two ways. First,
+a single thread is run performing all inserts, finds. Second, a SPSC MT-safe ringbuffer is to connect one thread sending
+insert/find operations over the queue while the second thread performs the operations. No other data structure here is
+benchmark with a SPSC queue. Even with that over head, CRadix performs well.
 
-Shortcomings of the current implementation:
+Shortcomings of the current CRadix implementation:
 
+* Delete not added yet
 * Not templatized
 * Does not store values; keys have been focus to date
 * Does not accept a standard style C++ allocator
-* Memory allocation policy not meet your needs
+* Default memory allocation policy may not meet your needs
 
 CRadix tree accepts a memory manager object in its constructor. This object does not have STL allocator API. The 
-library implementation pre-allocates a fixed chunk of memory then hands out new memory on a defined alignmentment
+library implementation pre-allocates a fixed chunk of memory then hands out new memory on a defined alignment
 boundary by simply incrementing a pointer. Memory is not freed; it is tombstoned or zombied leaving dead memory.
 
 However, and for my long term purposes, this is desirable because I want CRadix to play well with LSM. See 
-[RAMCloud](https://ramcloud.atlassian.net/wiki/spaces/RAM/overview) where segmented LSM is well developed.
+[RAMCloud](https://ramcloud.atlassian.net/wiki/spaces/RAM/overview) where LSM is well developed. 
+
 For other users the memory manager implementation can just wrap malloc/free or new/delete as desired. There is
-no hard dependency between CRadix and memory management.
+no hard dependency between CRadix and memory management. And as such zombie memory can be eliminated.
 
 # Worked Benchmark Example
 Obtain a test file:
@@ -184,373 +195,171 @@ $ ./generator.tsk -m convert-text -i ./dict.txt -o ./dict.bin.cradix -b 2
 The conversion finds all 4545921 words (~500,000 unique) in `dict.txt` writing into `dict.bin.*`. Append `-v` 
 to command line to see each word found on stdout. A word is just the ASCII text sitting between whitespaces. 
 
-We'll now benachmark this file using three algorithms:
+We'll now benchmark this file set using several algorithms:
 
-* Cuckoo hash map
-* Facebook's F14 hash map
+* CRadix
+* Facebook's F14 hashmap
+* ART Trie
+* Cuckoo hashmap
 * Patricia Trie
 * HOT Trie
-* ART Trie
-* CRadix Trie
 
 The first benchmark will be explained at length. The remainder will give elided stats only followed by a few remarks.
+All results are from [Equinix](https://console.equinix.com/) on-demand c3.small.x86 bare metal instance. 
 
-## Cuckoo Hashmap on dict.bin
+## CRadix
+
+Here's the first command:
 
 ```
-# Run code pinned to CPU core 5
-$ taskset -c 5 ./benchmark.tsk -f ./dict.bin -F bin-text -d cuckoo -h xxhash:XX3_64bits
-loading './dict.bin'
-000000000 bytes left
+./example/benchmark.tsk -f ./dict.bin.cradix -F bin-text -d cradix
+```
+
+This command reads `./dict.bin.cradix` and the inserts every key in the file into a new CRadix tree. Then, on the same
+tree, every key in `./dict.bin.cradix` is searched. This is repeated 10 times snap shotting the resulting data. The
+insert/find sequence is done two ways **for CRadix alone**. First it's done **without a SPSC** (single producer, single
+consumer) queue. Here a single thread runs inserts/finds. Then it's done with a SPSC queue where one thread sends
+insert/find commands over the queue, while another thread runs the insert/finds. Again, **no other data structure
+benchmarked uses SPSC**. 
+
+For each set of 10 runs the benchmark gives the quickest (min), longest (max), and average metric. The first data line
+to look at is `NSI` nanoseconds/iteration or `OPS` (operations/second) which quickly summarize performance:
+
+```
+./example/benchmark.tsk -f ./dict.bin.cradix -F bin-text -d cradix
+loading './dict.bin.cradix'
 config: {
-  filename     : "./dict.bin"
-  fileSizeBytes: 41307637,
+  filename     : "./dict.bin.cradix"
+  fileSizeBytes: 43496622,
   format       : "bin-text"
-  dataStructure: "cuckoo"
-  hashAlgorithm: "xxhash:XX3_64bits"
+  dataStructure: "cradix"
+  hashAlgorithm: ""
   allocator    : "vanilla malloc or std::allocator"
-  needsHashAlgo: true,
+  needsHashAlgo: false,
   customAlloc  : false,
   runs         : 10,
-  recordRuns   : 1,
-  verbosity    : 0
+  verbosity    : 0,
+  coreId0      : 2,
+  coreId1      : 4,
+  coreId2      : 6,
+  coreId3      : 8
 }
-"stats": {
-  "legend" = {
-    "F0": "retired instructions",
-    "F1": "no-halt cpu cycles",
-    "F2": "reference no-halt cpu cycles",
-    "P0": "LLC references",
-    "P1": "LLC misses",
-    "P2": "retired branch instructions",
-    "P3": "retired branch instructions not taken",
-    "IPC": "F0/F2",
-    "branchRatio": "P2/F0",
-    "branchWasteRatio": "P3/F0",
-  },
-  "result" = [
-    {
-      "description": "benchmark-overhead run 9",
-      "total": {
-        "iterations": 4545921,
-        "elapsedTimeNs": 1723206.000000,
-        "F0": 31821564,
-        "F1": 8376825,
-        "F2": 5825834,
-        "P0": 0,
-        "P1": 0,
-        "P2": 4545934,
-        "P3": 3,
-      },
-      scaledPerIteration: {
-        "elapsedTimeNs": 0.379066,
-        "opsPerSecond" : 2638060104.247548,
-        "F0": 7.000026,
-        "F1": 1.842712,
-        "F2": 1.281552,
-        "P0": 0.000000,
-        "P1": 0.000000,
-        "P2": 1.000003,
-        "P3": 0.000001,
-        "IPC": 5.462147,
-        "branchRatio": 0.142857
-        "branchWasteRatio": 0.000000
-      },
-    }
-  ]
-}
-config: {
-  filename     : "./dict.bin"
-  fileSizeBytes: 41307637,
-  format       : "bin-text"
-  dataStructure: "cuckoo"
-  hashAlgorithm: "xxhash:XX3_64bits"
-  allocator    : "vanilla malloc or std::allocator"
-  needsHashAlgo: true,
-  customAlloc  : false,
-  runs         : 10,
-  recordRuns   : 1,
-  verbosity    : 0
-}
-"stats": {
-  "legend" = {
-    "F0": "retired instructions",
-    "F1": "no-halt cpu cycles",
-    "F2": "reference no-halt cpu cycles",
-    "P0": "LLC references",
-    "P1": "LLC misses",
-    "P2": "retired branch instructions",
-    "P3": "retired branch instructions not taken",
-    "IPC": "F0/F2",
-    "branchRatio": "P2/F0",
-    "branchWasteRatio": "P3/F0",
-  },
-  "result" = [
-    {
-      "description": "insert run 9",
-      "total": {
-        "iterations": 4545921,
-        "elapsedTimeNs": 342085712.000000,
-        "F0": 1485166525,
-        "F1": 1701077861,
-        "F2": 1162221010,
-        "P0": 111786864,
-        "P1": 21959335,
-        "P2": 239749053,
-        "P3": 96207229,
-      },
-      scaledPerIteration: {
-        "elapsedTimeNs": 75.251134,
-        "opsPerSecond" : 13288836.220087,
-        "F0": 326.703109,
-        "F1": 374.198729,
-        "F2": 255.662386,
-        "P0": 24.590587,
-        "P1": 4.830558,
-        "P2": 52.739380,
-        "P3": 21.163419,
-        "IPC": 1.277869,
-        "branchRatio": 0.161429
-        "branchWasteRatio": 0.064779
-      },
-    }
-    {
-      "description": "find run 9",
-      "total": {
-        "iterations": 4545921,
-        "elapsedTimeNs": 274040580.000000,
-        "F0": 1043742704,
-        "F1": 1364296170,
-        "F2": 932093538,
-        "P0": 79255216,
-        "P1": 16788133,
-        "P2": 170012816,
-        "P3": 78892110,
-      },
-      scaledPerIteration: {
-        "elapsedTimeNs": 60.282741,
-        "opsPerSecond" : 16588495.762197,
-        "F0": 229.599833,
-        "F1": 300.114360,
-        "F2": 205.039537,
-        "P0": 17.434358,
-        "P1": 3.693010,
-        "P2": 37.398982,
-        "P3": 17.354483,
-        "IPC": 1.119783,
-        "branchRatio": 0.162888
-        "branchWasteRatio": 0.075586
-      },
-    }
-  ]
-}
+Scaled Summary Statistics: 10 runs: CRadix Insert
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 177.82932        maxValue: 179.77454        avgValue: 178.80151       
+F0 : [retired instructions                                        ] minValue: 310.59668        maxValue: 310.61272        avgValue: 310.59838       
+F1 : [no-halt cpu cycles                                          ] minValue: 247.57177        maxValue: 249.47584        avgValue: 248.85532       
+F2 : [reference no-halt cpu cycles                                ] minValue: 169.15065        maxValue: 170.45734        avgValue: 170.08109       
+P0 : [LLC references                                              ] minValue: 8.06368          maxValue: 10.61815         avgValue: 8.59964         
+P1 : [LLC misses                                                  ] minValue: 0.72530          maxValue: 0.94934          avgValue: 0.77121         
+P2 : [retired branch instructions                                 ] minValue: 59.52857         maxValue: 59.52990         avgValue: 59.52873        
+P3 : [retired branch instructions not taken                       ] minValue: 40.91113         maxValue: 40.91117         avgValue: 40.91115        
+NSI: [nanoseconds per iteration                                   ] minValue: 52.17974         maxValue: 52.75054         avgValue: 52.46499        
+OPS: [operations per second                                       ] minValue: 19164525.00291   maxValue: 18957150.29096   avgValue: 19060328.84574  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 237204992.00000  maxValue: 239799808.00000  avgValue: 238501708.80000 
+Scaled Summary Statistics: 10 runs: CRadix Find
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 133.54341        maxValue: 136.40191        avgValue: 135.69191       
+F0 : [retired instructions                                        ] minValue: 149.06026        maxValue: 149.06030        avgValue: 149.06029       
+F1 : [no-halt cpu cycles                                          ] minValue: 195.00121        maxValue: 199.19319        avgValue: 198.16128       
+F2 : [reference no-halt cpu cycles                                ] minValue: 133.22924        maxValue: 136.10152        avgValue: 135.39444       
+P0 : [LLC references                                              ] minValue: 9.25547          maxValue: 10.98943         avgValue: 9.62411         
+P1 : [LLC misses                                                  ] minValue: 1.08097          maxValue: 1.33715          avgValue: 1.13369         
+P2 : [retired branch instructions                                 ] minValue: 33.43374         maxValue: 33.43375         avgValue: 33.43375        
+P3 : [retired branch instructions not taken                       ] minValue: 23.34698         maxValue: 23.34698         avgValue: 23.34698        
+NSI: [nanoseconds per iteration                                   ] minValue: 39.18512         maxValue: 40.02387         avgValue: 39.81553        
+OPS: [operations per second                                       ] minValue: 25519888.34378   maxValue: 24985091.12715   avgValue: 25115825.41517  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 178132480.00000  maxValue: 181945344.00000  avgValue: 180998272.00000 
+Scaled Summary Statistics: 10 runs: CRadix Insert with SPSC Queue
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 197.08603        maxValue: 204.22293        avgValue: 200.19575       
+F0 : [retired instructions                                        ] minValue: 298.82205        maxValue: 331.44770        avgValue: 318.58599       
+F1 : [no-halt cpu cycles                                          ] minValue: 282.05897        maxValue: 292.08773        avgValue: 286.42194       
+F2 : [reference no-halt cpu cycles                                ] minValue: 196.63362        maxValue: 203.62676        avgValue: 199.67627       
+P0 : [LLC references                                              ] minValue: 7.92447          maxValue: 13.52094         avgValue: 9.46566         
+P1 : [LLC misses                                                  ] minValue: 0.24514          maxValue: 0.24788          avgValue: 0.24643         
+P2 : [retired branch instructions                                 ] minValue: 71.70551         maxValue: 79.86192         avgValue: 76.64649        
+P3 : [retired branch instructions not taken                       ] minValue: 24.91892         maxValue: 27.63444         avgValue: 26.56389        
+NSI: [nanoseconds per iteration                                   ] minValue: 57.83014         maxValue: 59.92430         avgValue: 58.74263        
+OPS: [operations per second                                       ] minValue: 17292020.01935   maxValue: 16687720.87203   avgValue: 17023413.46159  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 262891264.00000  maxValue: 272411136.00000  avgValue: 267039334.40000 
+Scaled Summary Statistics: 10 runs: CRadix Find with SPSC Queue
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 165.45301        maxValue: 169.33818        avgValue: 167.14123       
+F0 : [retired instructions                                        ] minValue: 295.59081        maxValue: 305.64934        avgValue: 299.91896       
+F1 : [no-halt cpu cycles                                          ] minValue: 236.81538        maxValue: 242.52406        avgValue: 239.33592       
+F2 : [reference no-halt cpu cycles                                ] minValue: 164.89685        maxValue: 168.85168        avgValue: 166.64309       
+P0 : [LLC references                                              ] minValue: 6.70423          maxValue: 7.07149          avgValue: 6.84820         
+P1 : [LLC misses                                                  ] minValue: 0.24289          maxValue: 0.24548          avgValue: 0.24437         
+P2 : [retired branch instructions                                 ] minValue: 70.89770         maxValue: 73.41233         avgValue: 71.97973        
+P3 : [retired branch instructions not taken                       ] minValue: 25.19150         maxValue: 26.02587         avgValue: 25.55095        
+NSI: [nanoseconds per iteration                                   ] minValue: 48.54821         maxValue: 49.68823         avgValue: 49.04359        
+OPS: [operations per second                                       ] minValue: 20598082.46916   maxValue: 20125489.07648   avgValue: 20390025.42595  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 220696320.00000  maxValue: 225878784.00000  avgValue: 222948275.20000 
 ```
 
-The top most of the output shows the config:
-
-```
-config: {                                                                                                               
-  filename     : "./dict.bin"                                                                                           
-  fileSizeBytes: 41307637,                                                                                              
-  format       : "bin-text"                                                                                             
-  dataStructure: "cuckoo"                                                                                               
-  hashAlgorithm: "xxhash:XX3_64bits"                                                                                    
-  allocator    : "vanilla malloc or std::allocator"                                                                     
-  needsHashAlgo: true,                                                                                                  
-  customAlloc  : false,                                                                                                 
-  runs         : 10,                                                                                                    
-  recordRuns   : 1,                                                                                                     
-  verbosity    : 0                                                                                                      
-}
-```
-
-The converted file has 41307637 bytes (versus 28956348 in the original raw file) with 4545921 words as we know from the
-generator command earlier. The default config is to run each benchmark 10 times only recording the last `recordRuns=1`
-runs. You can adjust these numbers on the benchmark command line. The default config also runs with the builtin,
-standard memory allocator.
-
-A legend section is then given where each PMU counter is given a mnemonic name e.g. `P0` with a description. The code
-documents seven counters (F0-F2, and P0-P3) with a couple of derived values:
-
-```
-  "legend" = {                                                                                                          
-    "F0": "retired instructions",                                                                                       
-    "F1": "no-halt cpu cycles",                                                                                         
-    "F2": "reference no-halt cpu cycles",                                                                               
-    "P0": "LLC references",                                                                                             
-    "P1": "LLC misses",                                                                                                 
-    "P2": "retired branch instructions",                                                                                
-    "P3": "retired branch instructions not taken",                                                                      
-    "IPC": "F0/F2",                                                                                                     
-    "branchRatio": "P2/F0",                                                                                             
-    "branchWasteRatio": "P3/F0",                                                                                        
-  },
-```
-
-Three results sets are reported two ways. The first pair is `benchmark-overhead`. The same benchmark code that's run
-on the cuckoo hashmap is first run over an empty-loop scanning the words in `dict.bin` loaded into huge-page memory.
-It includes setup and tear-down. Since `dict.bin` contains 4545921 words the benchmark records 4545921 iterations. This
-empty loop is run 10 times and only the last run is recorded. The first block shows the total number of operations,
-total elapased time, and PMU counter values at test end. These numbers are snap-shotted once before and after the test:
-
-```
-  "result" = [                                                                                                          
-    {                                                                                                                   
-      "description": "benchmark-overhead run 9",                                                                        
-      "total": {                                                                                                        
-        "iterations": 4545921,                                                                                          
-        "elapsedTimeNs": 1723206.000000,                                                                                
-        "F0": 31821564,                                                                                                 
-        "F1": 8376825,                                                                                                  
-        "F2": 5825834,                                                                                                  
-        "P0": 0,                                                                                                        
-        "P1": 0,                                                                                                        
-        "P2": 4545934,                                                                                                  
-        "P3": 3,                                                                                                        
-      }, 
-```
-
-The second block records the same data except that it's scaled down by `4545921` since that was the number of words
-scanned. This gives you a slightly more useful resource consumption rate:
-
-```
-      scaledPerIteration: {                                                                                             
-        "elapsedTimeNs": 0.379066,                                                                                      
-        "opsPerSecond" : 2638060104.247548,                                                                             
-        "F0": 7.000026,                                                                                                 
-        "F1": 1.842712,                                                                                                 
-        "F2": 1.281552,                                                                                                 
-        "P0": 0.000000,                                                                                                 
-        "P1": 0.000000,                                                                                                 
-        "P2": 1.000003,                                                                                                 
-        "P3": 0.000001,                                                                                                 
-        "IPC": 5.462147,                                                                                                
-        "branchRatio": 0.142857                                                                                         
-        "branchWasteRatio": 0.000000                                                                                    
-      }, 
-```
-
-The point of this data is to argue the benchmark setup time and memory scanner overhead is not a significant
-contributor to the real benchmarks which appear next. This loop is quick on average ~0.5ns/word. It incurs no LLC cache
-misses. That is P0, P1 record 0.0. LLC cache miss means the CPU had to wait for memory to be fetched from RAM into the
-last level CPU cache (typically level 3 or L3) stalling it. The further removed required data is from a CPU register
-falling back to L1, then L2, then L3, or worst case RAM [you incur an additional latency factor](https://pmem.io/blog/2019/12/300-nanoseconds-1-of-2/)
-(approximately) of 10. That's why Intel considers LLC hit/misses to be architecturally signifcant.
-
-IPC (instructions retired per retired cycle) is well above 1.0. Modern CPUs are super scalar, and ideally, can complete
-multiple instructions per cycle if it can keep its pipeline busy. This loop does that. 
-
-This broadly makes sense. The word scanner works over memory in a non-random increasing only order so the CPU can
-prefetch data before it needs it. The scanner does not walk each byte looking for word boudaries. It's pre-computed
-in `dict.bin`. The current word variable holding the next assignment stays CPU local-hot.
-
-The next two sections record the time it took the Cuckoo hashmap to insert all 4545921 words giving total, elapsed
-values and scaled values:
-
-```
-    {                                                                                                                   
-      "description": "insert run 9",                                                                                    
-      "total": {                                                                                                        
-        "iterations": 4545921,                                                                                          
-        "elapsedTimeNs": 342085712.000000,                                                                              
-        "F0": 1485166525,                                                                                               
-        "F1": 1701077861,                                                                                               
-        "F2": 1162221010,                                                                                               
-        "P0": 111786864,                                                                                                
-        "P1": 21959335,                                                                                                 
-        "P2": 239749053,                                                                                                
-        "P3": 96207229,                                                                                                 
-      },                                                                                                                
-      scaledPerIteration: {                                                                                             
-        "elapsedTimeNs": 75.251134,                                                                                     
-        "opsPerSecond" : 13288836.220087,                                                                               
-        "F0": 326.703109,                                                                                               
-        "F1": 374.198729,                                                                                               
-        "F2": 255.662386,                                                                                               
-        "P0": 24.590587,                                                                                                
-        "P1": 4.830558,                                                                                                 
-        "P2": 52.739380,                                                                                                
-        "P3": 21.163419,                                                                                                
-        "IPC": 1.277869,                                                                                                
-        "branchRatio": 0.161429                                                                                         
-        "branchWasteRatio": 0.064779                                                                                    
-      },                                                                                                                
-    }
-```
-
-An insert requires ~75ns/op with 25 LLC cache hits and ~5 LLC cache misses per insert. This tranlates to about 13,288,836
-inserts per second. Broadly speaking there are two factors. First, hashing fundamentally means random I/O since keys are
-pseudo randomly assigned different buckets. The CPU has no way to predict which bucket so that it cannot prefectch memory
-to avoid stalls. Second, the hashing algorithm will interplay with a hashmap's overflow logic adding or reorganizing
-buckets which leads to more random memory accesses.
-
-IPC is only 1.2. About 16% of all instructions are branch related, of which ~6.5% of the total ~327 instructions per
-insert (e.g. about 21 instructions) were evaluated and never used.
-
-The find operations are pretty much the same clocking in somewhat faster at 60ns/find. In many KV data structures,
-the first 70% of an insert is find. The data reflects this.
+When run **without SPSC** it takes `52.46499 ns/op` to insert and `39.81553 ns/op` to find. Adding SPSC overhead these
+numbers increase to `58.74263` and `49.04359 ns/op` respectively. The P0/P1 data lines show there are a few LLC refs
+and almost 0 LLC misses. That's because the test file is not particularly big containing only ~500,000 unique words.
+Comparing C0 to F2 we can see the code doesn't spend too much time halted waiting for resources. Finally, comparing
+F0 to P2 and P3 note branch instructions are almost half of what the CPU does. The number of iterations appears in data
+line `N` (constant 4545921) which is what the generator command above reported. After repeated testing CRadix does
+sub-100 ns/operation work which puts it into the same order of 10 as hashing. 
 
 ## Facebook's F14 Hashmap
 
-```
-$ taskset -c 5 ./benchmark.tsk -f ./dict.bin -F bin-text -d f14 -h xxhash:XX3_64bits
-```
-
-This algorithm is at least 2x better. Inserts are 27ns/op and finds are 26ns/op. LLC cache hits are 9 with 2 misses per
-operation insert. Find has slightly better numbers here.
-
-## HOT Trie
-
-A trie is fundamentally different from a hashmap. It makes copies of the keys then orders them. Consequently it does lot
-more work. You must run this on a bin file with terminators. Refer to the previous section running generator with `-t`
-option:
+For all other data structures it's imperative to run the benchmark pinned to a core. The CPU identifiers `coreId0`
+etc. appearing in the config data are used only by CRadix. That's why this command is prefixed by `taskset`. Facebook's
+F14 hashmap using the `xxhash:XX3_64bits` hashing algo gives `33.55490 ns/op` insert and `25.91206 ns/op' find with
+approximately the same LLC metrics. It spends less time branching compared to CRadix because it's not fundamentally
+organized as a tree of nodes.
 
 ```
-$ taskset -c 5 ./benchmark.tsk -f ./dict.bin.trie -F bin-text -d hot
+taskset -c 5 ./example/benchmark.tsk -f ./dict.bin -F bin-text -d f14 -h xxhash:XX3_64bits 
+loading './dict.bin'
+config: {
+  filename     : "./dict.bin"
+  fileSizeBytes: 41307637,
+  format       : "bin-text"
+  dataStructure: "f14"
+  hashAlgorithm: "xxhash:XX3_64bits"
+  allocator    : "vanilla malloc or std::allocator"
+  needsHashAlgo: true,
+  customAlloc  : false,
+  runs         : 10,
+  verbosity    : 0,
+  coreId0      : 2,
+  coreId1      : 4,
+  coreId2      : 6,
+  coreId3      : 8
+}
+Scaled Summary Statistics: 10 runs: F14 Insert
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 113.51912        maxValue: 118.13129        avgValue: 114.35575       
+F0 : [retired instructions                                        ] minValue: 207.74573        maxValue: 207.74834        avgValue: 207.74705       
+F1 : [no-halt cpu cycles                                          ] minValue: 158.76499        maxValue: 167.61762        avgValue: 161.99272       
+F2 : [reference no-halt cpu cycles                                ] minValue: 110.09121        maxValue: 114.52474        avgValue: 110.90500       
+P0 : [LLC references                                              ] minValue: 6.53855          maxValue: 7.26735          avgValue: 6.73450         
+P1 : [LLC misses                                                  ] minValue: 1.17671          maxValue: 1.26706          avgValue: 1.20137         
+P2 : [retired branch instructions                                 ] minValue: 36.14632         maxValue: 36.14694         avgValue: 36.14663        
+P3 : [retired branch instructions not taken                       ] minValue: 18.94157         maxValue: 18.94244         avgValue: 18.94189        
+NSI: [nanoseconds per iteration                                   ] minValue: 33.30958         maxValue: 34.66287         avgValue: 33.55490        
+OPS: [operations per second                                       ] minValue: 30021393.09081   maxValue: 28849315.71737   avgValue: 29801910.11825  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 151422720.00000  maxValue: 157574656.00000  avgValue: 152537907.20000 
+Scaled Summary Statistics: 10 runs: F14 Find
+C0 : [rdtsc cycles: use with F2                                   ] minValue: 86.14668         maxValue: 99.70892         avgValue: 88.30825        
+F0 : [retired instructions                                        ] minValue: 170.45465        maxValue: 170.45721        avgValue: 170.45636       
+F1 : [no-halt cpu cycles                                          ] minValue: 125.80771        maxValue: 145.66379        avgValue: 128.93414       
+F2 : [reference no-halt cpu cycles                                ] minValue: 85.95366         maxValue: 99.51830         avgValue: 88.09124        
+P0 : [LLC references                                              ] minValue: 5.71993          maxValue: 7.67854          avgValue: 6.05827         
+P1 : [LLC misses                                                  ] minValue: 1.03748          maxValue: 1.21057          avgValue: 1.07355         
+P2 : [retired branch instructions                                 ] minValue: 29.53234         maxValue: 29.53293         avgValue: 29.53272        
+P3 : [retired branch instructions not taken                       ] minValue: 14.60601         maxValue: 14.60636         avgValue: 14.60622        
+NSI: [nanoseconds per iteration                                   ] minValue: 25.27776         maxValue: 29.25732         avgValue: 25.91206        
+OPS: [operations per second                                       ] minValue: 39560460.50360   maxValue: 34179478.85569   avgValue: 38592069.27174  
+N  : [iterations                                                  ] minValue: 4545921.00000    maxValue: 4545921.00000    avgValue: 4545921.00000   
+NS : [nanoseconds elapsed                                         ] minValue: 114910720.00000  maxValue: 133001472.00000  avgValue: 117794176.00000 
 ```
 
-Inserts run at 237ns/op with finds 83ns/op. Interestingly, HOT has almost no LLC misses. 
+## ART (Adaptive Radix Trie)
 
-# Typical and Notable Benchmark Commandlines
-Start here for typical benchmark invocations:
-(TBD)
-
-# Benchmark Highlights
-(In progress)
-In this section, I summarize notable findings giving their benchmark invocation line placing stats into context.
-These results represent the best performance of all algorithm permutations to date.
-
-# Guidance on Running and Testing
-* Prefer building on bare metal. How/if virtual CPUs weigh into Intel PMU data and how virtual environments effect
-performance is not addressed here. Here again I've found [Equinix](https://console.equinix.com) very cheap, and darn
-easy to use. It's at least twice cheaper than bare metal `c5n` AWS EC2 instances and, like AWS, bills by the hour.
-* Always `taskset` the benchmark task. PMU data is useless if the task bounces around cores.
-* Throw away the first couple of test runs, and run each iteration on the same core unless you want to see how the
-code runs code
-* Strongly consider disabling CPU hyper-threading. There are three general reasons. More kernel work can run on
-your test core otherwise. Second, as [rdpmu](https://github.com/rodgarrison/rdpmc/blob/main/doc/pmu.md#overview)
-explains, Intel PMU data is easier to interpret if it's not polluted by other CPU threads running on the same core
-the kernel may schedule there. Finally, fewer CPU threads in the same core may mean less CPU cache contention. The
-`scripts` directory contains `intel_ht` for this purpose. Run with `on` to enable or `off` to disable
-* Intel PMU metrics report, where needed, reference cycle counts which run at a fixed frequency. This eliminates a
-whole rats nest of issues configuring the system under test to put it into performance mode, disable power savings
-and so on. Variable CPU frequency issues are avoided. Usually we just need instructions-per-cycle ratios to compare 
-across algorithms. Retired cycles at an unchanging reference frequency does this.
-* Double check the usage line (`benchmark.tsk` with no args) to see if there's an alternate memory allocator for your
-preferred algorithm. Allocations may have a large effect on performance
-* Double check the usage line (`benchmark.tsk` with no args) to see if there's a variation of your preferred algorithm
-with SIMD
-* Hashmaps cannot and do not sort so generally run faster than alternatives
-* Check memory utilization: don't trade fast performance for terrible memory unless you know this ahead of time.
-* Although not documented here, it's possible to isolate kernel work on a core set. [DPDK](https://dpdk.org) is one
-source. [This Intel page is another](https://www.intel.com/content/www/us/en/developer/articles/guide/dpdk-performance-optimization-guidelines-white-paper.html). That means you can task set your benchmark code on other cores. From a pareto standpoint SIMD,
-a better allocator, or a better algorithm will give you much better results.
-* Intel PMU events are smartly organized as (CPU) architectual or not. From a CPU core perspective it's architectually
-important if the CPU has lots of LLC misses because those are much more expensive than core-to-core transfers, or L1/2/3
-CPU cache lookups, or just running routine jmp, add, bit-logic instructions. Wasting a lot cycles in branch instructions
-that are never taken is also expensive. That's why I've included those PMU stats. LLC misses don't have simple
-relationship to IPC. If the CPU is waiting for cache line fills from RAM, it's not executing instructions even as
-cycles go by. So consider LLC misses and average ns/iteration together.
-* Intel PMU has a rich set of events. Feel free to change the default set. [rdpmu](https://github.com/rodgarrison/rdpmc)
-will give you those details. Recall, as explained above, the Intel PMU code in this repository is a straight copy from
-[rdpmc](https://github.com/rodgarrison/rdpmc). Therefore what applies there applies here unchanged.
