@@ -20,6 +20,7 @@ struct Config {
   , d_verbosity(0)
   , d_boundary(1)
   , d_cstringTerminator(false)
+  , d_wide(false)
   {
   }
 
@@ -29,6 +30,7 @@ struct Config {
   unsigned int    d_verbosity;
   unsigned int    d_boundary;
   bool            d_cstringTerminator;
+  bool            d_wide;
 };
 
 Config config;
@@ -53,13 +55,15 @@ void usageAndExit() {
   printf("                                           valid with 'convert-text' when n boundaries are required\n");
   printf("                                           n must be a power of 2 in range [2,8]\n");
   printf("\n");
+  printf("       -w                       optional : emit wide characters; each ASCII 1-byte char written as int\n");
+  printf("\n");
   printf("       -v                       optional : increase verbosity of output\n");
   exit(2);
 }
 
 void parseCommandLine(int argc, char **argv) {                                                                          
   int opt;
-  const char *switches = "m:i:o:b:tv";
+  const char *switches = "m:i:o:b:tvw";
 
   while ((opt = getopt(argc, argv, switches)) != -1) {
     switch (opt) {
@@ -114,6 +118,12 @@ void parseCommandLine(int argc, char **argv) {
       case 'v':
         {
           ++config.d_verbosity;
+        }
+        break;
+
+      case 'w':
+        {
+          config.d_wide = true;
         }
         break;
 
