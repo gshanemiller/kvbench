@@ -167,6 +167,7 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
 
     // found word: write to output
     const char terminator(0);
+    const int wterminator(0);
     const unsigned int sz = ptr-start;
     unsigned int outputSize(sz);
 
@@ -197,17 +198,36 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
 
     const unsigned long previousWordOffset = offset;
 
-    if (write(fid, start, sz)==-1) {
-      printf("write error: %s (errno=%d)\n", strerror(errno), errno);
-      return -1;
-    }
-    offset += sz;
-
-    if (config.d_cstringTerminator) {
-      offset++;
-      if (write(fid, &terminator, sizeof(terminator))==-1) {
+    if (!config.d_wide) {
+      if (write(fid, start, sz)==-1) {
         printf("write error: %s (errno=%d)\n", strerror(errno), errno);
         return -1;
+      }
+      offset += sz;
+
+      if (config.d_cstringTerminator) {
+        offset++;
+        if (write(fid, &terminator, sizeof(terminator))==-1) {
+          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+          return -1;
+        }
+      }
+    } else {
+      for (unsigned i=0; i<sz; ++i) {
+        int val = (int)start[i];
+        if (write(fid, &val, sizeof(val))==-1) {
+          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+          return -1;
+        }
+      }
+      offset += (sz*sizeof(int));
+
+      if (config.d_cstringTerminator) {
+        offset += sizeof(wterminator);
+        if (write(fid, &wterminator, sizeof(wterminator))==-1) {
+          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+          return -1;
+        }
       }
     }
 
