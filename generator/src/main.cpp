@@ -9,6 +9,8 @@
 
 #include <string>
 
+static_assert(sizeof(unsigned)==4);
+
 struct Config {
   enum Mode {
     CONVERT_TEXT = 0,
@@ -165,6 +167,11 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
     }
 
     // #elements we're writing: either 1-byte char elements or 4-byte wide char elements
+    // inclusive of terminator if any
+    if (config.d_cstringTerminator) {
+      // this is big enough for wide - fixed below
+      ++outputSize;
+    }
     if (write(fid, &outputSize, sizeof(outputSize))==-1) {
       printf("write error: %s (errno=%d)\n", strerror(errno), errno);
       return -1;
@@ -186,12 +193,16 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
           return -1;
         }
         ++offset;
-        ++outputSize;
       }
     } else {
+      union {
+        int val;
+        unsigned char byte[4];
+      } datum;
+      datum.val = 0;
       for (unsigned i=0; i<sz; ++i) {
-        int val = (int)start[i];
-        if (write(fid, &val, sizeof(val))==-1) {
+        datum.byte[0] = (unsigned char)start[i];
+        if (write(fid, &datum.val, sizeof(datum.val))==-1) {
           printf("write error: %s (errno=%d)\n", strerror(errno), errno);
           return -1;
         }
@@ -206,7 +217,8 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
           return -1;
         }
         offset += sizeof(wterminator);
-        outputSize += sizeof(wterminator);
+        // see comment above when output size is written
+        outputSize += sizeof(wterminator) - 1;
       }
     }
 

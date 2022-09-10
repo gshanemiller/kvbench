@@ -38,18 +38,14 @@ public:
   bool eof() const;
     // Return true if EOF reached.
 
-  unsigned count() const;
+  unsigned int index() const;
     // Return number of scanned words found so far
 
-  unsigned available() const;
+  unsigned int available() const;
     // Return number of words available in file loaded in memory
 
   // MANIPULATORS
   void next(Slice<T>& value);
-    // Assign to 'value' the next word in file provided at construction time
-    // The behavior is defined provided '!eof()'.
-
-  void next(Slice<unsigned T>& value);
     // Assign to 'value' the next word in file provided at construction time
     // The behavior is defined provided '!eof()'.
 
@@ -62,70 +58,54 @@ public:
 
 // INLINE DEFINITIONS
 // CREATORS
-template<T>
+template<class T>
 inline
-TextScan::TextScan(const LoadFile& file)
+TextScan<T>::TextScan(const LoadFile& file)
 : d_file(file)
 {
   reset();
 }
 
 // ACCESSORS
-template<T>
+template<class T>
 inline
-bool TextScan::eof() const {
+bool TextScan<T>::eof() const {
   return (d_index>=d_available);
 }
 
-template<T>
+template<class T>
 inline
-unsigned int TextScan::count() const {
+unsigned int TextScan<T>::index() const {
   return d_index;
 }
 
-template<T>
+template<class T>
 inline
-unsigned int TextScan::available() const {
+unsigned int TextScan<T>::available() const {
   return d_available;
 }
 
 // MANIPULATORS
-template<T>
+template<class T>
 inline
-void TextScan::next(Slice<T>& word) {
+void TextScan<T>::next(Slice<T>& word) {
   assert(!eof());
 
   ++d_index;
 
   unsigned int *i = reinterpret_cast<unsigned int*>(d_ptr);
-  word.reset(d_ptr+sizeof(unsigned int), (*i)&0xffff);
+  word.reset((const T*)(d_ptr+sizeof(unsigned int)), (*i)&0xffff);
 
-  d_ptr += sizeof(unsigned int) + ((*i)&0xffff) + ((*i)>>16);
+  d_ptr += sizeof(unsigned int) + ((*i)&0xffff)*sizeof(T);
 }
 
-template<T>
+template<class T>
 inline
-void TextScan::next(Slice<unsigned char>& word) {
-  assert(!eof());
-
-  ++d_index;
-
-  unsigned int *i = reinterpret_cast<unsigned int*>(d_ptr);
-
-//printf("TextScan::next: making word %u of %u with size %u padding %u at %p\n",
-//  d_index-1, d_available, (*i)&0xffff, (*i)>>16, reinterpret_cast<unsigned char*>(d_ptr));
-  word.reset(reinterpret_cast<unsigned char*>(d_ptr)+sizeof(unsigned int), (*i)&0xffff);
-
-  d_ptr += sizeof(unsigned int) + ((*i)&0xffff) + ((*i)>>16);
-}
-
-template<T>
-inline
-void TextScan::reset() {
+void TextScan<T>::reset() {
   d_ptr = d_file.data();
   d_end = d_file.data()+d_file.fileSize();
-  d_available = 0;
   d_index = 0;
+  d_available = 0;
   if (static_cast<unsigned long>(d_end-d_ptr)>=sizeof(unsigned int)) {
     unsigned int *i = reinterpret_cast<unsigned int*>(d_ptr);
     d_available = *i;

@@ -13,7 +13,7 @@ static int datrie_test_text_insert(unsigned runNumber, T* map, Intel::Stats& sta
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   timespec startTime, endTime;
-  Benchmark::TextScan scanner(file);
+  Benchmark::TextScan<char> scanner(file);
 
   pmu.reset();
   timespec_get(&startTime, TIME_UTC);
@@ -26,7 +26,7 @@ static int datrie_test_text_insert(unsigned runNumber, T* map, Intel::Stats& sta
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.count(), startTime, endTime, pmu);
+  stats.record(label, scanner.index(), startTime, endTime, pmu);
 
   return 0;
 }
@@ -39,7 +39,7 @@ static int datrie_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   timespec startTime, endTime;
-  Benchmark::TextScan scanner(file);
+  Benchmark::TextScan<char> scanner(file);
 
   pmu.reset();
   timespec_get(&startTime, TIME_UTC);
@@ -53,7 +53,7 @@ static int datrie_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.count(), startTime, endTime, pmu);
+  stats.record(label, scanner.index(), startTime, endTime, pmu);
 
   return 0;
 }

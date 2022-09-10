@@ -15,7 +15,7 @@ extern Patricia::MemoryManager memManager;
 template<typename T>
 static int patricia_test_text_insert(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<unsigned char> word;
-  Benchmark::TextScan scanner(file);
+  Benchmark::TextScan<unsigned char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   char label[128];
@@ -33,7 +33,7 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Intel::Stats& s
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.count(), startTime, endTime, pmu);
+  stats.record(label, scanner.index(), startTime, endTime, pmu);
 
   return 0;
 }
@@ -41,7 +41,7 @@ static int patricia_test_text_insert(unsigned runNumber, T* map, Intel::Stats& s
 template<typename T>
 static int patricia_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<unsigned char> word;
-  Benchmark::TextScan scanner(file);
+  Benchmark::TextScan<unsigned char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   unsigned int errors(0);
@@ -63,7 +63,7 @@ static int patricia_test_text_find(unsigned runNumber, T* map, Intel::Stats& sta
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.count(), startTime, endTime, pmu);
+  stats.record(label, scanner.index(), startTime, endTime, pmu);
 
   if (errors) {
     printf("searchErrors: %u\n", errors);

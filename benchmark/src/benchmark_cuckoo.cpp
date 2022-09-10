@@ -48,7 +48,7 @@ typedef libcuckoo::cuckoohash_map<Benchmark::Slice<char>, bool, Benchmark::char_
 template<typename T>
 static int cuckoo_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
-  Benchmark::TextScan scanner(file);
+  Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   char label[128];
@@ -66,7 +66,7 @@ static int cuckoo_test_text_insert(unsigned runNumber, T& map, Intel::Stats& sta
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.count(), startTime, endTime, pmu); 
+  stats.record(label, scanner.index(), startTime, endTime, pmu); 
 
   return 0;
 }
@@ -74,7 +74,7 @@ static int cuckoo_test_text_insert(unsigned runNumber, T& map, Intel::Stats& sta
 template<typename T>
 static int cuckoo_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
-  Benchmark::TextScan scanner(file);
+  Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   char label[128];
@@ -94,7 +94,7 @@ static int cuckoo_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.count(), startTime, endTime, pmu); 
+  stats.record(label, scanner.index(), startTime, endTime, pmu); 
 
   return 0;
 }

@@ -255,6 +255,30 @@ void Slice<unsigned char>::print() const {
   }
 }
 
+template<>
+inline
+void Slice<int>::print() const {
+  auto size = (d_opaque>>48);
+  const int *ptr = reinterpret_cast<const int*>(d_opaque & 0xFFFFFFFFFFFFULL);
+  if (ptr) {
+    printf("Slice<int> size: %lu, data: '", size);
+    for(u_int64_t i=0; i<size; ++i, ++ptr) {
+      if ((*ptr & 0xffffff80)==0) {
+        if ((*ptr&0x7f)==0) {
+          printf("0x00");
+        } else {
+          putchar((char)(*ptr&0x7f));
+        }
+      } else {
+        printf("0x%08x", *ptr);
+      }
+    }
+    printf("'\n");
+  } else {
+    printf("Slice<int> size: %lu, data: *NULL*\n", size);
+  }
+}
+
 // FREE OPERATORS
 template<class T>
 inline
