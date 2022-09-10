@@ -73,7 +73,7 @@ and build. The only non-standard libraries required are `libhugetlbfs` and `boos
 * Run command: `mkdir build`
 * Run command: `cd build`
 * Run command: `cmake ..`
-* Run command: `make -j 8`
+* Run command: `make -j`
 * Proceed to setup below
 
 If you don't have the tool chain and/or dependent libraries and don't wanna waste your time figuring which build
