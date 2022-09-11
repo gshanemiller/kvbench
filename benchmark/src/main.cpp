@@ -12,6 +12,7 @@
 #include <benchmark_cradix.h>
 #include <benchmark_datrie.h>
 #include <benchmark_cedar.h>
+#include <benchmark_dartclone.h>
 
 #include <benchmark_textscan.h>
 
@@ -36,6 +37,7 @@ void usageAndExit() {
   printf("                                'cradix'     : own m-ary trie\n");
   printf("                                'datrie'     : double array trie https://linux.thai.net/~thep/datrie/datrie.html\n");
   printf("                                'cedar'      : double array trie http://www.tkl.iis.u-tokyo.ac.jp/~ynaga/cedar/\n");
+  printf("                                'dartclone'  : double array trie https://github.com/s-yata/darts-clone\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
   printf("                                'xxhash:XX3_64bits': xxhash    variant 'XXH3_64bits()' https://github.com/Cyan4973/xxHash.git\n");
@@ -105,6 +107,8 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("datrie", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("cedar", optarg)) {
+            config.d_dataStructure = optarg;
+          } else if (!strcmp("dartclone", optarg)) {
             config.d_dataStructure = optarg;
           } else {
             usageAndExit();
@@ -237,6 +241,10 @@ int main(int argc, char **argv) {
     test.report();
   } else if (config.d_dataStructure=="cedar") {
     Benchmark::Cedar test(config, file);
+    test.start();
+    test.report();
+  } else if (config.d_dataStructure=="dartclone") {
+    Benchmark::DartClone test(config, file);
     test.start();
     test.report();
   }

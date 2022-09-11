@@ -10,9 +10,7 @@
 #include <climits>
 #include <cassert>
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #define STATIC_ASSERT(e, msg) typedef char msg[(e) ? 1 : -1]
 

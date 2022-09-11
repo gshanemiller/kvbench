@@ -48,11 +48,11 @@ public:
     // '[data(), data() + fileSize())'. Also note, 'EINVAL' may be returned if file size is zero (and file exists)
     // or upon unexpected EOF during read.
 
+  void free();
+    // Unconditionally free all resources from an earlier 'load()', if any. You must re-load following free.
+
 private:
   // PRIVATE MANIPULATORS
-  void cleanup();
-    // Unconditionally free all resources from an earlier 'load()', if any.
-
   int mapFile(int pageSize);
     // Return 0 if huge-page backed shared memory of size 'd_fileSize' was allocated for read, write or a non-zero
     // 'errno' value as set by the underlying C-API otherwise. The behavior is valid provided 'fileSize' was run

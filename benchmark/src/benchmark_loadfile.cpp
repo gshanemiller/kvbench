@@ -23,7 +23,7 @@ Benchmark::LoadFile::LoadFile()
 }
 
 Benchmark::LoadFile::~LoadFile() {
-  cleanup();
+  free();
 }
 
 int Benchmark::LoadFile::load(const char *path, int pageSize) {
@@ -32,7 +32,7 @@ int Benchmark::LoadFile::load(const char *path, int pageSize) {
 
   int rc;
 
-  cleanup();
+  free();
 
   if ((rc = fileSize(path)) != 0) {
     return rc;
@@ -50,7 +50,7 @@ int Benchmark::LoadFile::load(const char *path, int pageSize) {
   return 0;
 }
 
-void Benchmark::LoadFile::cleanup() {
+void Benchmark::LoadFile::free() {
   if (d_data) {
     shmdt(d_data);
   }

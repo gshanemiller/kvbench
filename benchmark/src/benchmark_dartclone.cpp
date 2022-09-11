@@ -1,12 +1,12 @@
-#include <benchmark_cedar.h>
+#include <benchmark_dartclone.h>
 #include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
-#include <cedarpp.h>                                                                                                    
+#include <darts.h>                                                                                                    
 
 #include <intel_skylake_pmu.h>
 
-static int cedar_test_text_insert(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, Benchmark::LoadFile& file) {
+static int dartclone_test_text_insert(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, Benchmark::LoadFile& file) {
   // file.load("dist.bin.char");
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
@@ -32,7 +32,7 @@ static int cedar_test_text_insert(unsigned runNumber, cedar::da<int>& map, Intel
   return 0;
 }
 
-static int cedar_test_text_find(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, Benchmark::LoadFile& file) {
+static int dartclone_test_text_find(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, Benchmark::LoadFile& file) {
   // file.load("skew.bin.char");
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
@@ -66,7 +66,7 @@ static int cedar_test_text_find(unsigned runNumber, cedar::da<int>& map, Intel::
   return 0;
 }
 
-int Benchmark::Cedar::start() {
+int Benchmark::DartClone::start() {
   int rc(0);
 
   if (d_config.d_format == "bin-text-kv") {
@@ -86,17 +86,17 @@ int Benchmark::Cedar::start() {
         }
         cedar::da<int> map;
         Benchmark::LoadFile& file = const_cast<Benchmark::LoadFile&>(d_file);
-        cedar_test_text_insert(i, map, d_insertStats, file);
-        cedar_test_text_find(i, map, d_findStats, file);
+        dartclone_test_text_insert(i, map, d_insertStats, file);
+        dartclone_test_text_find(i, map, d_findStats, file);
       }
     }
   }
   return rc;
 }
 
-void Benchmark::Cedar::report() {
+void Benchmark::DartClone::report() {
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
   d_config.print();
-  d_insertStats.summary("Cedar Insert", pmu);
-  d_findStats.summary("Cedar Find", pmu);
+  d_insertStats.summary("DartClone Insert", pmu);
+  d_findStats.summary("DartClone Find", pmu);
 }
