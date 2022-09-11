@@ -6,8 +6,7 @@
 
 #include <intel_skylake_pmu.h>
 
-template<typename T>
-static int cedar_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int cedar_test_text_insert(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -32,8 +31,7 @@ static int cedar_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stat
   return 0;
 }
 
-template<typename T>
-static int cedar_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int cedar_test_text_find(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
