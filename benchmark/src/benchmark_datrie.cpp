@@ -13,16 +13,21 @@ static int datrie_test_text_insert(unsigned runNumber, T* map, Intel::Stats& sta
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   timespec startTime, endTime;
-  Benchmark::TextScan<char> scanner(file);
+  Benchmark::TextScan<int> scanner(file);
 
   pmu.reset();
   timespec_get(&startTime, TIME_UTC);
   pmu.start();
 
   // Benchmark running: do insert
-  Benchmark::Slice<char> word;
+  TrieData value;
+  Benchmark::Slice<int> word;
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    trie_store(map, (const AlphaChar*)word.data(), 0);
+    trie_store(map, (const AlphaChar*)word.data(), scanner.index());
+    if (trie_retrieve(map, (const AlphaChar*)word.data(), &value)==0 || value!=scanner.index()) {
+      printf("problem: ");
+      word.print();
+    }
   }
 
   timespec_get(&endTime, TIME_UTC);
@@ -39,7 +44,7 @@ static int datrie_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
 
   timespec startTime, endTime;
-  Benchmark::TextScan<char> scanner(file);
+  Benchmark::TextScan<int> scanner(file);
 
   pmu.reset();
   timespec_get(&startTime, TIME_UTC);
@@ -47,7 +52,7 @@ static int datrie_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats
 
   // Benchmark running: do find
   TrieData value;
-  Benchmark::Slice<char> word;
+  Benchmark::Slice<int> word;
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
     trie_retrieve(map, (const AlphaChar*)word.data(), &value);
   }

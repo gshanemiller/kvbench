@@ -87,6 +87,9 @@ public:
   T *data();
     // Return 'data' attribute
 
+  const T *const_data();
+    // Return 'data' attribute
+
   void reset(const T* data, ssize sz);
     // Reset 'this' to hold a pointer to memory at specified 'data' of specific 'sz'
 
@@ -203,6 +206,12 @@ template<class T>
 inline
 T *Slice<T>::data() {
   return reinterpret_cast<T*>(d_opaque & 0xFFFFFFFFFFFFULL);
+}
+
+template<class T>
+inline
+const T *Slice<T>::const_data() {
+  return reinterpret_cast<const T*>(d_opaque & 0xFFFFFFFFFFFFULL);
 }
 
 template<class T>

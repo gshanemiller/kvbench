@@ -19,6 +19,7 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_patricia.cpp
   ./src/benchmark_cradix.cpp
   ./src/benchmark_datrie.cpp
+  ./src/benchmark_cedar.cpp
 
   ./src/intel_skylake_pmu.cpp
   ./src/intel_pmu_stats.cpp
@@ -87,6 +88,7 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/radix/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/patricia/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cradix/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/ringbuffer/include)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cedar/src)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)

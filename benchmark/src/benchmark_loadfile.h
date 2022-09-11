@@ -6,6 +6,8 @@
 //  Benchmark::LoadFile: Given an absolute path to a disk file, allocate sufficient huge-page memory to hold the file
 //                       then load the file into that memory.
 
+#include <sys/types.h>
+
 namespace Benchmark {
 
 class LoadFile {
@@ -18,7 +20,7 @@ public:
 
   // DATA
   int          d_fid;
-  unsigned int d_fileSize;
+  u_int64_t    d_fileSize;
   char        *d_data;
   int          d_shmId;
 
@@ -33,7 +35,7 @@ public:
   char *data() const;
     // Return a pointer to the memory allocated by 'load' or 0 if no file is loaded.
 
-  unsigned int fileSize() const;
+  u_int64_t fileSize() const;
     // Return the size of the loaded file or 0 if no file is loaded.
 
   // MANIPULATORS
@@ -78,7 +80,7 @@ char *LoadFile::data() const {
 }
 
 inline
-unsigned int LoadFile::fileSize() const {
+u_int64_t LoadFile::fileSize() const {
   return d_fileSize;
 }
 

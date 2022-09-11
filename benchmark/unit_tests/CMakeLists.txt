@@ -1,6 +1,7 @@
 add_subdirectory(art)
 add_subdirectory(radix)
 add_subdirectory(cradix)
+add_subdirectory(benchmark_cedar)
 add_subdirectory(benchmark_slice)
 add_subdirectory(benchmark_textscan)
 add_subdirectory(benchmark_patricia_tree)
