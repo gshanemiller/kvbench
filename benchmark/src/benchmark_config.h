@@ -41,7 +41,7 @@ inline
 Config::Config()
 : d_needHashAlgo(false)
 , d_customAllocator(false)
-, d_runs(1)
+, d_runs(10)
 , d_verbosity(1)
 , d_cpu0(2)
 , d_cpu1(4)
