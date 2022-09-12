@@ -7,46 +7,25 @@
 //  Benchmark::Hot:        Benchmark HOT (height optimized trie)
 //                         https://github.com/speedskater/hot
 
-#include <benchmark_config.h>
-#include <benchmark_loadfile.h>
-#include <intel_pmu_stats.h>
+#include <benchmark_report.h>
 
 namespace Benchmark {
 
-class HOT {
-  // DATA
-  const LoadFile& d_file;
-  const Config&   d_config;                                                                                             
-  Intel::Stats    d_findStats;
-  Intel::Stats    d_insertStats;
-
+class HOT: public Report {
 public:
-  // CREATORS
-  explicit HOT(const Config& config, const LoadFile& file);
-    // Create HOT benchmark object with specified 'config, file'
-
-  HOT(const HOT& other) = delete;
-    // Copy constructor not provided
-
-  ~HOT() = default;
-    // Destory this object
+  // CREATORS                                                                                                           
+  HOT(const Config& config, const LoadFile& file, const std::string& description)                                     
+  : Report(config, file, description)                                                                                   
+  {                                                                                                                     
+  }                                                                                                                     
+                                                                                                                        
+  virtual ~HOT() = default;                                                                                                   
+    // Destory this object 
 
   // MANIPULATORS
   int start();
     // Return 0 if all benchmarks were run and non-zero otherwise. Note a non-zero code usually indicates
     // bad configuration.
-
-  void report();
-    // Emit to stdout collected benchmark statistics
-
-  HOT& operator=(const HOT& rhs) = delete;
-    // Assignment operator not provided
 };
-
-inline HOT::HOT(const Config& config, const LoadFile& file)
-: d_file(file)
-, d_config(config)
-{
-}
 
 } // namespace Benchmark

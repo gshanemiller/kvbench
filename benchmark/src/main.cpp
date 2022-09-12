@@ -10,7 +10,6 @@
 #include <benchmark_art.h>
 #include <benchmark_patricia.h>
 #include <benchmark_cradix.h>
-#include <benchmark_datrie.h>
 #include <benchmark_cedar.h>
 
 #include <benchmark_textscan.h>
@@ -34,7 +33,6 @@ void usageAndExit() {
   printf("                                'art'        : ART trie https://github.com/armon/libart.git\n");
   printf("                                'patricia'   : own trie based on https://cr.yp.to/critbit.html, https://github.com/agl/critbit\n");
   printf("                                'cradix'     : own m-ary trie\n");
-  printf("                                'datrie'     : double array trie https://linux.thai.net/~thep/datrie/datrie.html\n");
   printf("                                'cedar'      : double array trie http://www.tkl.iis.u-tokyo.ac.jp/~ynaga/cedar/\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
@@ -47,9 +45,11 @@ void usageAndExit() {
   printf("                                            Per MS' doc it beats STL, jemalloc, tcmalloc, Hoard, and others\n");
   printf("                                            See https://github.com/microsoft/mimalloc#benchmark-results-on-a-16-core-amd-5950x-zen3\n");
   printf("\n");
+  printf("       -r <#runs>               optional  : number of runs to execute before collecting stats\n");
+  printf("\n");
   printf("                                optional  : CPU cores for pinning threads\n");
   printf("       -0 <coreId0>             run thread 0 pinned to 'coreId0>=0'. 'cradix uses thread 0 to run radix operations\n");
-  printf("       -1 <coreId1>             run thread 1 pinned to 'coreId1>=0'. 'cradix uses thread 1 to delegate insert/find operations to thread0\n");
+  printf("       -1 <coreId1>             run thread 1 pinned to 'coreId1>=0'. 'cradix delegates work from coreId0 to a thread running on coreId1\n");
   printf("\n");
   printf("File format descriptions provided in 'README.md' at https://github.com/rodgarrison/kvbench\n");
   exit(2);
@@ -58,7 +58,7 @@ void usageAndExit() {
 void parseCommandLine(int argc, char **argv) {
   int opt;
 
-  const char *switches = "f:F:d:h:a:0:1:2:3:";
+  const char *switches = "f:F:d:h:a:0:1:2:3:r:";
 
   while ((opt = getopt(argc, argv, switches)) != -1) {
     switch (opt) {
@@ -101,8 +101,6 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("patricia", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("cradix", optarg)) {
-            config.d_dataStructure = optarg;
-          } else if (!strcmp("datrie", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("cedar", optarg)) {
             config.d_dataStructure = optarg;
@@ -172,6 +170,16 @@ void parseCommandLine(int argc, char **argv) {
           }
         }
         break;
+      case 'r':
+        {
+          if (atoi(optarg)>0) {
+            config.d_runs = atoi(optarg);
+          } else {
+            usageAndExit();
+          }
+        }
+        break;
+      
       default:
         {
           usageAndExit();
@@ -208,35 +216,31 @@ int main(int argc, char **argv) {
 
   // Now do what command line requested
   if (config.d_dataStructure=="cuckoo") {
-    Benchmark::Cuckoo test(config, file);
+    Benchmark::Cuckoo test(config, file, "Cuckoo Hashmap");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="f14") {
-    Benchmark::FacebookF14 test(config, file);
+    Benchmark::FacebookF14 test(config, file, "F14 Hashmap");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="hot") {
-    Benchmark::HOT test(config, file);
+    Benchmark::HOT test(config, file, "HOT Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="art") {
-    Benchmark::ART test(config, file);
+    Benchmark::ART test(config, file, "ART Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="patricia") {
-    Benchmark::patricia test(config, file);
+    Benchmark::patricia test(config, file, "Patricia Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="cradix") {
-    Benchmark::cradix test(config, file);
-    test.start();
-    test.report();
-  } else if (config.d_dataStructure=="datrie") {
-    Benchmark::datrie test(config, file);
+    Benchmark::cradix test(config, file, "CRadix Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="cedar") {
-    Benchmark::Cedar test(config, file);
+    Benchmark::Cedar test(config, file, "Cedar Trie");
     test.start();
     test.report();
   }

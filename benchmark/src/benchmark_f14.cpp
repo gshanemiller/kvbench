@@ -119,6 +119,7 @@ int Benchmark::FacebookF14::start() {
           FacebookF14XXhash_MIM_SliceBool_XX3_64BITS map;
           f14_test_text_insert(i, map, d_insertStats, d_file);
           f14_test_text_find(i, map, d_findStats, d_file);
+          rusage(std::cout);
         }
       } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
         // MIM alloc + t1ha
@@ -129,6 +130,7 @@ int Benchmark::FacebookF14::start() {
           FacebookF14T1ha_MIM_SliceBool map;
           f14_test_text_insert(i, map, d_insertStats, d_file);
           f14_test_text_find(i, map, d_findStats, d_file);
+          rusage(std::cout);
         }
       } else if (d_config.d_hashAlgo=="city::cityhash64") {
         // MIM alloc + cityhash64
@@ -139,6 +141,7 @@ int Benchmark::FacebookF14::start() {
           FacebookF14City_MIM_SliceBool_CityHash64 map;
           f14_test_text_insert(i, map, d_insertStats, d_file);
           f14_test_text_find(i, map, d_findStats, d_file);
+          rusage(std::cout);
         }
       }
     } else {
@@ -151,6 +154,7 @@ int Benchmark::FacebookF14::start() {
           FacebookF14XXhash_SliceBool_XX3_64BITS map;
           f14_test_text_insert(i, map, d_insertStats, d_file);
           f14_test_text_find(i, map, d_findStats, d_file);
+          rusage(std::cout);
         }
       } else if (d_config.d_hashAlgo=="t1ha::t1ha") {
         // std alloc + t1ha
@@ -161,6 +165,7 @@ int Benchmark::FacebookF14::start() {
           FacebookF14T1ha_SliceBool map;
           f14_test_text_insert(i, map, d_insertStats, d_file);
           f14_test_text_find(i, map, d_findStats, d_file);
+          rusage(std::cout);
         }
       } else if (d_config.d_hashAlgo=="city::cityhash64") {
         // std alloc + cityhash64
@@ -171,16 +176,10 @@ int Benchmark::FacebookF14::start() {
           FacebookF14City_SliceBool_CityHash64 map;
           f14_test_text_insert(i, map, d_insertStats, d_file);
           f14_test_text_find(i, map, d_findStats, d_file);
+          rusage(std::cout);
         }
       }
     }
   }
   return rc;
-}
-
-void Benchmark::FacebookF14::report() {
-  Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
-  d_config.print();
-  d_insertStats.summary("F14 Insert", pmu);
-  d_findStats.summary("F14 Find", pmu);
 }

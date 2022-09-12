@@ -7,6 +7,7 @@ add_subdirectory(thirdparty/mimalloc)
 set(BENCHMARK_SOURCES
   ./src/main.cpp
 
+  ./src/benchmark_report.cpp
   ./src/benchmark_config.cpp
   ./src/benchmark_cstr.cpp
   ./src/benchmark_cuckoo.cpp
@@ -18,7 +19,6 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_art.cpp
   ./src/benchmark_patricia.cpp
   ./src/benchmark_cradix.cpp
-  ./src/benchmark_datrie.cpp
   ./src/benchmark_cedar.cpp
 
   ./src/intel_skylake_pmu.cpp
@@ -53,14 +53,6 @@ set(BENCHMARK_SOURCES
   ./thirdparty/cradix/src/cradix_tree.cpp
   ./thirdparty/cradix/src/cradix_treestats.cpp
   ./thirdparty/cradix/src/cradix_nodestats.cpp
-
-  ./thirdparty/datrie/alpha-map.c
-  ./thirdparty/datrie/darray.c
-  ./thirdparty/datrie/dstring.c
-  ./thirdparty/datrie/fileutils.c
-  ./thirdparty/datrie/tail.c
-  ./thirdparty/datrie/trie-string.c
-  ./thirdparty/datrie/trie.c
 )
 
 find_library(HUGELIB

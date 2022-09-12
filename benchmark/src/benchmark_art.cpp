@@ -101,7 +101,7 @@ int Benchmark::ART::start() {
         art_tree_init(&artTrie);
         art_test_text_insert(i, artTrie, d_insertStats, d_file);
         art_test_text_find(i, artTrie, d_findStats, d_file);
-        // art_iter(&artTrie, art_test_text_iter, 0);
+        rusage(std::cout);
         art_tree_destroy(&artTrie);
         art_print_memory();
         art_mem_stats_reset();
@@ -109,12 +109,4 @@ int Benchmark::ART::start() {
     }
   }
   return rc;
-}
-
-void Benchmark::ART::report() {
-  Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
-  d_config.print();
-  d_insertStats.summary("ART Insert", pmu);
-  d_findStats.summary("ART Find", pmu);
-
 }

@@ -93,16 +93,9 @@ int Benchmark::patricia::start() {
         Patricia::Tree *patriciaTree = memManager.allocTree();
         patricia_test_text_insert(i, patriciaTree, d_insertStats, d_file);
         patricia_test_text_find(i, patriciaTree, d_findStats, d_file);
-        memManager.print();
+        rusage(std::cout);
       }
     }
   }
   return rc;
-}
-
-void Benchmark::patricia::report() {
-  Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
-  d_config.print();
-  d_insertStats.summary("Patricia Insert", pmu);
-  d_findStats.summary("Patricia Find", pmu);
 }

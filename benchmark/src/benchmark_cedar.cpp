@@ -6,8 +6,11 @@
 
 #include <intel_skylake_pmu.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 static int cedar_test_text_insert(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, Benchmark::LoadFile& file) {
-  file.load("dist.bin.char");
+  // file.load("dist.bin.char");
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -33,7 +36,7 @@ static int cedar_test_text_insert(unsigned runNumber, cedar::da<int>& map, Intel
 }
 
 static int cedar_test_text_find(unsigned runNumber, cedar::da<int>& map, Intel::Stats& stats, Benchmark::LoadFile& file) {
-  file.load("skew.bin.char");
+  // file.load("skew.bin.char");
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -88,15 +91,9 @@ int Benchmark::Cedar::start() {
         Benchmark::LoadFile& file = const_cast<Benchmark::LoadFile&>(d_file);
         cedar_test_text_insert(i, map, d_insertStats, file);
         cedar_test_text_find(i, map, d_findStats, file);
+        rusage(std::cout);
       }
     }
   }
   return rc;
-}
-
-void Benchmark::Cedar::report() {
-  Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
-  d_config.print();
-  d_insertStats.summary("Cedar Insert", pmu);
-  d_findStats.summary("Cedar Find", pmu);
 }
