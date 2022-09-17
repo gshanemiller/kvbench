@@ -1,4 +1,3 @@
-add_subdirectory(art)
 add_subdirectory(radix)
 add_subdirectory(cradix)
 add_subdirectory(benchmark_cedar)

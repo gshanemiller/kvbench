@@ -11,6 +11,8 @@
 #include <benchmark_patricia.h>
 #include <benchmark_cradix.h>
 #include <benchmark_cedar.h>
+#include <benchmark_wormhole.h>
+#include <benchmark_hattrie.h>
 
 #include <benchmark_textscan.h>
 
@@ -34,6 +36,8 @@ void usageAndExit() {
   printf("                                'patricia'   : own trie based on https://cr.yp.to/critbit.html, https://github.com/agl/critbit\n");
   printf("                                'cradix'     : own m-ary trie\n");
   printf("                                'cedar'      : double array trie http://www.tkl.iis.u-tokyo.ac.jp/~ynaga/cedar/\n");
+  printf("                                'wormhole'   : Wormhole trie https://github.com/wuxb45/wormhole\n");
+  printf("                                'hattrie'    : Hat-Trie trie https://github.com/Tessil/hat-trie\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
   printf("                                'xxhash:XX3_64bits': xxhash    variant 'XXH3_64bits()' https://github.com/Cyan4973/xxHash.git\n");
@@ -103,6 +107,10 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("cradix", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("cedar", optarg)) {
+            config.d_dataStructure = optarg;
+          } else if (!strcmp("wormhole", optarg)) {
+            config.d_dataStructure = optarg;
+          } else if (!strcmp("hattrie", optarg)) {
             config.d_dataStructure = optarg;
           } else {
             usageAndExit();
@@ -241,6 +249,14 @@ int main(int argc, char **argv) {
     test.report();
   } else if (config.d_dataStructure=="cedar") {
     Benchmark::Cedar test(config, file, "Cedar Trie");
+    test.start();
+    test.report();
+  } else if (config.d_dataStructure=="wormhole") {
+    Benchmark::WormHole test(config, file, "Wormhole Trie");
+    test.start();
+    test.report();
+  } else if (config.d_dataStructure=="hattrie") {
+    Benchmark::HatTrie test(config, file, "HAT-Trie");
     test.start();
     test.report();
   }

@@ -1,16 +1,15 @@
-#include <benchmark_art.h>
+#include <benchmark_wormhole.h>
 #include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
+#include "lib.h"
+#include "kv.h"
+#include <wh.h>
+
 #include <intel_skylake_pmu.h>
 
-#pragma GCC diagnostic push                                                                                             
-#pragma GCC diagnostic ignored "-Wpedantic"                                                                             
-#include <art.h>
-#pragma GCC diagnostic pop 
-
 template<typename T>
-static int art_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int wormhole_test_text_insert(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -26,7 +25,7 @@ static int art_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats,
   
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    art_insert(&map, (unsigned char*)word.data(), word.size()-1, (void*)word.data()); 
+    wh_put(map, word.data(), word.size(), 0, 0); 
   }
 
   timespec_get(&endTime, TIME_UTC);
@@ -36,7 +35,7 @@ static int art_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats,
 }
 
 template<typename T>
-static int art_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int wormhole_test_text_find(unsigned runNumber, T* map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -53,7 +52,7 @@ static int art_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, c
 
   // Benchmark running: do find
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    auto val = art_search(&map, (unsigned char*)word.data(), word.size()-1);
+    auto val = wh_probe(map, word.data(), word.size());
     if (val==0) {
       ++errors;
     }
@@ -69,7 +68,7 @@ static int art_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, c
   return 0;
 }
 
-int Benchmark::ART::start() {
+int Benchmark::WormHole::start() {
   int rc(0);
 
   if (d_config.d_format == "bin-text-kv") {
@@ -87,12 +86,13 @@ int Benchmark::ART::start() {
         if (d_config.d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
-        art_tree artTrie;
-        art_tree_init(&artTrie);
-        art_test_text_insert(i, artTrie, d_insertStats, d_file);
-        art_test_text_find(i, artTrie, d_findStats, d_file);
+        struct wormhole * const wh = wh_create();
+        struct wormref * const ref = wh_ref(wh);
+        wormhole_test_text_insert(i, ref, d_insertStats, d_file);
+        wormhole_test_text_find(i, ref, d_findStats, d_file);
         rusage(std::cout);
-        art_tree_destroy(&artTrie);
+        wh_clean(wh);
+        wh_destroy(wh);
       }
     }
   }

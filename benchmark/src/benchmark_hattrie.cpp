@@ -1,16 +1,13 @@
-#include <benchmark_art.h>
+#include <benchmark_hattrie.h>
 #include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
+#include <htrie_map.h>
+
 #include <intel_skylake_pmu.h>
 
-#pragma GCC diagnostic push                                                                                             
-#pragma GCC diagnostic ignored "-Wpedantic"                                                                             
-#include <art.h>
-#pragma GCC diagnostic pop 
-
 template<typename T>
-static int art_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int hattrie_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -26,7 +23,7 @@ static int art_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats,
   
   // Benchmark running: do insert
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    art_insert(&map, (unsigned char*)word.data(), word.size()-1, (void*)word.data()); 
+    map.insert_ks(word.const_data(), word.size(), scanner.index());
   }
 
   timespec_get(&endTime, TIME_UTC);
@@ -36,7 +33,7 @@ static int art_test_text_insert(unsigned runNumber, T& map, Intel::Stats& stats,
 }
 
 template<typename T>
-static int art_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int hattrie_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -53,8 +50,8 @@ static int art_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, c
 
   // Benchmark running: do find
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    auto val = art_search(&map, (unsigned char*)word.data(), word.size()-1);
-    if (val==0) {
+    auto iter = map.find_ks(word.const_data(), word.size());
+    if (iter==map.end()) {
       ++errors;
     }
   }
@@ -69,7 +66,7 @@ static int art_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, c
   return 0;
 }
 
-int Benchmark::ART::start() {
+int Benchmark::HatTrie::start() {
   int rc(0);
 
   if (d_config.d_format == "bin-text-kv") {
@@ -87,12 +84,10 @@ int Benchmark::ART::start() {
         if (d_config.d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
-        art_tree artTrie;
-        art_tree_init(&artTrie);
-        art_test_text_insert(i, artTrie, d_insertStats, d_file);
-        art_test_text_find(i, artTrie, d_findStats, d_file);
+        tsl::htrie_map<char, int> map;
+        hattrie_test_text_insert(i, map, d_insertStats, d_file);
+        hattrie_test_text_find(i, map, d_findStats, d_file);
         rusage(std::cout);
-        art_tree_destroy(&artTrie);
       }
     }
   }

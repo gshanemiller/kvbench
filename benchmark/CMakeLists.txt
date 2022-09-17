@@ -20,6 +20,8 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_patricia.cpp
   ./src/benchmark_cradix.cpp
   ./src/benchmark_cedar.cpp
+  ./src/benchmark_wormhole.cpp
+  ./src/benchmark_hattrie.cpp
 
   ./src/intel_skylake_pmu.cpp
   ./src/intel_pmu_stats.cpp
@@ -31,7 +33,10 @@ set(BENCHMARK_SOURCES
   ./thirdparty/cityhash/city.cc
 
   ./thirdparty/art/art.c
-  ./thirdparty/art/art_mem.c
+
+  ./thirdparty/wormhole/src/kv.c
+  ./thirdparty/wormhole/src/lib.c
+  ./thirdparty/wormhole/src/wh.c
 
   ./thirdparty/folly/ScopeGuard.cpp
   ./thirdparty/folly/lang/ToAscii.cpp
@@ -81,6 +86,9 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/patricia/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cradix/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/ringbuffer/include)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cedar/src)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/wormhole/src)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hattrie/src)
+target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hattrie/src/array-hash)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)
