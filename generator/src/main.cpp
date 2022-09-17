@@ -21,14 +21,14 @@ struct Config {
   : d_mode(UNDEFINED)
   , d_verbosity(0)
   , d_cstringTerminator(false)
-  , d_wide(false)
+  , d_keyPerLine(false)
   {
   }
 
   Mode            d_mode;
   unsigned int    d_verbosity;
   bool            d_cstringTerminator;
-  bool            d_wide;
+  bool            d_keyPerLine;
   std::string     d_inFilename;
   std::string     d_outFilename;
 };
@@ -40,26 +40,26 @@ void usageAndExit() {
   printf("\n");
   printf("       -m <mode>                mandatory: action to take\n");                                    
   printf("                                'convert-text': convert <inputFilename> to <outputFilename> in which the input\n");
-  printf("                                                file is whitespace delimited words writing into output file a\n");
-  printf("                                                binary representation in format 'bin-text' as described by the\n");
-  printf("                                                'benchmark.tsk' usage line\n");
+  printf("                                                file contains one key per whitespace separated word or one key\n");
+  printf("                                                per line. See -l\n");
   printf("\n");
   printf("       -i <inputFilename>       optional : required when <mode> is 'convert-text' otherwise not used\n");
   printf("\n");
   printf("       -o <outputFilename>      mandatory: output file which contains output as per <mode>\n");
   printf("\n");
   printf("       -t                       optional : add 0 terminator to string on write\n");
-  printf("                                           valid with 'convert-text' for uses where 0 terminator required\n");
   printf("\n");
-  printf("       -w                       optional : emit wide characters; each ASCII 1-byte char written as int\n");
+  printf("       -l                       optional : construe each line as one key\n");
   printf("\n");
-  printf("       -v                       optional : increase verbosity of output\n");
+  printf("       -v                       optional : show strings written to output file\n");
+  printf("\n");
+  printf("Program assumes UNIX line delimited files. DOS files with '\\r' should be stripped first.\n");
   exit(2);
 }
 
 void parseCommandLine(int argc, char **argv) {                                                                          
   int opt;
-  const char *switches = "m:i:o:tvw";
+  const char *switches = "m:i:o:tvl";
 
   while ((opt = getopt(argc, argv, switches)) != -1) {
     switch (opt) {
@@ -105,9 +105,9 @@ void parseCommandLine(int argc, char **argv) {
         }
         break;
 
-      case 'w':
+      case 'l':
         {
-          config.d_wide = true;
+          config.d_keyPerLine = true;
         }
         break;
 
@@ -141,11 +141,21 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
       ++ptr;
     }
 
-    // Find end-of-word
+    // Find end of key
     char *start(ptr);
-    for(; ptr<end; ++ptr) {
-      if (isspace(*ptr)) {
-        break;                                                                                                            
+    if (config.d_keyPerLine) {
+      // key per line
+      for(; ptr<end; ++ptr) {
+        if (*ptr=='\n') {
+          break;                                                                                                            
+        }
+      }
+    } else {
+      // Find end-of-word
+      for(; ptr<end; ++ptr) {
+        if (isspace(*ptr)) {
+          break;                                                                                                            
+        }
       }
     }
 
@@ -166,10 +176,9 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
       return -1;
     }
 
-    // #elements we're writing: either 1-byte char elements or 4-byte wide char elements
+    // #elements we're writing e.g. either 1-byte char elements
     // inclusive of terminator if any
     if (config.d_cstringTerminator) {
-      // this is big enough for wide - fixed below
       ++outputSize;
     }
     if (write(fid, &outputSize, sizeof(outputSize))==-1) {
@@ -180,46 +189,18 @@ int convertTextHelper(int fid, char *data, const char *end, unsigned int& words)
 
     const unsigned long previousWordOffset = offset;
 
-    if (!config.d_wide) {
-      if (write(fid, start, sz)==-1) {
+    if (write(fid, start, sz)==-1) {
+      printf("write error: %s (errno=%d)\n", strerror(errno), errno);
+      return -1;
+    }
+    offset += sz;
+
+    if (config.d_cstringTerminator) {
+      if (write(fid, &terminator, sizeof(terminator))==-1) {
         printf("write error: %s (errno=%d)\n", strerror(errno), errno);
         return -1;
       }
-      offset += sz;
-
-      if (config.d_cstringTerminator) {
-        if (write(fid, &terminator, sizeof(terminator))==-1) {
-          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
-          return -1;
-        }
-        ++offset;
-      }
-    } else {
-      union {
-        int val;
-        unsigned char byte[4];
-      } datum;
-      datum.val = 0;
-      for (unsigned i=0; i<sz; ++i) {
-        datum.byte[0] = (unsigned char)start[i];
-        if (write(fid, &datum.val, sizeof(datum.val))==-1) {
-          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
-          return -1;
-        }
-      }
-      // cause outputing ints
-      outputSize *= sizeof(int);
-      offset += (sz*sizeof(int));
-
-      if (config.d_cstringTerminator) {
-        if (write(fid, &wterminator, sizeof(wterminator))==-1) {
-          printf("write error: %s (errno=%d)\n", strerror(errno), errno);
-          return -1;
-        }
-        offset += sizeof(wterminator);
-        // see comment above when output size is written
-        outputSize += sizeof(wterminator) - 1;
-      }
+      ++offset;
     }
 
     ++words;

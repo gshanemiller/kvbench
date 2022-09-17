@@ -1,6 +1,24 @@
 #!/bin/bash
 
-FILES=""
+# This script obtains several files from the internet and generates one file of random strings.
+# These files are prepared in one of two modes so data sets can be compared equally to CoCo trie.
+# CoCo is static; it does not have an insert method. Therefore unlike other test data structures
+# we cannot load the test data set into memory from a binary format then iterate over it and run
+# inserts. CoCo also requires sorted input. The other structures do not. 
+#
+# The files so obtained fall into two classes:
+#
+# * one key per line
+# * each line contains whitespace separated words, and each word is a key
+# 
+# Putting this altogether: Files that need line2word conversion are placed into the WORD_FILE
+# list. Other files are placed into the LINE_FILE list. Each set is post-processed appropriately. 
+
+# thes files need line2word (or line to key) conversion
+WORD_FILES=""
+
+# these files have one word (key) per line
+LINE_FILES=""
 
 # Shakespeare's collected works
 URL="https://www.gutenberg.org/cache/epub/100/pg100.txt"
@@ -8,7 +26,7 @@ FILE="shakespeare.txt"
 rm -f $FILE
 echo "Reading $URL writing $FILE..."
 curl $URL -o $FILE
-FILES="${FILES} ${FILE}"
+WORD_FILES="${WORD_FILES} ${FILE}"
 
 # Gutenberg EBook of Webster's Unabridged Dict
 echo
@@ -17,7 +35,7 @@ FILE="dict.txt"
 rm -f $FILE
 echo "Reading $URL writing $FILE..."
 curl $URL -o $FILE
-FILES="${FILES} ${FILE}"
+WORD_FILES="${WORD_FILES} ${FILE}"
 
 # URLS
 echo
@@ -28,8 +46,9 @@ OUTFILE="url.txt"
 echo "Reading $URL writing $FILE..."
 curl $URL -o $FILE
 rm -f ${OUTFILE} 
+echo "unzipping ${FILE}..."
 gunzip ${FILE}
-FILES="${FILES} ${OUTFILE}"
+LINE_FILES="${LINE_FILES} ${OUTFILE}"
 
 # Random strings avg-len 20 with std-dev 3
 echo
@@ -37,15 +56,25 @@ N=10000000
 FILE="rand.txt"
 echo "Generating $N random strings in $FILE ..."
 ../benchmark/scripts/keygen $N 20 gauss 3 1>$FILE
-FILES="${FILES} ${FILE}"
+LINE_FILES="${LINE_FILES} ${FILE}"
 
+# contains files that can be benchmarked
 MANIFEST=""
 
-# convert text files to binary format for everything except CoCo
-# CoCo will read text files not binary format
-for f in $FILES
+# First deal with files needing line2word conversion
+for f in $WORD_FILES
 do
   echo
+  
+  # take the file received from internet and rename to "*.original"
+  ORIG="${f}.original"
+  mv $f $ORIG
+  # convert each line containing whitespace seperated words
+  # into one word per line removing all whitespace.
+  echo "converting $f to one-word-per-line..."
+  cat $ORIG | ../benchmark/scripts/line2words > $f
+
+  # add both files to manifest
   MANIFEST="$MANIFEST $f"
 
   OUTFILE="${f%%.txt}.bin"
@@ -75,6 +104,43 @@ do
   echo "converting text file $SORTED to $OUTFILE as c-strings..."
   rm -f $OUTFILE
   ./generator.tsk -m convert-text -i $SORTED -o $OUTFILE -t
+  MANIFEST="$MANIFEST $OUTFILE"
+done
+
+# now deal with the files with one key per line. here -l is added
+# to generator commands, and line2word is not run
+for f in $LINE_FILES
+do
+  echo
+  MANIFEST="$MANIFEST $f"
+
+  OUTFILE="${f%%.txt}.bin"
+  echo "converting text file $f to $OUTFILE..."
+  rm -f $OUTFILE
+  ./generator.tsk -m convert-text -i $f -o $OUTFILE -l
+  MANIFEST="$MANIFEST $OUTFILE"
+
+  OUTFILE="${f%%.txt}.cstr.bin"
+  echo "converting text file $f to $OUTFILE as c-strings..."
+  rm -f $OUTFILE
+  ./generator.tsk -m convert-text -i $f -o $OUTFILE -t -l
+  MANIFEST="$MANIFEST $OUTFILE"
+
+  SORTED="${f}.sorted"
+  echo "unique sorting $f..."
+  sort -u $f > $SORTED
+  MANIFEST="$MANIFEST $SORTED"
+
+  OUTFILE="${f%%.txt}.sorted.bin"
+  echo "converting text file $SORTED to $OUTFILE..."
+  rm -f $OUTFILE
+  ./generator.tsk -m convert-text -i $SORTED -o $OUTFILE -l
+  MANIFEST="$MANIFEST $OUTFILE"
+
+  OUTFILE="${f%%.txt}.sorted.cstr.bin"
+  echo "converting text file $SORTED to $OUTFILE as c-strings..."
+  rm -f $OUTFILE
+  ./generator.tsk -m convert-text -i $SORTED -o $OUTFILE -t -l
   MANIFEST="$MANIFEST $OUTFILE"
 done
 

@@ -1,0 +1,10 @@
+#!/usr/bin/python3
+
+import sys
+
+# read each line stipping lead/trailing whitespaces
+# then print each whitespace delimited word
+for line in sys.stdin:
+  toks = line.strip().split()
+  for t in toks:
+    print(t.strip())
