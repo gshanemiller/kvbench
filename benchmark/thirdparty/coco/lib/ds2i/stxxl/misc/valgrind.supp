@@ -1,8 +1,0 @@
-{
-   libgomp/thread_local_storage
-   Memcheck:Leak
-   fun:calloc
-   fun:allocate_dtv
-   fun:_dl_allocate_tls
-   fun:pthread_create@@GLIBC_2.2.5
-}
