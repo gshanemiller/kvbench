@@ -50,12 +50,22 @@ echo "unzipping ${FILE}..."
 gunzip ${FILE}
 LINE_FILES="${LINE_FILES} ${OUTFILE}"
 
-# Random strings avg-len 20 with std-dev 3
+# Long random strings
 echo
 N=10000000
-FILE="rand.txt"
-echo "Generating $N random strings in $FILE ..."
-../benchmark/scripts/keygen $N 20 gauss 3 1>$FILE
+AVG=32
+FILE="rand_big.txt"
+echo "Generating $N random strings with average length $AVG in $FILE ..."
+../benchmark/scripts/keygen $N $AVG gauss 3 1>$FILE
+LINE_FILES="${LINE_FILES} ${FILE}"
+
+# Short random strings
+echo
+N=10000000
+AVG=8
+FILE="rand_small.txt"
+echo "Generating $N random strings with average length $AVG in $FILE ..."
+../benchmark/scripts/keygen $N $AVG gauss 3 1>$FILE
 LINE_FILES="${LINE_FILES} ${FILE}"
 
 # contains files that can be benchmarked
@@ -76,6 +86,7 @@ do
 
   # add both files to manifest
   MANIFEST="$MANIFEST $f"
+  MANIFEST="$MANIFEST $ORIG"
 
   OUTFILE="${f%%.txt}.bin"
   echo "converting text file $f to $OUTFILE..."

@@ -48,6 +48,7 @@ Report::Report(const Config& config, const LoadFile& file, const std::string& de
 , d_config(config)
 , d_description(description)
 {
+  rusage(std::cout);
 }
 
 } // namespace Benchmark

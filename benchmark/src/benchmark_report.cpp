@@ -12,8 +12,8 @@ int Benchmark::Report::start() {
 std::ostream& Benchmark::Report::rusage(std::ostream& stream) {
   struct rusage rusage;
   getrusage(RUSAGE_SELF, &rusage);
-  stream    << "maxrssKb: "             << rusage.ru_maxrss
-            << " maxrssGb: "            << (double)rusage.ru_maxrss/1024.0/1024.0
+  stream    << "maxRssKb: "             << rusage.ru_maxrss
+            << " maxRssGb: "            << (double)rusage.ru_maxrss/1024.0/1024.0
             << " swaps: "               << rusage.ru_nswap
             << " minorPageFaults: "     << rusage.ru_minflt
             << " majorPageFaults: "     << rusage.ru_majflt
