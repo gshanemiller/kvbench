@@ -3,6 +3,7 @@ project(KVBenchmark)
 
 add_subdirectory(unit_tests)
 add_subdirectory(thirdparty/mimalloc)
+add_subdirectory(thirdparty/coco)
 
 set(BENCHMARK_SOURCES
   ./src/main.cpp
