@@ -14,8 +14,8 @@ namespace Benchmark {
 class HOT: public Report {
 public:
   // CREATORS                                                                                                           
-  HOT(const Config& config, const LoadFile& file, const std::string& description)                                     
-  : Report(config, file, description)                                                                                   
+  HOT(const Config& config, const std::string& description)                                     
+  : Report(config, description)                                                                                   
   {                                                                                                                     
   }                                                                                                                     
                                                                                                                         

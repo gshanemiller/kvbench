@@ -67,7 +67,11 @@ static int hattrie_test_text_find(unsigned runNumber, T& map, Intel::Stats& stat
 }
 
 int Benchmark::HatTrie::start() {
-  int rc(0);
+  // Default start is to load file                                                                                      
+  int rc = Benchmark::Report::start();                                                                                  
+  if (rc!=0) {                                                                                                          
+    return rc;                                                                                                          
+  }
 
   if (d_config.d_format == "bin-text-kv") {
     // We have KV pairs to play with

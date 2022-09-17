@@ -7,8 +7,8 @@ namespace Benchmark {
 class Cedar: public Report {
 public:
   // CREATORS
-  Cedar(const Config& config, const LoadFile& file, const std::string& description)
-  : Report(config, file, description)
+  Cedar(const Config& config, const std::string& description)
+  : Report(config, description)
   {
   }
 

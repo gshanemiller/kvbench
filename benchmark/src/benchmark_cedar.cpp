@@ -70,7 +70,11 @@ static int cedar_test_text_find(unsigned runNumber, cedar::da<int>& map, Intel::
 }
 
 int Benchmark::Cedar::start() {
-  int rc(0);
+  // Default start is to load file                                                                                      
+  int rc = Benchmark::Report::start();                                                                                  
+  if (rc!=0) {                                                                                                          
+    return rc;                                                                                                          
+  }
 
   if (d_config.d_format == "bin-text-kv") {
     // We have KV pairs to play with

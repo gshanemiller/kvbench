@@ -14,8 +14,8 @@ namespace Benchmark {
 class FacebookF14: public Report {
 public:
   // CREATORS                                                                                                           
-  FacebookF14(const Config& config, const LoadFile& file, const std::string& description)                                     
-  : Report(config, file, description)                                                                                   
+  FacebookF14(const Config& config, const std::string& description)                                     
+  : Report(config, description)                                                                                   
   {                                                                                                                     
   }                                                                                                                     
                                                                                                                         

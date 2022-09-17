@@ -7,8 +7,8 @@ namespace Benchmark {
 class patricia: public Report {
 public:
   // CREATORS
-  patricia(const Config& config, const LoadFile& file, const std::string& description)                                     
-  : Report(config, file, description)                                                                                   
+  patricia(const Config& config, const std::string& description)                                     
+  : Report(config, description)                                                                                   
   {                                                                                                                     
   }                                                                                                                     
                                                                                                                         

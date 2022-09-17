@@ -9,8 +9,8 @@ namespace Benchmark {
 class WormHole: public Report {
 public:
   // CREATORS
-  WormHole(const Config& config, const LoadFile& file, const std::string& description)
-  : Report(config, file, description)
+  WormHole(const Config& config, const std::string& description)
+  : Report(config, description)
   {
   }
 

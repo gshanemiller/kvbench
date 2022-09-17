@@ -6,12 +6,18 @@
 #include <sys/resource.h>
 
 int Benchmark::Report::start() {
-  return 0;
+  return loadFile(d_config.d_filename.c_str());
 }
 
-std::ostream& Benchmark::Report::rusage(std::ostream& stream) {
+std::ostream& Benchmark::Report::rusage(std::ostream& stream, const char *label) {
   struct rusage rusage;
   getrusage(RUSAGE_SELF, &rusage);
+  if (label) {
+    stream  << label
+            << std::endl
+            << "-------------------------------------------------------------"
+            << std::endl;
+  }
   stream    << "maxRssKb: "             << rusage.ru_maxrss
             << " maxRssGb: "            << (double)rusage.ru_maxrss/1024.0/1024.0
             << " swaps: "               << rusage.ru_nswap
@@ -34,4 +40,18 @@ void Benchmark::Report::report() {
   desc.append(" ExactSearch");
   d_findStats.summary(desc.c_str(), pmu);
   rusage(std::cout);
+}
+
+int Benchmark::Report::loadFile(const char *path) {
+  assert(path);                                                                              
+  printf("loading '%s'\n", path);
+  int rc = d_file.load(path);
+  if (rc!=0) {                                                                                                          
+    printf("error: cannot load '%s': %s (errno=%d)\n", path, strerror(rc), rc);                           
+    exit(1);                                                                                                            
+  }                                                                                                                     
+  char buffer[1024];
+  snprintf(buffer, sizeof(buffer), "After Loading '%s'", path);
+  rusage(std::cout, buffer);
+  return 0;
 }

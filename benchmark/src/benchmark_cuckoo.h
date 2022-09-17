@@ -12,8 +12,8 @@ namespace Benchmark {
 class Cuckoo: public Report {
 public:
   // CREATORS                                                                                                           
-  Cuckoo(const Config& config, const LoadFile& file, const std::string& description)                                     
-  : Report(config, file, description)                                                                                   
+  Cuckoo(const Config& config, const std::string& description)                                     
+  : Report(config, description)                                                                                   
   {                                                                                                                     
   }                                                                                                                     
                                                                                                                         

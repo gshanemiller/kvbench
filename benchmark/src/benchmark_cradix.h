@@ -7,8 +7,8 @@ namespace Benchmark {
 class cradix: public Report {
 public:
   // CREATORS                                                                                                           
-  cradix(const Config& config, const LoadFile& file, const std::string& description)
-  : Report(config, file, description)
+  cradix(const Config& config, const std::string& description)
+  : Report(config, description)
   {
   }
                                                                                                                         

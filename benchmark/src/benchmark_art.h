@@ -9,8 +9,8 @@ namespace Benchmark {
 class ART: public Report {
 public:
   // CREATORS
-  ART(const Config& config, const LoadFile& file, const std::string& description)
-  : Report(config, file, description)
+  ART(const Config& config, const std::string& description)
+  : Report(config, description)
   {
   }
 

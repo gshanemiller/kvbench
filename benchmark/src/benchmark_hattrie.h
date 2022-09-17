@@ -9,8 +9,8 @@ namespace Benchmark {
 class HatTrie: public Report {
 public:
   // CREATORS
-  HatTrie(const Config& config, const LoadFile& file, const std::string& description)
-  : Report(config, file, description)
+  HatTrie(const Config& config, const std::string& description)
+  : Report(config, description)
   {
   }
 

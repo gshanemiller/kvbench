@@ -169,7 +169,11 @@ static int cradix_test_text_find_queue(unsigned runNumber, T* map, Intel::Stats&
 }
 
 int Benchmark::cradix::start() {
-  int rc(0);
+  // Default start is to load file                                                                                      
+  int rc = Benchmark::Report::start();                                                                                  
+  if (rc!=0) {                                                                                                          
+    return rc;                                                                                                          
+  }
 
   if (d_config.d_format == "bin-text-kv") {
     // We have KV pairs to play with

@@ -65,7 +65,11 @@ static int coco_testtext_find(unsigned runNumber, T& map, Intel::Stats& stats, c
 }
 
 int Benchmark::Coco::start() {
-  int rc(0);
+  // Default start is to load file                                                                                      
+  int rc = Benchmark::Report::start();                                                                                  
+  if (rc!=0) {                                                                                                          
+    return rc;                                                                                                          
+  }
 
   if (d_config.d_format == "bin-text-kv") {
     // We have KV pairs to play with
@@ -82,6 +86,7 @@ int Benchmark::Coco::start() {
         if (d_config.d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
+        d_file.free();
         // coco_testtext_insert(i, map, d_insertStats, d_file);
         // coco_testtext_find(i, map, d_findStats, d_file);
         rusage(std::cout);

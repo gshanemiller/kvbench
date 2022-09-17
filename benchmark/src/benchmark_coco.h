@@ -9,8 +9,8 @@ namespace Benchmark {
 class Coco: public Report {
 public:
   // CREATORS
-  Coco(const Config& config, const LoadFile& file, const std::string& description)
-  : Report(config, file, description)
+  Coco(const Config& config, const std::string& description)
+  : Report(config, description)
   {
   }
 

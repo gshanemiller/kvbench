@@ -13,6 +13,7 @@
 #include <benchmark_cedar.h>
 #include <benchmark_wormhole.h>
 #include <benchmark_hattrie.h>
+#include <benchmark_coco.h>
 
 #include <benchmark_textscan.h>
 
@@ -24,9 +25,10 @@ void usageAndExit() {
   printf("       -f <filename>            mandatory: data file for benchmarking\n");
   printf("\n");
   printf("       -F <format>              mandatory: format is one of the following:\n");
-  printf("                                'bin-text'    : <filename> contains printable ASCII words in binary format\n");
-  printf("                                'bin-text-kv' : <filename> contains printable ASCII only KV pairs in binary format\n");
+  printf("                                'bin-text'    : <filename> contains (probably mostly ASCII) keys in binary format\n");
+  printf("                                'bin-text-kv' : <filename> contains (probably mostly ASCII) KV pairs in binary format\n");
   printf("                                'bin-slice-kv': <filename> contains blob KV pairs in binary format\n");
+  printf("                                'text'        : <filename> contains vanilla text one key per line\n");
   printf("\n");
   printf("       -d <data-structure>      mandatory: data structure to benchmark for which code included in this repository\n");
   printf("                                'cuckoo'     : hashmap  https://github.com/efficient/libcuckoo\n");
@@ -38,6 +40,7 @@ void usageAndExit() {
   printf("                                'cedar'      : double array trie http://www.tkl.iis.u-tokyo.ac.jp/~ynaga/cedar/\n");
   printf("                                'wormhole'   : Wormhole trie https://github.com/wuxb45/wormhole\n");
   printf("                                'hattrie'    : Hat-Trie trie https://github.com/Tessil/hat-trie\n");
+  printf("                                'coco'       : CoCo trie https://github.com/aboffa/CoCo-trie\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
   printf("                                'xxhash:XX3_64bits': xxhash    variant 'XXH3_64bits()' https://github.com/Cyan4973/xxHash.git\n");
@@ -111,6 +114,8 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("wormhole", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("hattrie", optarg)) {
+            config.d_dataStructure = optarg;
+          } else if (!strcmp("coco", optarg)) {
             config.d_dataStructure = optarg;
           } else {
             usageAndExit();
@@ -208,57 +213,64 @@ void parseCommandLine(int argc, char **argv) {
   if (config.d_needHashAlgo && config.d_hashAlgo.empty()) {
     usageAndExit();
   }
+  if (config.d_dataStructure=="coco" && config.d_format!="text") {
+    printf("error: CoCo works with text files only\n");
+    usageAndExit();
+  } else if (config.d_format=="text") {
+    printf("error: %s does not work with text files\n", config.d_dataStructure.c_str());
+    usageAndExit();
+  }
 }
 
 int main(int argc, char **argv) {
-  parseCommandLine(argc, argv);
+  Benchmark::Report::rusage(std::cout, "At Program Entry");
 
-  Benchmark::LoadFile file;
-  printf("loading '%s'\n", config.d_filename.c_str());
-  int rc = file.load(config.d_filename.c_str());
-  if (rc!=0) {
-    printf("Cannot load '%s': %s (errno=%d)\n", config.d_filename.c_str(), strerror(rc), rc);
-    exit(1);
-  }
-  config.d_fileSizeBytes = file.fileSize();
+  parseCommandLine(argc, argv);
 
   // Now do what command line requested
   if (config.d_dataStructure=="cuckoo") {
-    Benchmark::Cuckoo test(config, file, "Cuckoo Hashmap");
+    Benchmark::Cuckoo test(config, "Cuckoo Hashmap");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="f14") {
-    Benchmark::FacebookF14 test(config, file, "F14 Hashmap");
+    Benchmark::FacebookF14 test(config, "F14 Hashmap");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="hot") {
-    Benchmark::HOT test(config, file, "HOT Trie");
+    Benchmark::HOT test(config, "HOT Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="art") {
-    Benchmark::ART test(config, file, "ART Trie");
+    Benchmark::ART test(config, "ART Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="patricia") {
-    Benchmark::patricia test(config, file, "Patricia Trie");
+    Benchmark::patricia test(config, "Patricia Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="cradix") {
-    Benchmark::cradix test(config, file, "CRadix Trie");
+    Benchmark::cradix test(config, "CRadix Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="cedar") {
-    Benchmark::Cedar test(config, file, "Cedar Trie");
+    Benchmark::Cedar test(config, "Cedar Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="wormhole") {
-    Benchmark::WormHole test(config, file, "Wormhole Trie");
+    Benchmark::WormHole test(config, "Wormhole Trie");
     test.start();
     test.report();
   } else if (config.d_dataStructure=="hattrie") {
-    Benchmark::HatTrie test(config, file, "HAT-Trie");
+    Benchmark::HatTrie test(config, "HAT-Trie");
     test.start();
     test.report();
+  } else if (config.d_dataStructure=="coco") {
+    Benchmark::Coco test(config, "CoCo Trie");
+    test.start();
+    test.report();
+  } else {
+    printf("error: unknown data structure\n");
+    exit(2);
   }
   
   return 0;
