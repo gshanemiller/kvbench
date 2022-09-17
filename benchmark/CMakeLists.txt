@@ -23,6 +23,7 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_cedar.cpp
   ./src/benchmark_wormhole.cpp
   ./src/benchmark_hattrie.cpp
+  ./src/benchmark_coco.cpp
 
   ./src/intel_skylake_pmu.cpp
   ./src/intel_pmu_stats.cpp

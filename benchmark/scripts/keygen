@@ -9,9 +9,13 @@ if len(sys.argv)<5:
   print("       N    - #keys to generate")
   print("       avg  - average key length")
   print("       dist - 'gauss' only support distribution");
-  print("       s1   - for gauss this gives the std deviation. bigger -> larger variation")
-  print
+  print("       s1   - for gauss gives the std deviation. bigger -> larger variation from avg")
+  print("")
   print("keys will consist of any valid ASCII upper/lower letter character");
+  print("")
+  print("Example: keygen 1000 32 gauss 3")
+  print("         make 1000 random strings over [a..z][A..Z] with average length 32 stddev of 3")
+  print("         generated 1000 keys with minLen 22 maxLen 42 avgLen 31.441")
   sys.exit(2)
 
 N = int(sys.argv[1])
@@ -56,7 +60,7 @@ if dist=='gauss':
       maxLen = len
     print(key)
     i = i + 1
-    if ((i%10000)==0):
+    if ((i%1000000)==0):
       sys.stderr.write("generated {0} keys...\n".format(i))
 
 sys.stderr.write("generated {0} keys with minLen {1} maxLen {2} avgLen {3}\n".format(N, minLen, maxLen, total*1.0/N))
