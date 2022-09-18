@@ -97,3 +97,5 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/coco/lib/sdsl
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)
+target_link_libraries(${BENCHMARK_TARGET} PUBLIC sdsl)
+target_link_libraries(${BENCHMARK_TARGET} PUBLIC succinct)

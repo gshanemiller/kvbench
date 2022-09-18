@@ -1,2 +1,0 @@
-/usr/bin/ar qc libsuccinct.a CMakeFiles/succinct.dir/rs_bit_vector.cpp.o CMakeFiles/succinct.dir/bp_vector.cpp.o
-/usr/bin/ranlib libsuccinct.a

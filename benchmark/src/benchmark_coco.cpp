@@ -1,5 +1,4 @@
 #include <benchmark_coco.h>
-#include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
 #include <uncompacted_trie.hpp>
