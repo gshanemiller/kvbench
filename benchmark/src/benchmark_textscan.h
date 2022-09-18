@@ -8,6 +8,9 @@
 #include <benchmark_loadfile.h>
 #include <benchmark_slice.h>
 
+#include <vector>
+#include <string>
+
 #include <ctype.h>
 #include <assert.h>
 
@@ -51,6 +54,10 @@ public:
 
   void reset();
     // Reset internal state to point to the beginning of file.
+
+  int exportAsVector(std::vector<std::string*>& data);
+    // Return if from current 'index()' all remaining data is pushed one 'std::string*' per word into specified 'data'
+    // and non-zero otherwise. You must call 'reset()' after call to restart scanning. Note 'data' is cleared first.
 
   TextScan& operator=(const TextScan& rhs) = delete;
     // Assignment operator not provided
@@ -111,6 +118,19 @@ void TextScan<T>::reset() {
     d_available = *i;
     d_ptr += sizeof(unsigned int);
   }
+}
+
+template<class T>
+inline
+int TextScan<T>::exportAsVector(std::vector<std::string*>& data) {
+  data.clear();
+  Slice<T> word;
+  while (!eof()) {
+    next(word);
+    data.emplace_back(new std::string(word.const_data(), word.size()));
+  }
+
+  return 0;
 }
 
 } // namespace Benchmark

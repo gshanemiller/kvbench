@@ -18,6 +18,9 @@
 #include "../lib/ds2i/succinct/bp_vector.hpp"
 #include "louds.hpp"
 
+#include <sys/time.h>                                                                                                   
+#include <sys/resource.h> 
+
 #pragma pack(push, 1)
 
 struct fixed_node {
@@ -48,6 +51,26 @@ public:
     size_t num_child_root = 0;
 
     uint8_t log_sigma = log_universe(ALPHABET_SIZE);
+
+    static void rusage(std::ostream& stream, const char *label) {
+      struct rusage rusage;                                                                                                 
+      getrusage(RUSAGE_SELF, &rusage);                                                                                      
+      if (label) {                                                                                                          
+        stream  << label                                                                                                    
+                << std::endl                                                                                                
+                << "-------------------------------------------------------------"                                          
+                << std::endl;                                                                                               
+      }                                                                                                                     
+      stream    << "maxRssKb: "             << rusage.ru_maxrss                                                             
+                << " maxRssGb: "            << (double)rusage.ru_maxrss/1024.0/1024.0                                       
+                << " swaps: "               << rusage.ru_nswap                                                              
+                << " minorPageFaults: "     << rusage.ru_minflt                                                             
+                << " majorPageFaults: "     << rusage.ru_majflt                                                             
+                << " volContextSwitches: "  << rusage.ru_nvcsw                                                              
+                << " frcdContextSwitches: " << rusage.ru_nivcsw                                                             
+                << " signalsReceived: "     << rusage.ru_nsignals                                                           
+                << std::endl;                                                                                               
+    }
 
     static void
     write_elias_fano(code_type u, std::vector<code_type> const &vec, succinct::bit_vector_builder &bvb) {
@@ -286,6 +309,28 @@ public:
         internal_fixed.shrink_to_fit();
         internal_variable = std::make_unique<succinct::bit_vector>(&internal_variable_tmp);
         assert(internal_variable->size() > 0);
+    }
+
+    CoCo_fast(std::vector<std::string*> &dataset) {
+        rusage(std::cout, "Entry CoCo_fast constructor");
+
+        Trie_lw<> uncompacted;
+        // filling the uncompacted trie
+        for (int i = 0; i < dataset.size(); i++)
+            uncompacted.insert(*(dataset[i]));
+        rusage(std::cout, "CoCo_fast constructor: make uncompated trie");
+
+        // computing the best number of levels to collapse into the nodes
+        uncompacted.space_cost_all_nodes();
+        uncompacted.build_actual_CoCo_children();
+
+        topology = std::make_unique<louds<rank1_type, rank00_type>>(uncompacted.global_number_nodes_CoCo);
+        internal_fixed.reserve(uncompacted.global_number_nodes_CoCo);
+
+        num_child_root = 1 + uncompacted.root->n_vec[uncompacted.root->l_idx];
+
+        build_CoCo_from_uncompated_trie(uncompacted.root);
+        rusage(std::cout, "CoCo_fast constructor: exit");
     }
 
     CoCo_fast(std::vector<std::string> &dataset) {

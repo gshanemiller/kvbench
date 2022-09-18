@@ -2,10 +2,16 @@
 #include <benchmark_hashable_keys.h>
 #include <benchmark_textscan.h>
 
+#include <uncompacted_trie.hpp>
+#include <utils.hpp>
+#include <CoCo-trie_fast.hpp>
+
 #include <intel_skylake_pmu.h>
 
-template<typename T>
-static int coco_testtext_insert(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static CoCo_fast<> *coco = 0;
+static std::vector<std::string*> coco_data;
+
+static int coco_testtext_insert(unsigned runNumber, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -19,19 +25,15 @@ static int coco_testtext_insert(unsigned runNumber, T& map, Intel::Stats& stats,
   timespec_get(&startTime, TIME_UTC);
   pmu.start();
   
-  // Benchmark running: do insert
-  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    // map.insert_ks(word.const_data(), word.size(), scanner.index());
-  }
+  coco = new CoCo_fast<>(coco_data);
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.index(), startTime, endTime, pmu);
+  stats.record(label, coco_data.size(), startTime, endTime, pmu);
 
   return 0;
 }
 
-template<typename T>
-static int coco_testtext_find(unsigned runNumber, T& map, Intel::Stats& stats, const Benchmark::LoadFile& file) {
+static int coco_testtext_find(unsigned runNumber, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
   Benchmark::TextScan<char> scanner(file);
   Intel::SkyLake::PMU pmu(false, Intel::SkyLake::PMU::ProgCounterSetConfig::k_DEFAULT_SKYLAKE_CONFIG_0);
@@ -47,15 +49,15 @@ static int coco_testtext_find(unsigned runNumber, T& map, Intel::Stats& stats, c
   pmu.start();
 
   // Benchmark running: do find
-  for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    // auto iter = map.find_ks(word.const_data(), word.size());
-    // if (iter==map.end()) {
-    //   ++errors;
-    // }
+  for (unsigned i=0; i<coco_data.size(); ++i) {
+    auto rank = coco->look_up(*coco_data[i]);
+    if (rank>=0xffffffffUL) {
+      ++errors;
+    }
   }
 
   timespec_get(&endTime, TIME_UTC);
-  stats.record(label, scanner.index(), startTime, endTime, pmu);
+  stats.record(label, coco_data.size(), startTime, endTime, pmu);
 
   if (errors) {
     printf("searchErrors: %u\n", errors);
@@ -65,12 +67,7 @@ static int coco_testtext_find(unsigned runNumber, T& map, Intel::Stats& stats, c
 }
 
 int Benchmark::Coco::start() {
-  // Default start is to load file                                                                                      
-  int rc = Benchmark::Report::start();                                                                                  
-  if (rc!=0) {                                                                                                          
-    return rc;                                                                                                          
-  }
-
+  int rc = 0;
   if (d_config.d_format == "bin-text-kv") {
     // We have KV pairs to play with
     // Not implemented yet
@@ -86,10 +83,29 @@ int Benchmark::Coco::start() {
         if (d_config.d_verbosity>0) {
           printf("execute run set %u...\n", i);
         }
+
+        // Load data
+        rc = Benchmark::Report::start();                                                                                  
+        if (rc!=0) {                                                                                                          
+          return rc;                                                                                                          
+        }
+
+        // For CoCo we need strings as vector
+        Benchmark::TextScan<char> scanner(d_file);
+        scanner.exportAsVector(coco_data);
+        // No longer needed
         d_file.free();
-        // coco_testtext_insert(i, map, d_insertStats, d_file);
-        // coco_testtext_find(i, map, d_findStats, d_file);
-        rusage(std::cout);
+
+        // Benchmark it
+        coco_testtext_insert(i, d_insertStats, d_file);
+        coco_testtext_find(i, d_findStats, d_file);
+        rusage(std::cout, "After All CoCo Benchmarks");
+
+        // Cleanup
+        coco_data.clear();
+        delete coco;
+        coco = 0;
+        rusage(std::cout, "After CoCo Cleanup");
       }
     }
   }
