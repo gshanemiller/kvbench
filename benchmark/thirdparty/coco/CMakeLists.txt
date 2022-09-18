@@ -8,7 +8,7 @@ configure_file(
         lib/ds2i/ds2i_config.hpp
         ESCAPE_QUOTES)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wall -pedantic -O3 -g -DNDEBUG -DSUCCINCT_USE_INTRINSICS=1")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Wall -O3 -g -DNDEBUG -Wno-deprecated-declaration -DSUCCINCT_USE_INTRINSICS=1")
 
 find_package(Boost REQUIRED)
 
@@ -16,3 +16,7 @@ include_directories(include lib/ds2i)
 
 add_subdirectory(lib/ds2i/succinct)
 add_subdirectory(lib/sdsl-lite)
+
+add_executable(example example.cpp)                                                                                     
+target_link_libraries(example sdsl succinct ${Boost_LIBRARIES})                                                         
+target_compile_definitions(example PRIVATE BIG_ALPHABET)
