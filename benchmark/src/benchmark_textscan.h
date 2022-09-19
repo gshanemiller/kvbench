@@ -55,7 +55,7 @@ public:
   void reset();
     // Reset internal state to point to the beginning of file.
 
-  int exportAsVector(std::vector<std::string*>& data);
+  int exportAsVector(std::vector<std::string>& data);
     // Return if from current 'index()' all remaining data is pushed one 'std::string*' per word into specified 'data'
     // and non-zero otherwise. You must call 'reset()' after call to restart scanning. Note 'data' is cleared first.
 
@@ -122,12 +122,12 @@ void TextScan<T>::reset() {
 
 template<class T>
 inline
-int TextScan<T>::exportAsVector(std::vector<std::string*>& data) {
+int TextScan<T>::exportAsVector(std::vector<std::string>& data) {
   data.clear();
   Slice<T> word;
   while (!eof()) {
     next(word);
-    data.emplace_back(new std::string(word.const_data(), word.size()));
+    data.emplace_back(std::string(word.const_data(), word.size()));
   }
 
   return 0;

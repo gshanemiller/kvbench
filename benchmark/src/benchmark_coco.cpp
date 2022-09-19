@@ -8,7 +8,7 @@
 #include <intel_skylake_pmu.h>
 
 static CoCo_fast<> *coco = 0;
-static std::vector<std::string*> coco_data;
+static std::vector<std::string> coco_data;
 
 static int coco_testtext_insert(unsigned runNumber, Intel::Stats& stats, const Benchmark::LoadFile& file) {
   Benchmark::Slice<char> word;
@@ -49,7 +49,7 @@ static int coco_testtext_find(unsigned runNumber, Intel::Stats& stats, const Ben
 
   // Benchmark running: do find
   for (unsigned i=0; i<coco_data.size(); ++i) {
-    auto rank = coco->look_up(*coco_data[i]);
+    auto rank = coco->look_up(coco_data[i]);
     if (rank>=0xffffffffUL) {
       ++errors;
     }
@@ -92,6 +92,7 @@ int Benchmark::Coco::start() {
         // For CoCo we need strings as vector
         Benchmark::TextScan<char> scanner(d_file);
         scanner.exportAsVector(coco_data);
+        printf("coco_data size %lu capacity %lu\n", coco_data.size(), coco_data.capacity());
         // No longer needed
         d_file.free();
 

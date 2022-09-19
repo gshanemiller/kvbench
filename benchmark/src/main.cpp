@@ -26,9 +26,6 @@ void usageAndExit() {
   printf("\n");
   printf("       -F <format>              mandatory: format is one of the following:\n");
   printf("                                'bin-text'    : <filename> contains (probably mostly ASCII) keys in binary format\n");
-  printf("                                'bin-text-kv' : <filename> contains (probably mostly ASCII) KV pairs in binary format\n");
-  printf("                                'bin-slice-kv': <filename> contains blob KV pairs in binary format\n");
-  printf("                                'text'        : <filename> contains vanilla text one key per line\n");
   printf("\n");
   printf("       -d <data-structure>      mandatory: data structure to benchmark for which code included in this repository\n");
   printf("                                'cuckoo'     : hashmap  https://github.com/efficient/libcuckoo\n");
@@ -211,13 +208,6 @@ void parseCommandLine(int argc, char **argv) {
     usageAndExit();
   }
   if (config.d_needHashAlgo && config.d_hashAlgo.empty()) {
-    usageAndExit();
-  }
-  if (config.d_dataStructure=="coco" && config.d_format!="text") {
-    printf("error: CoCo works with text files only\n");
-    usageAndExit();
-  } else if (config.d_format=="text") {
-    printf("error: %s does not work with text files\n", config.d_dataStructure.c_str());
     usageAndExit();
   }
 }

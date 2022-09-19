@@ -87,13 +87,19 @@ static int f14_test_text_find(unsigned runNumber, T& map, Intel::Stats& stats, c
   pmu.start();
 
   // Benchmark running: do find
+  u_int32_t errors(0);
   for (scanner.next(word); !scanner.eof(); scanner.next(word)) {
-    auto iter = map.find(word);
-    Intel::DoNotOptimize(iter);
+    if (map.find(word)==map.end()) {
+      ++errors;
+    }
   }
 
   timespec_get(&endTime, TIME_UTC);
   stats.record(label, scanner.index(), startTime, endTime, pmu);
+
+  if (errors) {
+      printf("search errors: %u\n", errors);
+  }
 
   return 0;
 }
