@@ -13,7 +13,6 @@
 #include <benchmark_cedar.h>
 #include <benchmark_wormhole.h>
 #include <benchmark_hattrie.h>
-#include <benchmark_coco.h>
 
 #include <benchmark_textscan.h>
 
@@ -37,7 +36,6 @@ void usageAndExit() {
   printf("                                'cedar'      : double array trie http://www.tkl.iis.u-tokyo.ac.jp/~ynaga/cedar/\n");
   printf("                                'wormhole'   : Wormhole trie https://github.com/wuxb45/wormhole\n");
   printf("                                'hattrie'    : Hat-Trie trie https://github.com/Tessil/hat-trie\n");
-  printf("                                'coco'       : CoCo trie https://github.com/aboffa/CoCo-trie\n");
   printf("\n");
   printf("       -h <hash-algo>           optional : hashmap algorithms require a hashing function. Specify it here\n");
   printf("                                'xxhash:XX3_64bits': xxhash    variant 'XXH3_64bits()' https://github.com/Cyan4973/xxHash.git\n");
@@ -111,8 +109,6 @@ void parseCommandLine(int argc, char **argv) {
           } else if (!strcmp("wormhole", optarg)) {
             config.d_dataStructure = optarg;
           } else if (!strcmp("hattrie", optarg)) {
-            config.d_dataStructure = optarg;
-          } else if (!strcmp("coco", optarg)) {
             config.d_dataStructure = optarg;
           } else {
             usageAndExit();
@@ -252,10 +248,6 @@ int main(int argc, char **argv) {
     test.report();
   } else if (config.d_dataStructure=="hattrie") {
     Benchmark::HatTrie test(config, "HAT-Trie");
-    test.start();
-    test.report();
-  } else if (config.d_dataStructure=="coco") {
-    Benchmark::Coco test(config, "CoCo Trie");
     test.start();
     test.report();
   } else {

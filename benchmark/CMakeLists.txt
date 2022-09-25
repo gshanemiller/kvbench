@@ -3,7 +3,6 @@ project(KVBenchmark)
 
 add_subdirectory(unit_tests)
 add_subdirectory(thirdparty/mimalloc)
-add_subdirectory(thirdparty/coco)
 
 set(BENCHMARK_SOURCES
   ./src/main.cpp
@@ -23,7 +22,6 @@ set(BENCHMARK_SOURCES
   ./src/benchmark_cedar.cpp
   ./src/benchmark_wormhole.cpp
   ./src/benchmark_hattrie.cpp
-  ./src/benchmark_coco.cpp
 
   ./src/intel_skylake_pmu.cpp
   ./src/intel_pmu_stats.cpp
@@ -91,11 +89,6 @@ target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/cedar/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/wormhole/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hattrie/src)
 target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/hattrie/src/array-hash)
-target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/coco/include)
-target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/coco/lib/ds2i)
-target_include_directories(${BENCHMARK_TARGET} PUBLIC ./thirdparty/coco/lib/sdsl-lite/include)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC ${HUGELIB})
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC pthread)
 target_link_libraries(${BENCHMARK_TARGET} PUBLIC mimalloc-static)
-target_link_libraries(${BENCHMARK_TARGET} PUBLIC sdsl)
-target_link_libraries(${BENCHMARK_TARGET} PUBLIC succinct)
